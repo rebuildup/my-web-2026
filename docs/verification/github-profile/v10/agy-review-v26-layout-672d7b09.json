@@ -1,0 +1,111 @@
+{
+	"version": "1.0.0",
+	"id": "672d7b09-b16d-42c9-b84d-2f151f60f091",
+	"model": null,
+	"resolvedModel": null,
+	"specSha256": "ea2c7b2a48595305be689c83b2f83976a99796d3514ce4420f11f1209ab99437",
+	"classification": "review-completed",
+	"verified": false,
+	"verdict": {
+		"findings": [
+			{
+				"description": "All prior layout/motion regressions are verified fixed in v26 PNGs: Act 4 hero footage visibly advances across t16.25-t21.75 (04-11: 香りが -> calligraphy+red slash -> expanded calligraphy -> STILL -> 捧げむ+vertical red slash -> clean 4.5s loop); vignette rides in ops and is excluded from both settled protagonists and incoming mid-handoff protagonists (16-t5_50, 11-t21_75); 3px blue accent border + dark keyline is crisp even on bright yellow (16-19) and off-white grid (11-14) cards at ~350px; mid-overlap z-order handoffs cleanly put incoming protagonist on top with border ownership (16-t5_50, 11-t21_75); vacancy sequence now rotates TL->TR->BR->TL->TR across Acts 1-5, eliminating persistent BR dead space; zero edge clipping, zero raw unrounded cutouts, zero cross-canvas travel.",
+				"severity": "info"
+			},
+			{
+				"description": "Per-image observations (chronological acts, indexed 00-19): [15-t4_25] Act 1 settled: ProtoType hero crisp with 3px blue border; TL vacant, TR rhythm close-up ('...Perfect' partly occluded), BL two-characters, BR blue graphic; clean rounding and margins. [16-t5_50] Act 1->2 mid-handoff: incoming yellow rhythm hero (Combo 80) expands from TR cleanly ON TOP of outgoing ProtoType retreating to BL, owns blue border, bright and un-vignetted; TL/BR new subs smoothly materialize in place (~15% opacity). [17-t6_00] Act 2 settled: yellow hero (Combo 81) bright with crisp 3px blue+keyline border; TL dark FoldLayers title, BL ProtoType, BR dark UI card (near-black), TR vacant. [18-t6_50] Act 2 settled: hero advances (Combo 83); TL shows AE UI ('No'), BL ProtoType, BR still near-black, TR vacant. [19-t8_50] Act 2 settled: hero advances (Combo 89); TL text 'No new workf' clipped mid-word by hero left edge, BL ProtoType, BR near-black, TR vacant. [00-t10_75] Act 3 settled (Act 2->3 handoff finished before 10.75): FoldLayers 'Just your timeline.' crisp and readable; TL Act 4 MV (捧), BL blue-haired girl, TR rhythm game, BR vacant; strong 3-sub balance. [01-t11_25] Act 3 settled: hero advances ('But now' rotating); TL adds red slash, TR advances, BL crisp, BR vacant. [02-t11_75] Act 3 settled: hero advances ('But now it stays readable.'); subs advance cleanly, BR vacant. [03-t13_50] Act 3 settled: hero advances ('Stop scrolling.'); subs active and balanced, BR vacant. [04-t16_25] Act 4 settled (Act 3->4 handoff finished before 16.25): MV character pointing ('香りが') crisp; TL vacant, TR two-characters emerging, BL 'Stop scrolling. S...' occluded at hero edge, BR blue graphic darkened at bottom by vignette. [05-t16_75] Act 4 settled: hero advances (white calligraphy + red diagonal slash); TR clearer (top-left shadowed), BL 'Stop scrolling. Star...' occluded, BR advances. [06-t17_25] Act 4 settled: hero advances (red slash clears, calligraphy expands); subs advance cleanly. [07-t18_50] Act 4 settled: hero advances (outlined 'STILL', shards shift); BL switches to 'FoldLayers. Free on ...' (occluded), TR/BR active. [08-t20_00] Act 4 settled: hero advances (捧げむ + zigzag red slash); BL 'FoldLayers. Free on B...' occluded, TR active, BR blurs/rotates. [09-t20_75] Act 4 settled: hero loops cleanly back to '香りが' (4.5s cycle); BL 'FoldLayers. Free on B...' occluded, TR active, BR '...oad for Free' occluded on left and dark at bottom. [10-t21_25] Act 4 pre-handoff: hero advances (calligraphy+slash); TR dissolved out, BL fading smoothly in place, BR incoming Act 5 card starts scaling/lifting up-left behind hero with thin gray border. [11-t21_75] Act 4->5 mid-handoff: incoming Act 5 cleanly ON TOP of outgoing Act 4 (retreating to BL), owns 3px blue+keyline border, un-vignetted (uniformly ~70% dimmed during luminance ramp); all 4 corner slots briefly empty. [12-t22_25] Act 5 settled: bright off-white grid + blue diagonal-slashed hero crisp with high-contrast 3px blue+keyline border; TL ProtoType materialized (dim), BL Act 4 settled, BR blue-haired girl materialized, TR vacant. [13-t22_75] Act 5 settled: hero animates (slashes close, 夜 rotates, 'aaaaa' morphs); subs advance cleanly, TR vacant. [14-t25_00] Act 5 settled: hero advances further; BL Act 4 shows kanji+red slash, TL ProtoType dim, BR blue-haired girl, TR vacant.",
+				"severity": "info"
+			},
+			{
+				"description": "Top Fix #1 (Minor - Occluded sub-card headlines): Text-heavy sub clips have display copy sliced mid-word by the protagonist border — notably Act 4 BL ('Stop scrolling. Star...' in 04-06 and 'FoldLayers. Free on B...' in 07-10), Act 2 TL ('No new workf' in 19), and Act 4 BR ('...oad for Free' in 09). Selecting non-text/visual-only clip ranges for sub roles (especially FoldLayers) would avoid broken words competing with the hero.",
+				"severity": "minor"
+			},
+			{
+				"description": "Top Fix #2 (Minor - Near-black BR sub in Act 2 / dim TL in Act 5 at ~350px): In Act 2 (17-19), TR is vacant while BR shows very dark UI footage further darkened by sub dimming and bottom vignette, making the entire right side read almost empty at ~350px width (and Act 5 TL ProtoType in 12-14 is similarly faint). Using a brighter footage offset for Act 2 BR or slightly lifting sub floor brightness/vignette falloff on dark clips would strengthen perceived balance at README scale.",
+				"severity": "minor"
+			},
+			{
+				"description": "Top Fix #3 (Minor - Brief empty-corners beat at t21.75 & coverage note): At 11-t21_75 (Act 4->5 mid-handoff), all four corner slots are empty while incoming Act 5 is still ramping brightness (~70%), whereas 16-t5_50 (Act 1->2) already begins fading in new subs for smoother continuity; starting new-sub materialize ~0.25s earlier on Act 4->5 would match Act 1->2. Note also that Act 2->3 and Act 3->4 mid-handoffs occurred before t10.75 and t16.25, and WebP inter-frame compression/ghosting artifacts cannot be assessed from these pre-compression PNGs and must be verified on the final encoded showcase.webp.",
+				"severity": "minor"
+			}
+		],
+		"summary": "VERDICT: ACCEPT (layout & motion on v26 pre-compression PNGs). All prior critical/major issues are resolved: Act 4 hero footage visibly advances across t16.25-t21.75 (04-11), vignette is cleanly excluded from settled and mid-handoff protagonists (16-t5_50, 11-t21_75), the 3px blue accent border + dark keyline reads crisply even on bright yellow (Act 2) and off-white grid (Act 5) cards at ~350px, mid-overlap z-order handoffs cleanly elevate the incoming hero, and the rebalanced vacancy rotation (TL->TR->BR->TL->TR) eliminates persistent BR dead space with zero edge clipping, unrounded cutouts, or cross-canvas travel. Top 3 optional polish fixes by impact: (1) use text-free sub clip offsets for FoldLayers/Act 4 BR to prevent mid-word headline occlusion at the hero edge, (2) pick a brighter clip segment or ease bottom vignette/dimming for Act 2 BR (and Act 5 TL) so Act 2's right flank doesn't collapse into near-black at ~350px, and (3) start Act 5 new-sub fade-in slightly earlier around t21.75 to match Act 1->2 continuity (and verify WebP compression artifacts separately on the encoded file).",
+		"verdict": "approve"
+	},
+	"agy": {
+		"status": "SUCCESS",
+		"conversationId": "7dba7774-35a5-4a7b-a9db-1ccccc824a00",
+		"durationSeconds": 213.859598,
+		"numTurns": 1,
+		"usage": {
+			"input_tokens": 37877,
+			"output_tokens": 22000,
+			"thinking_tokens": 18236,
+			"cache_read_tokens": 37214,
+			"total_tokens": 59877
+		},
+		"deniedActions": []
+	},
+	"readonly": {
+		"deniedActions": [],
+		"permissionErrors": 0,
+		"protectedPath": null,
+		"protectedCheck": "unavailable",
+		"protectedMutations": []
+	},
+	"isolation": {
+		"workdir": "/Users/rebui/.local/state/agent/agy-review/672d7b09-b16d-42c9-b84d-2f151f60f091",
+		"osSandbox": "seatbelt",
+		"permissionDeny": [
+			"write_file(*)",
+			"command(*)",
+			"read_url(*)",
+			"execute_url(*)",
+			"mcp(*)",
+			"unsandboxed(*)"
+		]
+	},
+	"quota": {
+		"buckets": [
+			{
+				"group": "Gemini Models",
+				"label": "Weekly Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.75,
+				"resetTime": "2026-12-01T00:43:37Z"
+			},
+			{
+				"group": "Gemini Models",
+				"label": "Five Hour Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.89,
+				"resetTime": "2026-11-25T05:08:33Z"
+			},
+			{
+				"group": "Claude and GPT models",
+				"label": "Weekly Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.42,
+				"resetTime": "2026-11-30T03:53:15Z"
+			},
+			{
+				"group": "Claude and GPT models",
+				"label": "Five Hour Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 1,
+				"resetTime": "2026-11-25T09:25:59Z"
+			}
+		],
+		"raw": "Gemini Models\tWeekly Limit Remaining\t75%\t2026-12-01T00:43:37Z\nGemini Models\tFive Hour Limit Remaining\t89%\t2026-11-25T05:08:33Z\nClaude and GPT models\tWeekly Limit Remaining\t42%\t2026-11-30T03:53:15Z\nClaude and GPT models\tFive Hour Limit Remaining\t100%\t2026-11-25T09:25:59Z\n"
+	},
+	"executor": "local",
+	"reasons": ["no protected path supplied; OS/permission layers only"]
+}

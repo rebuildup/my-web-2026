@@ -1,0 +1,111 @@
+{
+	"version": "1.0.0",
+	"id": "d264c110-0311-46ae-869d-45c8c2ea7531",
+	"model": null,
+	"resolvedModel": null,
+	"specSha256": "34a35ec7c7c7d272d1f9bdbd76342c5d2ba32d18040665bbbe1b6938d81d537d",
+	"classification": "review-completed",
+	"verified": false,
+	"verdict": {
+		"findings": [
+			{
+				"description": "[02-mob-light.png, 03-mob-dark.png] Mobile /activity (?layout=mobile) metric-header collision: inside EVENTS BY REPOSITORY, the large '4,364' numeral overlaps vertically with the green status dot and 'EVENTS BY REPOSITORY' header text. Fix #4 is verified on desktop, but mobile introduces this vertical overlap. Increase the y-offset of the metric block in the mobile /activity SVG.",
+				"severity": "major"
+			},
+			{
+				"description": "[02-mob-light.png, 03-mob-dark.png] Mobile /now (?layout=mobile) GITHUB ACTIVITY double truncation: both secondary lines truncate mid-token — '30 public / 8 private repos active in 30d (ac...' and 'latest Nov 24 · 16:38 JST · observed Nov 24 · 1...'. Cutting off the observation timestamp directly undercuts the README's transparency note. Shorten the mobile copy or wrap the timestamps onto separate lines so no text clips.",
+				"severity": "major"
+			},
+			{
+				"description": "[00-desk-light.png, 01-desk-dark.png] Desktop /activity private-repo summary still truncates mid-number (Fix #3 incomplete on desktop): the line renders as '8 private repos (aggregated) · 1,490 commits · 5...' instead of showing '548 PRs', and sits tightly above 'bars: public repos only'. (On mobile 560px single-column it fits in full.) Shorten the wording (e.g. drop '(aggregated)' or abbreviate) and add vertical breathing room above 'bars: public repos only'.",
+				"severity": "major"
+			},
+			{
+				"description": "[02-mob-light.png, 03-mob-dark.png] Mobile /now (?layout=mobile) DECLARED FOCUS footer crowding: while the header-to-first-bullet gap (Fix #2) is clean on both desktop and mobile, on mobile the 4th bullet '• AI coding agent' sits nearly touching 'declared · rebuildup.dev' (g-descender almost meeting the ascenders below). Add ~6-8px of vertical padding above the footer line in the mobile sub-panel.",
+				"severity": "minor"
+			},
+			{
+				"description": "[All images] Verified previous fixes: #1 (/now stat-cell labels fit cleanly in 4x1 desktop and 2x2 mobile), #5 (repo-row bar/icon pitch clean), #6 ('presence stale or unavailable' fits without truncation), #7 (7 distinct activity feed rows, no duplicates), #8 (desktop 2-line timestamps and mobile 1-line layout eliminate label truncation and stranded '· open'), #9 (<picture> swaps both /now and /activity to legible 560px stacked mobile SVGs), #10 (mobile zero-event rows removed; footer bottom padding cleanly increased), #11 (1px panelStroke cleanly defines dark SVG edges on dark theme). Known non-blocking limitations observed: sharp corners on Selected work WebP, single orphan p5* icon on mobile Languages row, dark SVGs intentionally dark on light theme.",
+				"severity": "info"
+			}
+		],
+		"summary": "Overall verdict: ACCEPT WITH FIXES. Per-image observations: (1) 00-desk-light.png: Strong top-to-bottom hierarchy (intro → Selected work WebP + links → unified /now card → /activity card → Stack); all /now panels, stat cells, presence copy, and /activity feed rows render cleanly with no truncation or duplicates, except /activity's bottom-left private-repo line still clips mid-number ('8 private repos (aggregated) · 1,490 commits · 5...') and sits tight above 'bars: public repos only'. (2) 01-desk-dark.png: Matches light desktop layout; 1px panelStroke cleanly frames both dark SVGs against GitHub dark background and Stack icons swap cleanly; same desktop private-repo truncation ('· 5...'). (3) 02-mob-light.png: Both /now and /activity correctly swap via <picture> to legible 560px stacked single-column cards (2x2 stat grid, zero-event repos removed, generous footer padding), but three mobile SVG layout bugs appear: '4,364' collides with '● EVENTS BY REPOSITORY' in /activity, both detail lines in /now's GITHUB ACTIVITY truncate mid-word/mid-timestamp ('(ac...' and 'observed Nov 24 · 1...'), and '• AI coding agent' crowds 'declared · rebuildup.dev' in DECLARED FOCUS. (4) 03-mob-dark.png: Dark borders and Stack icons render cleanly; exhibits the same three mobile SVG layout defects. Requirement verdicts: 1. Information hierarchy: MET; 2. Status intuitiveness: MET; 3. Consistency: MET; 4. Mobile: PARTIAL; 5. Light/dark: MET; 6. Composition: PARTIAL. Top 3 fixes by impact: (1) Fix vertical overlap between '4,364' and '● EVENTS BY REPOSITORY' in mobile /activity; (2) Prevent mid-word/mid-timestamp truncation in mobile /now GITHUB ACTIVITY panel; (3) Shorten desktop /activity private-repo summary so '548 PRs' is not clipped to '5...' and increase spacing above 'bars: public repos only'.",
+		"verdict": "request-changes"
+	},
+	"agy": {
+		"status": "SUCCESS",
+		"conversationId": "96c61302-9fde-4919-9cc4-db999a52dccd",
+		"durationSeconds": 85.415865,
+		"numTurns": 1,
+		"usage": {
+			"input_tokens": 16089,
+			"output_tokens": 9014,
+			"thinking_tokens": 7483,
+			"cache_read_tokens": 10803,
+			"total_tokens": 25103
+		},
+		"deniedActions": []
+	},
+	"readonly": {
+		"deniedActions": [],
+		"permissionErrors": 0,
+		"protectedPath": null,
+		"protectedCheck": "unavailable",
+		"protectedMutations": []
+	},
+	"isolation": {
+		"workdir": "/Users/rebui/.local/state/agent/agy-review/d264c110-0311-46ae-869d-45c8c2ea7531",
+		"osSandbox": "seatbelt",
+		"permissionDeny": [
+			"write_file(*)",
+			"command(*)",
+			"read_url(*)",
+			"execute_url(*)",
+			"mcp(*)",
+			"unsandboxed(*)"
+		]
+	},
+	"quota": {
+		"buckets": [
+			{
+				"group": "Gemini Models",
+				"label": "Weekly Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.84,
+				"resetTime": "2026-12-01T00:43:37Z"
+			},
+			{
+				"group": "Gemini Models",
+				"label": "Five Hour Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.99,
+				"resetTime": "2026-11-24T15:43:37Z"
+			},
+			{
+				"group": "Claude and GPT models",
+				"label": "Weekly Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.42,
+				"resetTime": "2026-11-30T03:53:15Z"
+			},
+			{
+				"group": "Claude and GPT models",
+				"label": "Five Hour Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 1,
+				"resetTime": "2026-11-24T15:44:55Z"
+			}
+		],
+		"raw": "Gemini Models\tWeekly Limit Remaining\t84%\t2026-12-01T00:43:37Z\nGemini Models\tFive Hour Limit Remaining\t99%\t2026-11-24T15:43:37Z\nClaude and GPT models\tWeekly Limit Remaining\t42%\t2026-11-30T03:53:15Z\nClaude and GPT models\tFive Hour Limit Remaining\t100%\t2026-11-24T15:44:55Z\n"
+	},
+	"executor": "local",
+	"reasons": ["no protected path supplied; OS/permission layers only"]
+}

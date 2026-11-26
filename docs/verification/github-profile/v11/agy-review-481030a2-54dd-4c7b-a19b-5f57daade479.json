@@ -1,0 +1,127 @@
+{
+	"version": "1.0.0",
+	"id": "481030a2-54dd-4c7b-a19b-5f57daade479",
+	"model": null,
+	"resolvedModel": null,
+	"specSha256": "1ddca84886d8cdf649a89c1d152952d938e90d5248c2d42991d3264d820180c2",
+	"classification": "review-completed",
+	"verified": false,
+	"verdict": {
+		"findings": [
+			{
+				"description": "[Region: Desktop Band 1 dark & light (00-v6b-desk.png, top 2 panels, 800x360)] Header shows 'r' avatar, 'rebuildup', subtitle, green 'online on Discord' indicator on left and 'observed Nov 24 · 23:00 JST' on right. Four vitals cards sit cleanly in a subtle boxed strip: (1) flame icon cleanly separated from '204 / day streak'; (2) 'TOP LANGUAGE' stacked bar above 'TypeScript 45.8%' and secondary row with green swatch 'C# 40.9', purple swatch 'C++ 7.9', '+3 more'; (3) 'CONTRIBUTED TO · 27 REPOS' cleanly above 3x9 blue dot matrix; (4) 'GITHUB RANK' with blue 'B+' ring and non-overlapping 'of A+ / tier' text on right. Below, 'IN PROGRESS · DECLARED FOCUS' header on left pairs with right-aligned weight-segment legend '■■■ primary  ■■ active  ■ side' cleanly above the 4 unboxed size-scaled focus project rings ('my-web-2026' 3 blue segments, 'AI coding agent' 2 purple segments, 'Tastile' 1 green segment, 'After Effects' 1 amber segment). Zero collisions or clipping in dark or light mode.",
+				"severity": "info"
+			},
+			{
+				"description": "[Region: Desktop Band 2 dark & light (00-v6b-desk.png, middle 2 panels, 800x340)] Header shows 'GitHub activity' left and '30-day window · observed Nov 24 · 23:00 JST' right. Left panel ('REPO OUTPUT · 30D') displays honest legend '● commits  ■ PRs · scaled' and 10 clean non-overlapping rows across 4 aligned columns (repo name | blue commit dots | purple PR squares | right-aligned counts): 8 named repos ('FlashBeat' 2.1kc 572p down to 'ube-kosen-map' 101c 36p), clean horizontal divider rule, then muted aggregate rows '+22 more public' (152c 101p) and 'private repos · sum' (1.5kc 548p, untruncated). Right panel ('LAST 72 HOURS') places the 4-shape legend ('● push  ◆ PR  ▲ new  ✕ del') in a dedicated top strip cleanly above all 3 plotted event clusters (~-48h, ~-36h, ~-24h) with differentiated shapes, clear '-72h / -48h / -24h / now' axis ticks, 3 non-clipped JST feed rows ('restro-pv push · 11/24 02:46 JST', '02:22 JST', 'my-web-2026 push · 11/24 01:59 JST'), and bottom-right footer '29 public events · times JST' cleanly below row 3.",
+				"severity": "info"
+			},
+			{
+				"description": "[Region: Mobile Band 1 dark & light (00-v6b-desk.png & 01-v6b-mob.png, 560w)] Header shows 'r' avatar, 'rebuildup', 'design × code × motion', green 'online · Discord' left and 'Nov 24 · 23:00 JST' right. 2x2 vitals grid cleanly renders: (top-left) flame + '204 / day streak'; (top-right) 'TOP LANG' bar + 'TypeScript 45.8%' + color-swatched 'C# 40.9 · C++ 7.9 · +3'; (bottom-left) 'CONTRIBUTED · 1Y' above 3x9 dot grid with '27' bottom-right; (bottom-right) 'RANK' with 'B+' ring and single-line 'of A+ tier' centered to its right. 'IN PROGRESS' stacks all 4 projects with scaled colored rings, clean descender spacing between titles/subtitles/weight segments, and right-aligned '■■■ primary  ■■ active  ■ side' legend at bottom-right with no overlap.",
+				"severity": "info"
+			},
+			{
+				"description": "[Region: Mobile Band 2 dark & light (00-v6b-desk.png & 01-v6b-mob.png, 560w)] Header shows 'GitHub activity' left and '30d · Nov 24 JST' right; subheader shows 'REPO OUTPUT · 30D' and 'bar = commits  ■ = PRs (scaled)'. Eight stacked rows (top 6 repos + divider + '+24 more public' 374c 211p + 'private · sum' 1.5kc 548p; arithmetic consistent with desktop) render proportional blue commit bars followed inline by monotonic purple PR squares (no magnitude inversion) and crisp, high-contrast right-column counts in both dark and light modes. Below, 'LAST 72 HOURS' displays the top legend ('● push  ◆ PR  ▲ new  ✕ del') cleanly above all 3 populated differentiated-shape event clusters, axis ticks '-72h / -48h / -24h / now', 3 feed rows with explicit 'JST' labels, and '29 public events · times JST' footer.",
+				"severity": "info"
+			},
+			{
+				"description": "[v17 Blockers & Polish Verification] v17-0 (BLOCKER, Desktop Band2 72h legend colliding with event stacks at -48h/~-38h): FIXED — legend sits in a dedicated top strip inside the 72h chart container with clean vertical clearance above all plotted event clusters in dark and light modes. v17-1 (POLISH, Mobile Band2 dark right-column counts low contrast): FIXED — counts ('2.1kc 572p'..'1.5kc 548p') are bright, crisp, high-contrast light gray on dark background. v17-2 (POLISH, dishonest '● = 50 commits' legend vs capped dots/squares): FIXED — updated to honest '● commits  ■ PRs · scaled' (desktop) and 'bar = commits  ■ = PRs (scaled)' (mobile). v17-3 (POLISH, Desktop Band1 weight-segment legend deleted): FIXED — restored as '■■■ primary  ■■ active  ■ side' on the right of 'IN PROGRESS · DECLARED FOCUS'. v17-4 (POLISH, TOP LANGUAGE swatches, mobile 'of A+ tier', mobile descender spacing): FIXED — green/purple swatches present on desktop+mobile; mobile 'of A+ tier' cleanly aligned on one line beside the B+ ring; generous row vertical spacing clears all descenders.",
+				"severity": "info"
+			},
+			{
+				"description": "[v16 Blockers Verification] v16-0 (Desktop Band2 PR square collisions): FIXED — dedicated non-overlapping columns for commit dots, PR squares, and counts across all 10 rows. v16-1 (72h chart empty desktop+mobile): FIXED — all 3 event clusters populated on desktop and mobile. v16-2 (72h legend text-only / no differentiated shapes): FIXED — legend includes ●/◆/▲/✕ icons matching distinct plotted shapes. v16-3 (Mobile Band2 PR square magnitude inversion 8 vs 4): FIXED — strictly monotonic PR square counts across all 8 rows. v16-4 (Dark-mode low contrast on Band2 counts/aggregates/ticks/legends & mobile muted labels): FIXED — clear contrast across dark panels. v16-5 (Mobile deleted secondary languages, JST on feed rows, event-count footer; ~6-8px micro-labels): FIXED — all restored and comfortably legible at 560w.",
+				"severity": "info"
+			},
+			{
+				"description": "[v15 & v14 Blockers + v14 Polish Verification] v15-0..5: ALL FIXED (Band1 dot/bar/legend spacing clean; Band2 timestamps untruncated, footer separated, legend fits box; mobile 72h populated; PR/language %/rank tier preserved on mobile; dark contrast resolved; 72h shapes legible). v14-1..6: ALL FIXED (all 4 focus projects visible and unclipped; Band2 columns isolated, 'private repos · sum' untruncated, muted aggregate dots replace unexplained hollow dots, JST consistent everywhere; Band1 vitals collision-free; readable 560w mobile bars/text; dark contrast fixed; 4 distinct event shapes). v14 Polish: ALL FIXED (boxed vitals vs open focus-ring hierarchy, weight-segment legend grammar, language swatches, Band2 aggregate divider rule, feed JST labels, honest 'times JST' footer).",
+				"severity": "info"
+			},
+			{
+				"description": "[Per-Band M1–M7 Matrix] Band 1 Dark: M1 MET, M2 MET, M3 MET, M4 MET, M5 MET, M6 MET, M7 MET. Band 1 Light: M1 MET, M2 MET, M3 MET, M4 MET, M5 MET, M6 MET, M7 MET. Band 2 Dark: M1 MET, M2 MET, M3 MET, M4 MET, M5 MET, M6 MET, M7 MET. Band 2 Light: M1 MET, M2 MET, M3 MET, M4 MET, M5 MET, M6 MET, M7 MET.",
+				"severity": "info"
+			},
+			{
+				"description": "[Optional ultra-minor polish — non-blocking] On Mobile Band 1 (dark & light), 'day streak' is slightly right-indented below '204' compared to left-aligned desktop placement; on Desktop Band 1, 'of A+ tier' wraps to two lines ('of A+ / tier'). Neither impacts legibility, hierarchy, or visual honesty.",
+				"severity": "info"
+			}
+		],
+		"summary": "APPROVE. Re-review of v6b desktop (00-v6b-desk.png) and mobile (01-v6b-mob.png) renders confirms all v17 (0–4), v16 (0–5), v15 (0–5), and v14 (1–6 plus polish) blockers and polish items are FIXED with zero regressions. Specifically, the v17 blocker (Desktop Band 2 72h inline legend colliding with plotted event stacks) is cleanly resolved by placing the 4-shape legend in a dedicated top strip above all plotted clusters; Mobile Band 2 dark right-column counts now have crisp contrast; Band 2 legends honestly label commit/PR encodings as 'scaled' with monotonic non-inverted PR squares; Desktop Band 1 restores the weight-segment legend ('■■■ primary  ■■ active  ■ side') on the focus section header without overlap; and TOP LANGUAGE secondary color swatches, mobile 'of A+ tier' placement, and mobile descender spacing are all clean. M1–M7 are MET across both Band 1 and Band 2 in both dark and light modes, fulfilling the root non-text-dominant information design requirement with no information deletion. Zero blockers remain.",
+		"verdict": "approve"
+	},
+	"agy": {
+		"status": "SUCCESS",
+		"conversationId": "8b21953f-cc86-4f44-91ae-752f9b4cd423",
+		"durationSeconds": 228.502898,
+		"numTurns": 1,
+		"usage": {
+			"input_tokens": 5087,
+			"output_tokens": 22913,
+			"thinking_tokens": 20232,
+			"cache_read_tokens": 20035,
+			"total_tokens": 28000
+		},
+		"deniedActions": []
+	},
+	"readonly": {
+		"deniedActions": [],
+		"permissionErrors": 0,
+		"protectedPath": null,
+		"protectedCheck": "unavailable",
+		"protectedMutations": []
+	},
+	"isolation": {
+		"workdir": "/Users/rebui/.local/state/agent/agy-review/481030a2-54dd-4c7b-a19b-5f57daade479",
+		"osSandbox": "seatbelt",
+		"permissionDeny": [
+			"write_file(*)",
+			"command(*)",
+			"read_url(*)",
+			"execute_url(*)",
+			"mcp(*)",
+			"unsandboxed(*)"
+		]
+	},
+	"quota": {
+		"buckets": [
+			{
+				"group": "Gemini Models",
+				"label": "Weekly Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.73,
+				"resetTime": "2026-12-01T00:43:37Z"
+			},
+			{
+				"group": "Gemini Models",
+				"label": "Five Hour Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.92,
+				"resetTime": "2026-11-25T13:24:34Z"
+			},
+			{
+				"group": "Claude and GPT models",
+				"label": "Weekly Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.42,
+				"resetTime": "2026-11-30T03:53:15Z"
+			},
+			{
+				"group": "Claude and GPT models",
+				"label": "Five Hour Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 1,
+				"resetTime": "2026-11-25T15:21:33Z"
+			}
+		],
+		"raw": "Gemini Models\tWeekly Limit Remaining\t73%\t2026-12-01T00:43:37Z\nGemini Models\tFive Hour Limit Remaining\t92%\t2026-11-25T13:24:34Z\nClaude and GPT models\tWeekly Limit Remaining\t42%\t2026-11-30T03:53:15Z\nClaude and GPT models\tFive Hour Limit Remaining\t100%\t2026-11-25T15:21:33Z\n"
+	},
+	"executor": "local",
+	"reasons": ["no protected path supplied; OS/permission layers only"]
+}

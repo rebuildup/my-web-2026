@@ -255,7 +255,9 @@ githubReadmeStatsRouter.get('/api', rateLimitRead, async (c) => {
 			const stats = await microCache(`stats:${OWNER_LOGIN}`, () =>
 				fetchStats(OWNER_LOGIN, false, [], false, false, false, env),
 			);
-			return svgCacheGetOrSet(`stats-svg:${OWNER_LOGIN}`, async () => renderStatsCard(stats));
+			return svgCacheGetOrSet(`stats-svg:${OWNER_LOGIN}`, async () =>
+				renderStatsCard(stats, { disable_animations: true }),
+			);
 		},
 	});
 });
@@ -274,7 +276,7 @@ githubReadmeStatsRouter.get('/api/top-langs/', rateLimitRead, async (c) => {
 				fetchTopLanguages(OWNER_LOGIN, [], 1, 0, env),
 			);
 			return svgCacheGetOrSet(`toplangs-svg:${OWNER_LOGIN}`, async () =>
-				renderTopLanguages(topLangs, { layout: 'compact' }),
+				renderTopLanguages(topLangs, { layout: 'compact', disable_animations: true }),
 			);
 		},
 	});
@@ -296,7 +298,7 @@ githubReadmeStatsRouter.get('/api/streak', rateLimitRead, async (c) => {
 				fetchStreak(OWNER_LOGIN, token, env),
 			);
 			return svgCacheGetOrSet(`streak-svg:${OWNER_LOGIN}`, async () =>
-				renderStreakCard(OWNER_LOGIN, streak),
+				renderStreakCard(OWNER_LOGIN, streak, { disable_animations: true }),
 			);
 		},
 	});

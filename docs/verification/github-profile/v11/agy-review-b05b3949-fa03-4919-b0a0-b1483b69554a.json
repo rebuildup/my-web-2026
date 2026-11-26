@@ -1,0 +1,115 @@
+{
+	"version": "1.0.0",
+	"id": "b05b3949-fa03-4919-b0a0-b1483b69554a",
+	"model": null,
+	"resolvedModel": null,
+	"specSha256": "7e8fc44fef0fd2a23b4d13e68b77bf4d4b07c032b639d4016a76931d033b8bf7",
+	"classification": "review-completed",
+	"verified": false,
+	"verdict": {
+		"findings": [
+			{
+				"description": "[BLOCKER][NEW REGRESSION][Desktop Band 2 dark & light] Left-panel scale legend 'glyphs = scaled volume · exact counts right' overflows across the column boundary and directly collides on top of the right-panel heading 'LAST 72 HOURS' ('rig/ht' overlaps 'LA/S' of 'LAST 72 HOURS'). Also omits explicit visual mapping of blue dots = commits and purple squares = PRs (unlike mobile's concise 'bar = commits · ■ = PRs (scaled)'). Shortening to '● commits · ■ PRs (scaled)' or right-aligning strictly within the left panel fixes both the collision and visual semantics.",
+				"severity": "critical"
+			},
+			{
+				"description": "[POLISH][v17 #3 NOT FIXED][Desktop Band 1 dark & light] Weight-segment legend ('■■■ primary · ■■ active · ■ side') is still completely absent on Desktop Band 1 (both dark and light). The area to the right of 'IN PROGRESS · DECLARED FOCUS' and the bottom-right beneath 'After Effects' are completely blank, leaving the 3/2/1 dash glyphs unexplained on desktop even though Mobile Band 1 renders the legend cleanly at bottom-right.",
+				"severity": "major"
+			},
+			{
+				"description": "[POLISH][Desktop & Mobile Band 2 dark] 72h chart axis ticks ('-72h', '-48h', '-24h', 'now') and footer ('29 public events · times JST') remain slightly dim in dark mode (legible on inspection, lower contrast than counts/headers). Note: v17 #1 right-column counts in Mobile Band 2 dark ARE now fixed with crisp, high contrast.",
+				"severity": "minor"
+			},
+			{
+				"description": "[POLISH][Mobile Band 1 dark & light] Inside the top-left streak card, the 'day streak' sublabel is noticeably right-shifted relative to the left-aligned flame + '204' numeral. Alignment looks slightly unbalanced compared to the other three vitals cards.",
+				"severity": "minor"
+			},
+			{
+				"description": "[VERIFIED FIXED — Regions & Blockers] Region observations: Desktop Band 1 (800x360 dark/light): clean header, 4 vitals with zero collisions, TOP LANGUAGE now shows green dot 'C# 40.9' and red/pink dot 'C++ 7.9', 'CONTRIBUTED TO · 27 REPOS' sits above 3x10/7 dot grid, 'B+ of A+ tier' clears arc, all 4 IN PROGRESS projects unclipped with 3/2/1 dashes (missing legend noted above). Desktop Band 2 (800x340 dark/light): all 10 repo rows have clean separation between blue commit dots, monotonic purple PR squares, and crisp counts; divider rule sits cleanly above '+22 more public' and 'private repos · sum'; 72h legend '● push ◆ PR ▲ new ✕ del' sits clearly above plotted clusters at -48h/-38h/-24h with zero collision; 3 JST feed rows and '29 public events · times JST' footer unclipped (header collision noted above). Mobile Band 1 (560w dark/light): clean header, 2x2 vitals with swatches on TOP LANG, single-line 'of A+ tier' beside B+ ring, 4 vertical IN PROGRESS rows with clean descender clearance above weight bars, bottom-right legend '■■■ primary ■■ active ■ side' present. Mobile Band 2 (560w dark/light): clean 'bar = commits · ■ = PRs (scaled)' header, 8 rows with monotonic PR squares (572p=5, 548p=5, 352p=4, 211p=4, 96p=3, 66p=2, 51p=2, 40p=1) and high-contrast right counts, populated 72h chart with 4 distinct shapes below legend, 3 JST feed rows, and '29 public events · times JST' footer. Blocker checklist: v17#0 FIXED, v17#1 FIXED, v17#2 PARTIAL (honesty fixed, caused header collision + lacks dot/square key), v17#3 NOT FIXED, v17#4 FIXED; v16#0-3 FIXED, v16#4 PARTIAL (counts fixed, dark axis ticks dim), v16#5 FIXED; v15#0-3 FIXED, v15#4 PARTIAL, v15#5 FIXED; v14#1-4 FIXED, v14#5 PARTIAL, v14#6 FIXED; v14 polish: vitals boxing FIXED, weight-segment grammar PARTIAL (mobile fixed, desktop missing), TOP LANG swatches FIXED, Band2 rule FIXED, JST labels & footer honesty FIXED.",
+				"severity": "info"
+			},
+			{
+				"description": "[M1-M7 MATRIX] Band 1 (dark & light): M1 MET, M2 PARTIAL (desktop missing weight-segment legend), M3 MET, M4 MET, M5 MET, M6 MET, M7 MET. Band 2 (dark & light): M1 MET, M2 PARTIAL (desktop lacks explicit dot=commits/square=PRs key), M3 PARTIAL (desktop header collision disrupts panel scan), M4 PARTIAL (desktop column-header seam collision), M5 PARTIAL (desktop header collision + dim dark 72h axis ticks), M6 PARTIAL (desktop 800w overflow collision; mobile ready), M7 MET.",
+				"severity": "info"
+			}
+		],
+		"summary": "REQUEST CHANGES (1 BLOCKER + 1 unresolved v17 item + 2 minor polish items). Almost all v14-v17 defects are cleanly fixed—including the v17 #0 Desktop Band 2 72h legend/stack collision, v17 #1 Mobile Band 2 dark count contrast, v17 #4 TOP LANGUAGE swatches + mobile 'of A+ tier' + descender spacing, and all v16 PR-square/72h chart/mobile retention blockers. However, v6 introduces one clear BLOCKER regression on Desktop Band 2 (dark & light): the new legend 'glyphs = scaled volume · exact counts right' overflows past the left column and collides directly over 'LAST 72 HOURS' (and omits the ● commits / ■ PRs key). In addition, v17 #3 remains NOT FIXED: Desktop Band 1 (dark & light) still has no weight-segment legend anywhere despite Mobile Band 1 showing '■■■ primary · ■■ active · ■ side'. Fix the Desktop Band 2 header collision (e.g., concise '● commits · ■ PRs (scaled)' strictly within the left column) and add the weight-segment legend to Desktop Band 1, and the set will be ready to approve.",
+		"verdict": "request-changes"
+	},
+	"agy": {
+		"status": "SUCCESS",
+		"conversationId": "68fc1fe3-fb44-40ce-8123-954ff3f26ecf",
+		"durationSeconds": 149.583037,
+		"numTurns": 1,
+		"usage": {
+			"input_tokens": 14075,
+			"output_tokens": 15226,
+			"thinking_tokens": 13533,
+			"cache_read_tokens": 11131,
+			"total_tokens": 29301
+		},
+		"deniedActions": []
+	},
+	"readonly": {
+		"deniedActions": [],
+		"permissionErrors": 0,
+		"protectedPath": null,
+		"protectedCheck": "unavailable",
+		"protectedMutations": []
+	},
+	"isolation": {
+		"workdir": "/Users/rebui/.local/state/agent/agy-review/b05b3949-fa03-4919-b0a0-b1483b69554a",
+		"osSandbox": "seatbelt",
+		"permissionDeny": [
+			"write_file(*)",
+			"command(*)",
+			"read_url(*)",
+			"execute_url(*)",
+			"mcp(*)",
+			"unsandboxed(*)"
+		]
+	},
+	"quota": {
+		"buckets": [
+			{
+				"group": "Gemini Models",
+				"label": "Weekly Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.73,
+				"resetTime": "2026-12-01T00:43:37Z"
+			},
+			{
+				"group": "Gemini Models",
+				"label": "Five Hour Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.93,
+				"resetTime": "2026-11-25T13:24:34Z"
+			},
+			{
+				"group": "Claude and GPT models",
+				"label": "Weekly Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.42,
+				"resetTime": "2026-11-30T03:53:15Z"
+			},
+			{
+				"group": "Claude and GPT models",
+				"label": "Five Hour Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 1,
+				"resetTime": "2026-11-25T15:07:32Z"
+			}
+		],
+		"raw": "Gemini Models\tWeekly Limit Remaining\t73%\t2026-12-01T00:43:37Z\nGemini Models\tFive Hour Limit Remaining\t93%\t2026-11-25T13:24:34Z\nClaude and GPT models\tWeekly Limit Remaining\t42%\t2026-11-30T03:53:15Z\nClaude and GPT models\tFive Hour Limit Remaining\t100%\t2026-11-25T15:07:32Z\n"
+	},
+	"executor": "local",
+	"reasons": ["no protected path supplied; OS/permission layers only"]
+}

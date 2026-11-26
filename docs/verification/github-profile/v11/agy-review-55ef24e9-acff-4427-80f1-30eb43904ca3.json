@@ -1,0 +1,111 @@
+{
+	"version": "1.0.0",
+	"id": "55ef24e9-acff-4427-80f1-30eb43904ca3",
+	"model": null,
+	"resolvedModel": null,
+	"specSha256": "7185701b5dd30606f2f512841e90197b552791114c18bd05ee853f152116db1b",
+	"classification": "review-completed",
+	"verified": false,
+	"verdict": {
+		"findings": [
+			{
+				"description": "Regions 2, 4, 6, 8 (activity-map dark/light desk & mob) — M5 honesty: LAST 72 HOURS x-axis 'now' contradicts the card's own 'observed Nov 24 · 09:00 JST' header and the listed recent events ('11/24 02:46 JST', ~6h before observed). All 29 events are clustered between -72h and ~-42h while -42h to 'now' is completely empty, indicating the plot is anchored to live wall-clock time rather than the snapshot observation time and falsely depicts ~36 unobserved hours as zero activity.",
+				"severity": "major"
+			},
+			{
+				"description": "Regions 2, 4, 6, 8 (activity-map dark/light desk & mob) — M5 encoding accuracy: In REPO OUTPUT · 30D, the aggregated '+22 more public' row on desktop (101p) and '+24 more public' row on mobile (211p) render 4 purple PR squares — the maximum tier matching FlashBeat (572p) and private repos · sum (548p), and exceeding my-web-2026 (352p, which renders only 3 squares). The PR square scale breaks monotonicity for the aggregate row.",
+				"severity": "major"
+			},
+			{
+				"description": "Regions 5, 7 (identity dark/light mob) — M4 hierarchy & M5 labels match encodings: The bottom-right footer renders the tier legend '■■■ primary  ■■ active  ■ side', but the 4 IN PROGRESS rows use uniform icon sizes and omit the pip indicators entirely, leaving an orphaned legend and losing the primary/active/side focus hierarchy present on desktop.",
+				"severity": "major"
+			},
+			{
+				"description": "Regions 5, 7 (identity dark/light mob) — M3 glanceability: The CONTRIBUTED TO card omits the total repo count (desktop shows 'CONTRIBUTED TO · 28 REPOS', mobile shows only 'CONTRIBUTED TO' with a 9x3 dot grid and '+1'), forcing readers to count dots to get 28 and making '+1' ambiguous at a glance.",
+				"severity": "minor"
+			},
+			{
+				"description": "Regions 2, 4 (activity-map dark/light desk) — M2/M5 visual consistency: The '+22 more public' row (152c) renders 3 tiny faint ellipsis-like dots in the commits track (barely legible on dark mode) instead of encoded commit dots, inconsistent with 'private repos · sum' directly below it, the mobile '+24 more public' proportional bar, and individual rows with fewer commits (101c–149c, 2 blue dots each).",
+				"severity": "minor"
+			}
+		],
+		"summary": "Desktop identity bands (Regions 1, 3) are clean, honest, and visually well-structured across dark and light themes, but three major M4/M5 defects block approval: (1) the activity-map LAST 72 HOURS chart anchors 'now' to live time rather than 'observed Nov 24 · 09:00 JST', contradicting the listed 11/24 02:46 JST events and showing ~36 unobserved hours as empty; (2) the '+22/+24 more public' aggregate row renders 4 PR squares despite having far fewer PRs (101p/211p) than my-web-2026 (352p, 3 squares); and (3) mobile identity cards print the 'primary/active/side' pip legend without rendering any tier pips or size hierarchy on the focus rows.",
+		"verdict": "request-changes"
+	},
+	"agy": {
+		"status": "SUCCESS",
+		"conversationId": "b033943a-3b5f-4f20-af8a-996ae068bb92",
+		"durationSeconds": 268.184656,
+		"numTurns": 1,
+		"usage": {
+			"input_tokens": 12702,
+			"output_tokens": 29922,
+			"thinking_tokens": 29017,
+			"cache_read_tokens": 9629,
+			"total_tokens": 42624
+		},
+		"deniedActions": []
+	},
+	"readonly": {
+		"deniedActions": [],
+		"permissionErrors": 0,
+		"protectedPath": null,
+		"protectedCheck": "unavailable",
+		"protectedMutations": []
+	},
+	"isolation": {
+		"workdir": "/Users/rebui/.local/state/agent/agy-review/55ef24e9-acff-4427-80f1-30eb43904ca3",
+		"osSandbox": "seatbelt",
+		"permissionDeny": [
+			"write_file(*)",
+			"command(*)",
+			"read_url(*)",
+			"execute_url(*)",
+			"mcp(*)",
+			"unsandboxed(*)"
+		]
+	},
+	"quota": {
+		"buckets": [
+			{
+				"group": "Gemini Models",
+				"label": "Weekly Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.72,
+				"resetTime": "2026-12-01T00:43:37Z"
+			},
+			{
+				"group": "Gemini Models",
+				"label": "Five Hour Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.9,
+				"resetTime": "2026-11-25T13:24:34Z"
+			},
+			{
+				"group": "Claude and GPT models",
+				"label": "Weekly Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.42,
+				"resetTime": "2026-11-30T03:53:15Z"
+			},
+			{
+				"group": "Claude and GPT models",
+				"label": "Five Hour Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 1,
+				"resetTime": "2026-11-25T17:00:25Z"
+			}
+		],
+		"raw": "Gemini Models\tWeekly Limit Remaining\t72%\t2026-12-01T00:43:37Z\nGemini Models\tFive Hour Limit Remaining\t90%\t2026-11-25T13:24:34Z\nClaude and GPT models\tWeekly Limit Remaining\t42%\t2026-11-30T03:53:15Z\nClaude and GPT models\tFive Hour Limit Remaining\t100%\t2026-11-25T17:00:25Z\n"
+	},
+	"executor": "local",
+	"reasons": ["no protected path supplied; OS/permission layers only"]
+}

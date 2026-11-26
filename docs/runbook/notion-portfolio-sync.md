@@ -259,6 +259,19 @@ Notion で database を開いたときの URL の `?v=` より前の 32 桁 hex
 | 2 | 引数が誤り | `--help` |
 | 3 | credential 不在 / 401・403・404 / ネットワーク | §2 の共有と token を確認 |
 
+### 5.5 `--r2-target=production` の credential 配置（2026-11-26 追記）
+
+production への media upload を伴う実行は、1 プロセスで **Notion credential
+（`dev` env）と R2 scoped credential（`prod` env）の両方**を必要とする。
+`infisical run` は 1 env しか注入しないため、2026-11-26 時点ではどちらの env
+でも完結しない（`dev` では `r2_list_failed`、`prod` では
+`missing credential: NOTION_TOKEN`）。
+
+この gap の実測と、operator が選ぶべき配置案は
+[`docs/verification/portfolio/notion-sync-r2-2026-11-26.md`](../verification/portfolio/notion-sync-r2-2026-11-26.md) §3
+に記録した。`NOTION_TOKEN` を `prod` に置くことは §4 の方針に反するため、
+解消は operator の secret 配置判断を待つ。
+
 ## 6. 反映の流れ（編集 → 公開）
 
 ```

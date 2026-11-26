@@ -1,0 +1,151 @@
+{
+	"version": "1.0.0",
+	"id": "88d8ecb7-f226-4e38-8761-b0631f1da4a1",
+	"model": null,
+	"resolvedModel": null,
+	"specSha256": "ad827db96cbb21df5ae1bc18d2fc5b7e46f98d4f106ba1ac59be70ce5ad4b2ee",
+	"classification": "review-completed",
+	"verified": false,
+	"verdict": {
+		"findings": [
+			{
+				"description": "[Fix #1 — Highest Impact] Dock-plate occlusion/z-order gating is broken in 5 of 12 frames (01, 04, 05, 08, 11): transit and re-slotting cards composite ABOVE the dock plate before reaching their assigned park slot center (or while oversized/departing), protruding outside dock borders (05 top, 08 left, 11 top) and piling directly onto occupied thumbnails (01 TR oversized gray card over cyan; 04 TL blue colliding into TR cyan; 05 dark UI over ProtoType and blue over gray; 08 cyan over yellow MV; 11 gray over yellow MV). Gate above-plate compositing strictly on BOTH matching thumbnail scale AND <=1-2px distance to the card's own destination slot (never any slot or dock rect), keep re-slotting cards behind the dock plate, and briefly fade them in upon arrival to avoid an 8fps z-pop.",
+				"severity": "major"
+			},
+			{
+				"description": "[Fix #2] Act 1 -> Act 2 handoff (01, t=5.50s) breaks the centered causal relay seen in transitions 2-4: incoming yellow MV (upper-left, already wearing the blue border) and outgoing ProtoType (upper-right) sit side-by-side high in the frame, leaving a large ~25-30% empty dark void in the bottom-left quadrant. Keep outgoing ProtoType closer to center until ~62% transfer and tighten the incoming diagonal path so center stage never empties mid-transition.",
+				"severity": "major"
+			},
+			{
+				"description": "[Fix #3] Blank/black source frames and low rim contrast make cards vanish or look unrendered, compounded by faint WebP background ghosting: TL sub card is flat blank gray in 08 and completely invisible/black in 09 (making Act 4 look missing a corner and adding upper-left dead space in 10); dock TL in 00 is nearly solid black; TL FoldLayers in 02-03 is very dim for 350px readability. Offset clip in-points away from black/blank frames, add a subtle lifted card backing + slightly firmer rim stroke so dark clips never merge into the canvas, and tighten WebP encoding/keyframes to clear faint rectangular ghost blocks lingering in dark canvas corners (01, 04, 05, 07-10).",
+				"severity": "minor"
+			},
+			{
+				"description": "Image 00 (t=4.25s, settled Act 1): Strong protagonist dominance (ProtoType typing UI centered with crisp thin blue accent border), well-tucked dimmed corner subs (yellow MV TL, blue graphic BL, anime boys TR), and aligned 2x2 dock with no protrusions. Minor issue: dock TL thumbnail is almost pure black (barely legible rim, reads as empty slot at 350px).",
+				"severity": "info"
+			},
+			{
+				"description": "Image 01 (t=5.50s, mid-transition Act 1 -> Act 2): Weakest transition frame. Incoming yellow MV (already holding blue border) sits high top-left while outgoing ProtoType sits top-right, leaving excessive dead space across bottom-left. Dock bug: an oversized gray anime-boys card composites above the dock plate at TR, larger than a park slot and overlapping the cyan thumbnail behind it (teal edge visible). Faint rectangular WebP ghost outlines appear in the dark background.",
+				"severity": "major"
+			},
+			{
+				"description": "Image 02 (t=6.00s, settled Act 2): Clean settled composition. Yellow/red MV (81 Combo) dominates strongly and reads very well at 350px; blue border tracks accurately; 2x2 dock is neat and aligned. Minor: TL FoldLayers sub card is very dark/low contrast (barely readable at 350px), and BL dark UI sub card is dim.",
+				"severity": "info"
+			},
+			{
+				"description": "Image 03 (t=6.50s, settled Act 2 +0.5s): Smooth footage progression (83 Combo, Score 504294, spotlight/dancer animated; dock TL blue graphic animated — no frozen frames). Visual hierarchy, blue border, and neat 2x2 dock remain crisp and consistent. Same dark/low-contrast TL FoldLayers sub card.",
+				"severity": "info"
+			},
+			{
+				"description": "Image 04 (t=10.00s, early transition Act 2 -> Act 3): Good causal handoff — outgoing yellow MV stays dominant near center with blue border while incoming AE timeline (\"Just your timeline.\") scales up from TL behind it. Dock bug: TL blue thumbnail slides right and collides/butts directly into the TR cyan thumbnail with zero gap while still above the dock plate; a tiny transit-card fragment also peeks between the protagonist's right edge and the dock's left border. Faint WebP ghost rectangles in dark corners.",
+				"severity": "major"
+			},
+			{
+				"description": "Image 05 (t=10.75s, late transition Act 2 -> Act 3): Protagonist transfer works well (AE timeline centered with blue border, yellow MV receding to TR). Severe dock pileup: multiple arriving/re-slotting cards composite above the dock plate prematurely — dark macOS UI card directly overlaps ProtoType at TL, ProtoType protrudes past the dock's top border, and blue graphic overlaps the gray card at bottom.",
+				"severity": "major"
+			},
+			{
+				"description": "Image 06 (t=11.25s, settled Act 3): Cleanest settled frame alongside 00/02. AE timeline (\"But now\") dominates cleanly with crisp blue border, all 3 corner subs are clearly visible (pointing character TL, cyan character BL, yellow MV TR), and all 4 dock thumbnails sit neatly aligned in 2x2. Minor: dark top-row dock thumbnails (ProtoType, dark UI) will read as dim dark tiles at 350px.",
+				"severity": "info"
+			},
+			{
+				"description": "Image 07 (t=15.75s, mid-transition Act 3 -> Act 4): Best transition frame. Causal handoff reads clearly (outgoing AE \"Stop scrolling. Start creating.\" retains center/blue border while pointing character rises behind it on the left). Yellow MV slipping behind the top edge of the dock plate demonstrates that dock occlusion reads naturally as intentional depth when properly gated; parked TL/TR dock thumbnails are undisturbed.",
+				"severity": "info"
+			},
+			{
+				"description": "Image 08 (t=16.25s, late transition Act 3 -> Act 4): Protagonist transfer is crisp (pointing character centered with blue border, AE card receding to TR). Severe dock bug: cyan character thumbnail pops above the dock plate while still entering from the left, directly overlapping the lower half of the parked yellow MV thumbnail AND protruding outside the dock's left border. Also TL sub card displays a flat solid-gray blank frame.",
+				"severity": "major"
+			},
+			{
+				"description": "Image 09 (t=21.25s, settled Act 4 / early transition): Protagonist (\"祈りの\" pointing character) is strong and readable at 350px with crisp blue border; cyan card tucked behind the dock's left edge reads as clean occlusion. However, the TL sub card has vanished completely (pitch-black clip frame with no discernible rim), making Act 4 look lopsided with an empty upper-left corner.",
+				"severity": "minor"
+			},
+			{
+				"description": "Image 10 (t=21.75s, mid-transition Act 4 -> Act 5): Clean causal handoff — outgoing pointing character keeps blue border and shifts right-up while incoming blue/white grid (\"夜\") scales up smoothly from BL. Dock is tidy with 2 parked thumbnails and no collisions. Noticeable upper-left dead space because the outgoing TL sub is invisible and incoming ProtoType has not emerged from behind the protagonist yet.",
+				"severity": "minor"
+			},
+			{
+				"description": "Image 11 (t=22.25s, late transition Act 4 -> Act 5): Incoming blue/white grid (\"夜 night\", \"Params\") dominates cleanly with crisp blue border and strong readability at 350px. Severe dock bug recurs: FoldLayers thumbnail protrudes past the dock's TOP border at TL, and the gray anime-boys thumbnail composites above the dock plate directly overlapping the parked yellow MV thumbnail in the BL slot.",
+				"severity": "major"
+			}
+		],
+		"summary": "Verdict: ACCEPT WITH FIXES (request-changes). Settled acts (00, 02, 03, 06) exhibit strong visual hierarchy, crisp blue accent-border tracking, neat 2x2 dock alignment, active non-frozen/non-stretched footage, and strong protagonist readability at ~350px wide; transitions 2-4 (04, 07, 10) also read as clean causal relays, and where dock occlusion actually fires (07, 09) it reads convincingly as intentional depth. However, revision 3's core dock-occlusion fix fails in 5 of 12 frames (01, 04, 05, 08, 11), with transit/re-slotting cards compositing above the dock plate prematurely, protruding past dock borders, and piling onto occupied slots. Secondary issues: Act 1->2 transition (01) opens excessive bottom-left dead space with a split side-by-side pair; dark/blank source clips vanish in Act 4 TL (08 gray, 09 invisible) and dock TL (00 black); faint WebP rectangular ghosting appears in dark corners. Top 3 fixes by impact: (1) strictly gate above-plate dock compositing to exact own-slot arrival + thumbnail scale (keeping re-slotting cards behind the plate), (2) keep Act 1->2 outgoing protagonist closer to center to eliminate bottom-left dead space, (3) trim/offset blank/black source frames, lift minimum card backing/rim slightly, and tighten WebP encoding to remove dark-canvas ghosting.",
+		"verdict": "request-changes"
+	},
+	"agy": {
+		"status": "SUCCESS",
+		"conversationId": "a6ab45ce-26ed-4a6d-84e0-23be2f821f94",
+		"durationSeconds": 157.284103,
+		"numTurns": 1,
+		"usage": {
+			"input_tokens": 17814,
+			"output_tokens": 15431,
+			"thinking_tokens": 12170,
+			"cache_read_tokens": 19881,
+			"total_tokens": 33245
+		},
+		"deniedActions": []
+	},
+	"readonly": {
+		"deniedActions": [],
+		"permissionErrors": 0,
+		"protectedPath": null,
+		"protectedCheck": "unavailable",
+		"protectedMutations": []
+	},
+	"isolation": {
+		"workdir": "/Users/rebui/.local/state/agent/agy-review/88d8ecb7-f226-4e38-8761-b0631f1da4a1",
+		"osSandbox": "seatbelt",
+		"permissionDeny": [
+			"write_file(*)",
+			"command(*)",
+			"read_url(*)",
+			"execute_url(*)",
+			"mcp(*)",
+			"unsandboxed(*)"
+		]
+	},
+	"quota": {
+		"buckets": [
+			{
+				"group": "Gemini Models",
+				"label": "Weekly Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.84,
+				"resetTime": "2026-12-01T00:43:37Z"
+			},
+			{
+				"group": "Gemini Models",
+				"label": "Five Hour Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.97,
+				"resetTime": "2026-11-24T15:43:37Z"
+			},
+			{
+				"group": "Claude and GPT models",
+				"label": "Weekly Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.42,
+				"resetTime": "2026-11-30T03:53:15Z"
+			},
+			{
+				"group": "Claude and GPT models",
+				"label": "Five Hour Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 1,
+				"resetTime": "2026-11-24T16:48:28Z"
+			}
+		],
+		"raw": "Gemini Models\tWeekly Limit Remaining\t84%\t2026-12-01T00:43:37Z\nGemini Models\tFive Hour Limit Remaining\t97%\t2026-11-24T15:43:37Z\nClaude and GPT models\tWeekly Limit Remaining\t42%\t2026-11-30T03:53:15Z\nClaude and GPT models\tFive Hour Limit Remaining\t100%\t2026-11-24T16:48:28Z\n"
+	},
+	"executor": "local",
+	"reasons": ["no protected path supplied; OS/permission layers only"]
+}

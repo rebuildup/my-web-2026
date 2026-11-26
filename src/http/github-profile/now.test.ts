@@ -91,7 +91,7 @@ describe('renderProfileNowSvg', () => {
 		expect(svg).toContain('GITHUB ACTIVITY');
 		expect(svg).toContain('DISCORD');
 		expect(svg).toContain('28 public / 8 private repos active in 7d');
-		expect(svg).toContain('not projects in progress');
+		expect(svg).toContain('activity, not projects');
 		expect(svg).toContain('Online');
 		expect(svg).toContain('observed');
 	});

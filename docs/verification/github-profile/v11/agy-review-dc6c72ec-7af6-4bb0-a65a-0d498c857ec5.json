@@ -1,0 +1,99 @@
+{
+	"version": "1.0.0",
+	"id": "dc6c72ec-7af6-4bb0-a65a-0d498c857ec5",
+	"model": null,
+	"resolvedModel": null,
+	"specSha256": "96991617cc794c3da5ed6938b1f314b4b3b287e28d7f4e362c07df784c53692a",
+	"classification": "review-completed",
+	"verified": false,
+	"verdict": {
+		"findings": [
+			{
+				"description": "Regions 5 & 7 (identity dark/light mobile): in the top-left streak card, the 'day streak' caption is centered horizontally while the flame icon and '205' value are left-aligned, creating a slight visual offset between the metric and its label.",
+				"severity": "info"
+			},
+			{
+				"description": "Regions 6 & 8 (activity-map dark/light mobile): the header observation timestamp omits the middle dot between date and time ('Nov 24 09:00 JST') compared to 'Nov 24 · 09:00 JST' on desktop (regions 2 & 4) and 'Nov 24 · 22:46 JST' on identity bands (regions 1, 3, 5, 7).",
+				"severity": "info"
+			}
+		],
+		"summary": "Approved with zero blockers across all 8 regions (desktop and mobile, dark and light). All five round-2 fixes are verified: the 72h timeline 'now' edge is accurately anchored to the snapshot observation time (Nov 24 09:00 JST, matching the ~6h gap to the newest listed event at 02:46 JST with no false empty tail); PR squares follow monotonic ceil(prs/100) capped at 4 so '+22/+24 more public' aggregates no longer visually outrank higher-PR repos; commit dots on dim/aggregate rows are clearly legible in both dark and light desktop themes; mobile IN PROGRESS rows display enlarged, legible tier pips matching the footer legend; and mobile CONTRIBUTED TO includes the total count ('· 28') with an exact '+1 over' overflow indicator (27 dots + 1). All M1-M7 criteria are satisfied with strong glanceability, honest encodings, and clean legibility at README scale.",
+		"verdict": "approve"
+	},
+	"agy": {
+		"status": "SUCCESS",
+		"conversationId": "aa9cfca2-363f-4d1b-b269-c745532212e1",
+		"durationSeconds": 108.893305,
+		"numTurns": 1,
+		"usage": {
+			"input_tokens": 4900,
+			"output_tokens": 11856,
+			"thinking_tokens": 11368,
+			"cache_read_tokens": 17980,
+			"total_tokens": 16756
+		},
+		"deniedActions": []
+	},
+	"readonly": {
+		"deniedActions": [],
+		"permissionErrors": 0,
+		"protectedPath": null,
+		"protectedCheck": "unavailable",
+		"protectedMutations": []
+	},
+	"isolation": {
+		"workdir": "/Users/rebui/.local/state/agent/agy-review/dc6c72ec-7af6-4bb0-a65a-0d498c857ec5",
+		"osSandbox": "seatbelt",
+		"permissionDeny": [
+			"write_file(*)",
+			"command(*)",
+			"read_url(*)",
+			"execute_url(*)",
+			"mcp(*)",
+			"unsandboxed(*)"
+		]
+	},
+	"quota": {
+		"buckets": [
+			{
+				"group": "Gemini Models",
+				"label": "Weekly Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.72,
+				"resetTime": "2026-12-01T00:43:37Z"
+			},
+			{
+				"group": "Gemini Models",
+				"label": "Five Hour Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.89,
+				"resetTime": "2026-11-25T13:24:34Z"
+			},
+			{
+				"group": "Claude and GPT models",
+				"label": "Weekly Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.42,
+				"resetTime": "2026-11-30T03:53:15Z"
+			},
+			{
+				"group": "Claude and GPT models",
+				"label": "Five Hour Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 1,
+				"resetTime": "2026-11-25T17:24:23Z"
+			}
+		],
+		"raw": "Gemini Models\tWeekly Limit Remaining\t72%\t2026-12-01T00:43:37Z\nGemini Models\tFive Hour Limit Remaining\t89%\t2026-11-25T13:24:34Z\nClaude and GPT models\tWeekly Limit Remaining\t42%\t2026-11-30T03:53:15Z\nClaude and GPT models\tFive Hour Limit Remaining\t100%\t2026-11-25T17:24:23Z\n"
+	},
+	"executor": "local",
+	"reasons": ["no protected path supplied; OS/permission layers only"]
+}

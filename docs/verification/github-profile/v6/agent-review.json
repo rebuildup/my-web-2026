@@ -1,0 +1,135 @@
+{
+	"version": "1.0.0",
+	"id": "81f8498a-06d3-466b-b106-8ca92ae2e7d1",
+	"model": null,
+	"resolvedModel": null,
+	"specSha256": "40c99647ab7c03ef6ea6efd973b00af4e9b0b8db8df4c53524db6346f2a0e3f1",
+	"classification": "review-completed",
+	"verified": false,
+	"verdict": {
+		"findings": [
+			{
+				"description": "[Index 0 / 00-t5.0.png] Settled Act 1 (ProtoType): Strong protagonist dominance, crisp blue accent border, neat 2x2 dock alignment, no distortion or compression artifacts. Minor: top-right sub card sits noticeably lower vertically than the top-left sub card (misaligned top baseline), and the top-row dock thumbnails (FoldLayers, dark UI) are near-black and unreadable at ~350px wide.",
+				"severity": "minor"
+			},
+			{
+				"description": "[Index 1 / 01-t5.8.png] Transition 1->2 (ProtoType -> Rhythm Game): Main-to-TR hand-off reads causally (incoming Rhythm Game already foregrounded with blue border, ProtoType receding cleanly to TR), but secondary routing causes clutter and dead space: blue 'aaaaa' floats unanchored in the gap left of the dock plate, blue-stripes overlaps bottom thumbnails inside the dock plate, dark UI peeks awkwardly from beneath the main card's bottom-left edge, and TL/BL corners are empty dark voids.",
+				"severity": "major"
+			},
+			{
+				"description": "[Index 2 / 02-t6.3.png] Settled Act 2 (Rhythm Game): Clean, well-balanced settled frame with vivid hero legibility at ~350px, accurate accent border, aligned corner subs, and tidy 2x2 dock. Minor: TL ('FOLD LAYERS') and BL (dark plugin UI) sub cards are very dark against the dark canvas and hard to parse when downscaled.",
+				"severity": "info"
+			},
+			{
+				"description": "[Index 3 / 03-t10.0.png] Settled Act 2 late (Rhythm Game): Smooth playback progression (combo 82->93, no frozen/stretched frames), TL sub ('Just your timeline.') becomes clear and readable, hierarchy and dock spacing remain crisp.",
+				"severity": "info"
+			},
+			{
+				"description": "[Index 4 / 10.8s / 04-t10.8.png] Transition 2->3 (Rhythm Game -> FoldLayers): Incoming FoldLayers cleanly takes foreground and blue border as Rhythm Game recedes to TR, but severe dock-zone pileup occurs: ProtoType straddles the top border of the dock plate, dark UI clips across the dock's left border, and blue 'aaaaa' overlaps blue-stripes inside the dock plate; teal girl peeks out under the bottom edge of the hero while TL/BL corners sit empty.",
+				"severity": "major"
+			},
+			{
+				"description": "[Index 5 / 05-t11.3.png] Settled Act 3 (FoldLayers): Strong hierarchy, lively color balance across all three corner subs, crisp blue accent border, and tidy 2x2 dock. Minor: the source video's own pale thin rounded frame sits ~8px inside the showcase's blue border, creating a slight double-border effect.",
+				"severity": "info"
+			},
+			{
+				"description": "[Index 6 / 06-t15.7.png] Transition 3->4 onset: Protagonist ('Stop scrolling. Start creating.') is still centered and legible, but dock departure triggers early with the blue-stripes thumbnail clipping halfway across the left edge of the dock plate while corner subs begin drifting.",
+				"severity": "minor"
+			},
+			{
+				"description": "[Index 7 / 07-t16.2.png] Transition 3->4 mid-frame (worst choreography defect): Z-order and accent-border hand-off are inverted—shrinking outgoing FoldLayers (now a dark title card) remains IN FRONT OF the expanding incoming anime protagonist and still holds the blue accent border, blocking ~35% of the new hero in a mid-screen pileup rather than a causal recession. Simultaneously, Rhythm Game straddles the dock's top border, blue 'aaaaa' and teal girl float unanchored along the bottom gap, and the entire left side (TL/BL) is empty dead space.",
+				"severity": "critical"
+			},
+			{
+				"description": "[Index 8 / 08-t21.8.png] Transition 4->5 onset/mid (Anime -> Blue 'aaaaa'): Hero is crisp and dominant, but the entire top-left quadrant is an empty dark void, blue 'aaaaa' is already scaling up behind the bottom-left edge of the hero, ProtoType floats outside the left edge of the dock plate, and the dock is half-empty with two cards occluded mid-transit.",
+				"severity": "major"
+			},
+			{
+				"description": "[Index 9 / 09-t26.8.png] Settled Act 5 (Blue 'aaaaa'): Punchiest, highest-contrast settled act with excellent ~350px readability, crisp blue accent border, aligned corners, and tidy 2x2 dock. Minor: dock TL slot (FoldLayers) is nearly pitch black, reading as an empty/dead slot at small sizes.",
+				"severity": "minor"
+			},
+			{
+				"description": "[Top 3 Fixes by Impact] (1) Fix protagonist z-order and accent-border hand-off timing so outgoing heroes immediately drop behind incoming heroes and transfer the blue border before overlap (resolves 07-t16.2.png pileup). (2) Clean up dock/sub routing by fading/scaling dock-bound and dock-exiting thumbnails cleanly within clipped slot bounds or routing behind the hero with staggered timing so cards never overlap inside the dock, straddle dock plate borders, or float unanchored in empty gaps (resolves 01, 04, 06, 07, 08). (3) Reduce mid-transition left-side dead space via tighter/staggered corner arrival timing, align Act 1 TR sub top baseline (00), and add subtle border/brightness lift or brighter source offsets for near-black dock/sub thumbnails (FoldLayers, dark UI) so they remain readable at ~350px wide.",
+				"severity": "major"
+			}
+		],
+		"summary": "Verdict: ACCEPT WITH FIXES. Settled acts (indices 0, 2, 3, 5, 9) are strong—clear protagonist dominance, crisp blue accent border tracking, tidy 2x2 dock, good ~350px hero readability, and no blank, frozen, stretched, or artifacted frames. However, mid-transition choreography has clear defects: an inverted z-order/accent-border pileup in transition 3->4 (index 7), recurring dock-plate border straddling, intra-dock overlaps, and unanchored floating thumbnails across all transitions (indices 1, 4, 6, 7, 8), excessive left-side dead space mid-transition, and near-black dock/sub thumbnails that vanish at README width.",
+		"verdict": "request-changes"
+	},
+	"agy": {
+		"status": "SUCCESS",
+		"conversationId": "4a264992-21d8-4258-8bfa-038b478f9f6b",
+		"durationSeconds": 132.621686,
+		"numTurns": 1,
+		"usage": {
+			"input_tokens": 23560,
+			"output_tokens": 11919,
+			"thinking_tokens": 9636,
+			"cache_read_tokens": 10726,
+			"total_tokens": 35479
+		},
+		"deniedActions": []
+	},
+	"readonly": {
+		"deniedActions": [],
+		"permissionErrors": 0,
+		"protectedPath": null,
+		"protectedCheck": "unavailable",
+		"protectedMutations": []
+	},
+	"isolation": {
+		"workdir": "/Users/rebui/.local/state/agent/agy-review/81f8498a-06d3-466b-b106-8ca92ae2e7d1",
+		"osSandbox": "seatbelt",
+		"permissionDeny": [
+			"write_file(*)",
+			"command(*)",
+			"read_url(*)",
+			"execute_url(*)",
+			"mcp(*)",
+			"unsandboxed(*)"
+		]
+	},
+	"quota": {
+		"buckets": [
+			{
+				"group": "Gemini Models",
+				"label": "Weekly Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.88,
+				"resetTime": "2026-12-01T00:43:37Z"
+			},
+			{
+				"group": "Gemini Models",
+				"label": "Five Hour Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.95,
+				"resetTime": "2026-11-24T10:43:37Z"
+			},
+			{
+				"group": "Claude and GPT models",
+				"label": "Weekly Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.42,
+				"resetTime": "2026-11-30T03:53:15Z"
+			},
+			{
+				"group": "Claude and GPT models",
+				"label": "Five Hour Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 1,
+				"resetTime": "2026-11-24T11:12:17Z"
+			}
+		],
+		"raw": "Gemini Models\tWeekly Limit Remaining\t88%\t2026-12-01T00:43:37Z\nGemini Models\tFive Hour Limit Remaining\t95%\t2026-11-24T10:43:37Z\nClaude and GPT models\tWeekly Limit Remaining\t42%\t2026-11-30T03:53:15Z\nClaude and GPT models\tFive Hour Limit Remaining\t100%\t2026-11-24T11:12:17Z\n"
+	},
+	"executor": "local",
+	"reasons": ["no protected path supplied; OS/permission layers only"]
+}

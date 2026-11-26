@@ -243,6 +243,110 @@ export const publicApiCatalog: readonly ApiEndpoint[] = [
 		purpose:
 			'Unified status strip for the rebuildup/rebuildup profile README (Issue #1205): GitHub contributions / current & longest streak / top language (readme-stats fetchers, hourly upstream cache) plus GitHub activity and Discord presence panels with observation times. Anonymous access. Returns SVG.',
 	},
+	{
+		path: '/api/v1/github-profile/activity',
+		method: 'GET',
+		authentication: 'anonymous',
+		authForm: 'none',
+		rateLimitBinding: 'RATE_LIMIT_READ',
+		errorForm:
+			'405 method_not_allowed; the card always answers 200 — missing / stale / invalid snapshot data renders an honest unavailable state inside the SVG',
+		responseExample: {
+			contentType: 'image/svg+xml',
+			cacheControl: 'public, max-age=300, s-maxage=300',
+		},
+		purpose:
+			'Dynamic activity card for the rebuildup/rebuildup profile README (ADR-0026, Issue #1212): per-repository event bars plus the public feed with JST timestamps and an observation stamp. Private repositories are aggregated anonymously. Anonymous access. Returns SVG.',
+	},
+	{
+		path: '/api/v1/github-profile/presence',
+		method: 'GET',
+		authentication: 'anonymous',
+		authForm: 'none',
+		rateLimitBinding: 'RATE_LIMIT_READ',
+		errorForm:
+			'405 method_not_allowed; the chip always answers 200 — missing / stale / mismatched-user presence renders an honest unavailable or stale state inside the SVG',
+		responseExample: {
+			contentType: 'image/svg+xml',
+			cacheControl: 'public, max-age=300, s-maxage=300',
+		},
+		purpose:
+			'Discord presence chip for the rebuildup/rebuildup profile README (ADR-0026, Issue #1212), served independently from the activity card so the two freshness contracts never share a response or a cache entry. JST observation stamp. Anonymous access. Returns SVG.',
+	},
+	{
+		path: '/api/v1/github-profile/current',
+		method: 'GET',
+		authentication: 'anonymous',
+		authForm: 'none',
+		rateLimitBinding: 'RATE_LIMIT_READ',
+		errorForm:
+			'405 method_not_allowed; the card always answers 200 — an empty project set renders an honest empty state inside the SVG',
+		responseExample: {
+			contentType: 'image/svg+xml',
+			cacheControl: 'public, max-age=300, s-maxage=300',
+		},
+		purpose:
+			'In-progress projects card for the rebuildup/rebuildup profile README (ADR-0026, Issue #1216): the same currentProjectsLoader composition the site renders — roster declarations plus measured git/GitHub facts — so "what is being worked on" survives the /now retirement. Committed data only; no request-time fetch. Anonymous access. Returns SVG.',
+	},
+	{
+		path: '/api/v1/github-profile/identity',
+		method: 'GET',
+		authentication: 'anonymous',
+		authForm: 'none',
+		rateLimitBinding: 'RATE_LIMIT_READ',
+		errorForm:
+			'405 method_not_allowed; the band always answers 200 — missing / stale upstreams render honest unavailable states inside the SVG',
+		responseExample: {
+			contentType: 'image/svg+xml',
+			cacheControl: 'public, max-age=300, s-maxage=300',
+		},
+		purpose:
+			'Identity band for the rebuildup/rebuildup profile README (ADR-0026, Issue #1216): avatar, vitals (streak / languages / contributed repos / rank), latest public signals and a Discord-style presence card in one glanceable SVG. Query params: theme=dark|light, layout=mobile. Anonymous access. Returns SVG.',
+	},
+	{
+		path: '/api/v1/github-profile/stack',
+		method: 'GET',
+		authentication: 'anonymous',
+		authForm: 'none',
+		rateLimitBinding: 'RATE_LIMIT_READ',
+		errorForm: '405 method_not_allowed',
+		responseExample: {
+			contentType: 'image/svg+xml',
+			cacheControl: 'public, max-age=3600, s-maxage=3600',
+		},
+		purpose:
+			'Technology-stack marquee band for the rebuildup/rebuildup profile README (Issue #1216): the committed skill-icons set scrolling horizontally inside one SVG row, replacing the tall vertical icon groups. Query params: theme=dark|light, layout=mobile. Anonymous access. Returns SVG.',
+	},
+	{
+		path: '/api/v1/github-profile/activity-map',
+		method: 'GET',
+		authentication: 'anonymous',
+		authForm: 'none',
+		rateLimitBinding: 'RATE_LIMIT_READ',
+		errorForm:
+			'405 method_not_allowed; the band always answers 200 — a missing activity snapshot renders an honest unavailable state inside the SVG',
+		responseExample: {
+			contentType: 'image/svg+xml',
+			cacheControl: 'public, max-age=300, s-maxage=300',
+		},
+		purpose:
+			'Activity band for the rebuildup/rebuildup profile README (ADR-0026, Issue #1216): 30-day per-repository commit/PR output plus a 72-hour public-event pulse anchored to the snapshot observation time; private repositories aggregate anonymously. Query params: theme=dark|light, layout=mobile. Anonymous access. Returns SVG.',
+	},
+	{
+		path: '/api/v1/github-profile/profile',
+		method: 'GET',
+		authentication: 'anonymous',
+		authForm: 'none',
+		rateLimitBinding: 'RATE_LIMIT_READ',
+		errorForm:
+			'405 method_not_allowed; the composition always answers 200 — a missing activity snapshot renders an honest unavailable state inside the SVG',
+		responseExample: {
+			contentType: 'image/svg+xml',
+			cacheControl: 'public, max-age=300, s-maxage=300',
+		},
+		purpose:
+			'Composed profile for the rebuildup/rebuildup profile README (Issue #1235): identity, GitHub activity and technology stack as ONE SVG canvas on the shared layout contract — section heads, common spine, module hierarchy. Query params: theme=dark|light, layout=mobile, grid=1 (review overlay). Anonymous access. Returns SVG.',
+	},
 ];
 
 /**

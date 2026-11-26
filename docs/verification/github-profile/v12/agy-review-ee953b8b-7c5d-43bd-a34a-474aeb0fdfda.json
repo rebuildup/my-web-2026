@@ -1,0 +1,115 @@
+{
+	"version": "1.0.0",
+	"id": "ee953b8b-7c5d-43bd-a34a-474aeb0fdfda",
+	"model": null,
+	"resolvedModel": null,
+	"specSha256": "a8d209e7729f87c707980265b8ec43987f78a83768532cf27013cc68fa9b8b0c",
+	"classification": "review-completed",
+	"verified": false,
+	"verdict": {
+		"findings": [
+			{
+				"description": "[MAJOR | Prior v9 #1 NOT RESOLVED (shifted)] Band 1 desktop (00-identity-dark-desktop.png, 01-identity-light-desktop.png), top-right Discord presence cluster: While 'Offline' and '· last synced Nov 24 · 22:46 JST' now flow cohesively in a single right-aligned run, the Discord Clyde glyph is stranded roughly 100–120px to the left of 'Offline', floating isolated in the empty space between the subtitle and the status text. The ~95px gulf from v9 simply moved left of 'Offline' because the leading icon's x-position relies on an overestimated width of the proportional text run. Suggested direction: Stop estimating proportional text width with wide per-character factors to place a leading icon on a right-aligned run. Measure exact glyph advance widths at generation time (or use a calibrated proportional metric / anchor the entire Discord cluster from a measured left-x, or place the icon tightly 6–8px before 'Offline' just like on mobile 02/03).",
+				"severity": "major"
+			},
+			{
+				"description": "[MAJOR | Prior v9 #2 & #5 NOT CLEANLY RESOLVED] Band 1 desktop and mobile (00-identity-dark-desktop.png, 01-identity-light-desktop.png, 02-identity-dark-mobile.png, 03-identity-light-mobile.png), secondary meta stats ('174 stars', '5,438 PRs', '16,743 commits', '4,639 issues'): Right-aligning text in metaGrid and placing each icon via estimated text width creates two visible layout flaws: (1) Floating and staggered icons across both breakpoints — every icon sits ~15–25px too far left of its text, and in column 2 the 'issues' icon shifts ~12px right of the 'commits' icon because the label is shorter, breaking vertical column alignment. (2) On mobile (02, 03), right-aligning both columns leaves a gaping ~120px empty void on the left edge directly beneath '206 DAY STREAK', unmooring the row from the left margin. Suggested direction: Make metaGrid left-aligned in both columns — place each column's icon at a fixed colX (on mobile: col 1 at x=16 aligned with the '206' flame icon, col 2 at x=W/2+16 aligned with the '35,311' trend icon; on desktop: col 1 near x=55% and col 2 near x=78%) and set text-anchor='start' at colX + 20. This removes all font-metric drift, aligns icons vertically, and eliminates the mobile left void.",
+				"severity": "major"
+			},
+			{
+				"description": "[MINOR] Band 2 desktop and mobile (04-activity-map-dark-desktop.png, 05-activity-map-light-desktop.png, 06-activity-map-dark-mobile.png, 07-activity-map-light-mobile.png), REPO OUTPUT header: Two small polish items now that the track rails are cleanly removed: (1) The top-right scale note reads 'bar = commits · full = 2.1k' — 'full' is a vestige of the deleted full-width progress tracks; changing it to 'bar = commits · max = 2.1k' (or 'top = 2.1k') accurately reflects the bare bar chart. (2) 'GITHUB ACTIVITY' and 'REPO OUTPUT' stack tightly at the top-left with very similar uppercase styling, creating a slight double-heading stutter (especially on mobile 06/07). Adding ~6–8px extra vertical separation (or slightly stronger scale contrast) between the band title and the subsection label will clarify the opening rhythm.",
+				"severity": "minor"
+			},
+			{
+				"description": "[MINOR] Band 2 desktop and mobile (04-activity-map-dark-desktop.png through 07-activity-map-light-mobile.png), RECENT PUBLIC EVENTS subheader and timestamps: Collapsing per-row stamps to 'HH:MM' and dropping repeated 'Nov 24' / 'JST' (v9 #7) makes the event feed dramatically cleaner. However, the date and timezone ('Nov 24 · 09:00 JST') only appear at the very top-right of the entire band, separated from the event feed by the REPO OUTPUT chart and a divider; glancing at '30 in 72h' alongside bare '02:46', '01:59' forces a long eye-jump to verify the day and timezone. Suggested direction: Include the date/zone once in the RECENT PUBLIC EVENTS subheader (e.g., 'Nov 24 JST · 30 in 72h') so the collapsed row timestamps are immediately self-contained without adding row clutter.",
+				"severity": "minor"
+			},
+			{
+				"description": "[MINOR] Band 1 desktop (00-identity-dark-desktop.png, 01-identity-light-desktop.png), horizontal rhythm in the middle stats row: The gap between '35,311 ALL-TIME CONTRIBUTIONS' and the first meta stat column (~140px) is noticeably wider than the gap between '206' and '35,311' (~80px), making the two halves feel slightly detached. When switching metaGrid to left-aligned columns, distributing the 4 stat columns evenly across the band width (e.g., meta col 1 starting around 54–56% width and col 2 around 78%) will balance the horizontal cadence.",
+				"severity": "minor"
+			},
+			{
+				"description": "[INFO | Verified v9 resolutions & design strengths] Confirmed resolved from v9: #3 ('top 46% on GitHub' and award icon cleanly removed from Band 1), #4 (Band 2 REPO OUTPUT track rails deleted — bare commit bars now read honestly as a horizontal bar chart with consistent arithmetic across desktop and mobile), #6 (Band 3 desktop INFRA & DEV TOOLS 28px chips top-align at the exact same label-to-chip gap as the 40px lanes, and all 4 mobile stack rows align cleanly to the same right edge in a compact layout), and #7 (Band 2 event timestamps collapsed cleanly, middots unified, '+23 more' / '+25 more' right-aligned as a footer with exact event counts). Overall design evaluation: strong editorial restraint (no boxed dashboard cards), clear hierarchy (hero numbers vs secondary stats, 40px craft tools vs 28px infra substrate), authentic GitHub-native and Discord-native visual language, honest data presentation, strong light/dark contrast (including ochre light-mode accents and bordered light-mode icon tiles), and well-controlled mobile vertical height.",
+				"severity": "info"
+			}
+		],
+		"summary": "REQUEST CHANGES — Strong editorial, GitHub-native design overall (Band 2 and Band 3 are ready to ship with only minor polish, and v9 findings #3, #4, #6, and #7 are cleanly resolved), but two MAJOR SVG text-measurement layout regressions in Band 1 are immediately visible and block approval: (1) on desktop, the Discord Clyde glyph is stranded ~100–120px left of 'Offline · last synced Nov 24 · 22:46 JST' (v9 #1 gulf shifted rather than closed); (2) across desktop and mobile, right-aligned metaGrid text with overestimated icon offsets leaves floating ~15–25px icon gaps, staggered icons in column 2 ('commits' vs 'issues'), and a ~120px empty left-side void on mobile beneath '206 DAY STREAK' (v9 #2 and #5). Top 3 ranked changes: (1) fix Band 1 desktop Discord icon positioning so it hugs 'Offline' at 6–8px; (2) switch Band 1 metaGrid to left-aligned columns (fixed colX for icons, colX+20 for text) on both desktop and mobile; (3) polish Band 2 copy/micro-hierarchy ('max = 2.1k' instead of 'full = 2.1k', slightly more gap under 'GITHUB ACTIVITY', and 'Nov 24 JST' once in the 'RECENT PUBLIC EVENTS' subheader).",
+		"verdict": "request-changes"
+	},
+	"agy": {
+		"status": "SUCCESS",
+		"conversationId": "2b85d729-a8db-486c-83a0-7ead8babc847",
+		"durationSeconds": 175.392823,
+		"numTurns": 1,
+		"usage": {
+			"input_tokens": 27128,
+			"output_tokens": 17098,
+			"thinking_tokens": 14314,
+			"cache_read_tokens": 11866,
+			"total_tokens": 44226
+		},
+		"deniedActions": []
+	},
+	"readonly": {
+		"deniedActions": [],
+		"permissionErrors": 0,
+		"protectedPath": null,
+		"protectedCheck": "unavailable",
+		"protectedMutations": []
+	},
+	"isolation": {
+		"workdir": "/Users/rebui/.local/state/agent/agy-review/ee953b8b-7c5d-43bd-a34a-474aeb0fdfda",
+		"osSandbox": "seatbelt",
+		"permissionDeny": [
+			"write_file(*)",
+			"command(*)",
+			"read_url(*)",
+			"execute_url(*)",
+			"mcp(*)",
+			"unsandboxed(*)"
+		]
+	},
+	"quota": {
+		"buckets": [
+			{
+				"group": "Gemini Models",
+				"label": "Weekly Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.69,
+				"resetTime": "2026-12-01T00:43:37Z"
+			},
+			{
+				"group": "Gemini Models",
+				"label": "Five Hour Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.91,
+				"resetTime": "2026-11-26T05:18:49Z"
+			},
+			{
+				"group": "Claude and GPT models",
+				"label": "Weekly Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 1,
+				"resetTime": "1970-01-01T00:00:00Z"
+			},
+			{
+				"group": "Claude and GPT models",
+				"label": "Five Hour Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 1,
+				"resetTime": "1970-01-01T00:00:00Z"
+			}
+		],
+		"raw": "Gemini Models\tWeekly Limit Remaining\t69%\t2026-12-01T00:43:37Z\nGemini Models\tFive Hour Limit Remaining\t91%\t2026-11-26T05:18:49Z\nClaude and GPT models\tWeekly Limit Remaining\t100%\t1970-01-01T00:00:00Z\nClaude and GPT models\tFive Hour Limit Remaining\t100%\t1970-01-01T00:00:00Z\n"
+	},
+	"executor": "local",
+	"reasons": ["no protected path supplied; OS/permission layers only"]
+}

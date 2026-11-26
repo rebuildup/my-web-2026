@@ -134,8 +134,36 @@ function plainText(richText) {
 	return parts.join('');
 }
 
+function plainTextWithMentions(richText) {
+	const parts = [];
+	for (const node of asArray(richText)) {
+		const object = asObject(node);
+		if (!object) continue;
+		if (object.type === 'text') {
+			const content = asObject(object.text)?.content;
+			if (typeof content === 'string') parts.push(content);
+			continue;
+		}
+		if (object.type === 'mention') {
+			const mentionText = typeof object.plain_text === 'string' ? object.plain_text : '';
+			if (mentionText.length === 0)
+				throw new Error('unsupported rich text: mention without plain_text');
+			parts.push(mentionText);
+			continue;
+		}
+		throw new Error(`unsupported rich text: ${String(object.type)}`);
+	}
+	return parts.join('');
+}
+
 function renderNode(node) {
 	const object = asObject(node) ?? {};
+	if (object.type === 'mention') {
+		const mentionText = typeof object.plain_text === 'string' ? object.plain_text : '';
+		if (mentionText.length === 0)
+			throw new Error('unsupported rich text: mention without plain_text');
+		return mentionText.replace(/([\\`*_[\]<>])/gu, '\\$1');
+	}
 	const annotations = asObject(object.annotations) ?? {};
 	const text = plainText([node]);
 	const link = asObject(asObject(object.text)?.link)?.url;
@@ -318,7 +346,7 @@ function bookmarkToMarkdown(block, at, errors) {
 		});
 		return null;
 	}
-	const caption = plainText(payload?.caption).trim();
+	const caption = plainTextWithMentions(payload?.caption).trim();
 	const destination = url
 		.toString()
 		.replace(/[()]/gu, (character) => (character === '(' ? '%28' : '%29'));
@@ -364,10 +392,10 @@ function readImageBlock(block, at, displayOrder) {
 			error: { code: 'image_url_invalid', at, expected: 'an absolute http or https URL' },
 		};
 	}
-	// A mention or an equation in a caption throws here and becomes
+	// An equation in a caption throws here and becomes
 	// `unsupported_rich_text` at the caller — the same refusal a paragraph
-	// carrying the same run gets.
-	const captionText = plainText(payload?.caption).trim();
+	// carrying the same run gets. Mentions render as their display text.
+	const captionText = plainTextWithMentions(payload?.caption).trim();
 	if (captionText.length > 500) {
 		return {
 			error: {
@@ -514,7 +542,7 @@ function booleanValue(page, name, fallback) {
 
 function richTextProperty(page, name) {
 	const payload = property(page, name)?.rich_text;
-	return Array.isArray(payload) ? richTextToMarkdown(payload).trim() : '';
+	return Array.isArray(payload) ? plainText(payload).trim() : '';
 }
 
 /**

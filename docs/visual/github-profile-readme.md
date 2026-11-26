@@ -781,3 +781,73 @@ agy 独立デザインレビュー（design-review-v9〜v13、証跡
 - Discord クラスタ右端 ~14-18px の微調整
 - Band2 event 行の repo 名↔middot 間隔の微差
 - Band1 'BEST 206D' → 'PERSONAL BEST' 等の自然文言
+
+## 20. 設計基盤フェーズ: レイアウト契約の先行構築（2026-11-26、Issue #1235）
+
+PR #1233 マージ後のユーザー却下を受け、局所座標調整を打ち切り
+「構造として設計されていない」ことを根本原因として扱う再設計。
+ブランチ `1235-profile-layout-foundation`。
+
+### 根本要求（正本化）
+
+- 個別 SVG 生成関数が独立した座標・文字サイズ・余白を決める方式を
+  廃止し、プロフィール全体に適用される**共通設計契約**を先に構築
+  する。数値の定数化や均等グリッド化は設計システムとみなさない。
+- 契約の構成要素: カラムグリッド/ガター/外周余白、ベースライング
+  リッド、スペーシングスケール、タイポグラフィスケール（行高・
+  ウェイト）、アイコンサイズと光学的整列、情報階層とモジュール構成
+  規則、レスポンシブ再構成、モーションと時間的構成規則。
+- 既存 `src/editorial/` の規則を活用し、汎用フレームワークは新設
+  しない。GitHub 実表示サイズ（~800px / ~400px CSS 幅）で可読性を
+  評価し、極小文字による情報詰め込みを禁止する。
+- README 本体の見出し・余白・画像幅も設計対象に含める。
+
+### 設計契約モジュール `design.ts`
+
+`src/http/github-profile/design.ts` が契約の実装:
+
+- `canvasSpec(mobile)` — デスクトップ 800px/外周 24/12 カラム/
+  ガター 16、モバイル 400px/外周 16/6 カラム/ガター 12、
+  ベースライン 4px。
+- `gridX`/`gridRight`/`contentWidth`/`colWidth` — 全要素の水平
+  配置はカラム境界から導出。`snap` でベースラインへ丸め。
+- `SPACE` — editorial spacing トークンの SVG 内射影
+  （s1=4/s2=8/s4=16/s6=24/s10=40）。ページ間のビートは README
+  markdown 側の責務。
+- `TYPE` — サイズではなく**役割**で定義（display/hero/title/
+  body/data/meta 等）。`bandText` が全テキストを役割経由で描画
+  （11px 下限）。
+- `ICON` — アイコンサイズ階梯と `iconCenterY` による光学的整列。
+- `MOTION.marqueeSpeed`/`marqueePeriod` — SMIL マーキーの速度と
+  周期の規則。
+- `gridOverlay(spec,height)` — `?grid=1` で赤ガイド+タイプ凡例を
+  重畳する検証モード（ルータで identity/activity-map/stack に配線）。
+
+### 各バンドの再構成
+
+- **Identity（Band1）**: avatar+Discord リングドットの統合カード、
+  focal stats（streak/contributions）と totals grid、言語シェア
+  ピル、全モジュールが gridX/snap/TYPE を経由。高さは内容から算出
+  （固定高さ定数を廃止）。
+- **Activity（Band2）**: REPO OUTPUT テーブル（名前+コミット比例
+  バー+件数列、集約行は脚注）、LAST 72 HOURS パルス（観測時刻
+  アンカー、JST 表記）、RECENT EVENTS リスト（同一 repo ランの
+  グループ化、tspan フローで衝突回避）。72h グラフと集約行は
+  ユーザー指摘により復活・是正済み。
+- **Stack**: 48 アイコン全件を 4 カテゴリレーン
+  （Design & motion / Languages / Web & app frameworks /
+  Infra & dev tools）に再編。各レーンは `<symbol>`+`<use>` で
+  アイコンを1回だけ定義し、複製トラックを SMIL
+  `animateTransform` で右→左にシームレスループ。レーン高は
+  内容から算出（デスクトップ 332px / モバイル 368px）。GitHub の
+  `<img>` 埋め込みでは CSS アニメーションと script が無効なため
+  SMIL を採用。エッジフェードで視覚的な抜けを防止。
+
+### 検証方法
+
+- `?grid=1` オーバーレイ付き SVG と通常 SVG を全バリアント
+  （3 バンド × 2 テーマ × desktop/mobile）でレンダリング。
+- agy 独立デザインレビュー（実装適合とは別工程、全体構図と
+  造形品質を評価）を `.tmp/review-specs/design-foundation-v1.md`
+  で実施。証跡は `docs/verification/github-profile/` に PNG/WebP
+  としてコミット（`.tmp`・トンネル非依存で第三者が確認可能）。

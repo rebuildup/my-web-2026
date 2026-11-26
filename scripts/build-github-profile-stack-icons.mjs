@@ -22,43 +22,91 @@ const ROOT = new URL('..', import.meta.url).pathname;
 const SKILLS = join(ROOT, 'public/github-profile/skills');
 const OUT = join(ROOT, 'src/http/github-profile/stack-icons.ts');
 
-// Curated core set grouped by activity area, ordered by what defines
-// the owner: Design & motion leads (the distinctive craft), then the
-// languages they write, the frameworks/runtimes they build on, infra,
-// and dev tools. Filler icons (markdown, html, css, OS tiles,
-// duplicate package managers, sunset Adobe Xd) are deliberately
-// excluded — the lane answers "what do you actually work with", not
-// "every tool you have ever opened".
+// All 48 committed skill icons (ADR-0026 §2.4 baseline — the old
+// my-web-2025 48-tech tree) grouped by activity area, ordered by
+// what defines the owner: Design & motion leads (the distinctive
+// craft), then the languages they write, the web/app frameworks
+// they build on, and the infra + dev-tool substrate. Lane membership
+// is the reviewed categorisation — the marquee compresses HEIGHT,
+// never coverage: dropping an icon to save space is exactly the
+// unfounded reduction ADR-0026 forbids.
 const ICON_GROUPS = [
 	{
+		// pure creative tools — styling languages moved to the web
+		// lane so this category stays honest at 9 icons (the narrow
+		// col-5 viewport is sized so its period still fills the frame)
 		label: 'Design & motion',
-		ids: ['figma', 'blender', 'photoshop', 'illustrator', 'aftereffects', 'premiere', 'unity'],
+		ids: [
+			'figma',
+			'blender',
+			'photoshop',
+			'illustrator',
+			'aftereffects',
+			'premiere',
+			'xd',
+			'p5js',
+			'unity',
+		],
 	},
 	{
 		label: 'Languages',
 		// order mirrors the owner's actual code share (Band 1 stats):
 		// TS dominant, then the C-family, then the rest
-		ids: ['typescript', 'csharp', 'cpp', 'javascript', 'python', 'rust', 'golang'],
-	},
-	{
-		label: 'Frameworks & runtimes',
-		ids: ['react', 'nextjs', 'vite', 'nodejs', 'tailwind', 'bun', 'dotnet'],
-	},
-	{
-		// substrate lane: infra + dev tooling share one quieter tier —
-		// four lanes total so the desktop grid is a balanced 2×2
-		label: 'Infra & dev tools',
 		ids: [
-			'cloudflare',
-			'gcp',
+			'typescript',
+			'javascript',
+			'python',
+			'rust',
+			'golang',
+			'csharp',
+			'cpp',
+			'c',
+			'swift',
+			'bash',
+			'powershell',
+			'markdown',
+		],
+	},
+	{
+		// frameworks + runtimes + the styling layer of the web —
+		// vercel/supabase are app platforms, cloudflare is edge infra
+		// and lives in the substrate lane
+		label: 'Web & app',
+		ids: [
+			'react',
+			'nextjs',
+			'vite',
+			'nodejs',
+			'tailwind',
+			'bun',
+			'dotnet',
 			'vercel',
 			'supabase',
+			'sass',
+			'html',
+			'css',
+		],
+	},
+	{
+		// substrate lane: hosting, VCS, package managers, IDEs, OS —
+		// infra + dev tooling
+		label: 'Infra & dev tools',
+		ids: [
+			'gcp',
 			'github',
 			'git',
+			'cloudflare',
 			'pnpm',
+			'npm',
 			'vscode',
 			'androidstudio',
-			'powershell',
+			'visualstudio',
+			'gradle',
+			'sqlite',
+			'notion',
+			'linux',
+			'ubuntu',
+			'debian',
 		],
 	},
 ];

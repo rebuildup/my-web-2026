@@ -304,6 +304,7 @@ githubProfileRouter.get('/identity', rateLimitRead, async (c) => {
 	]);
 	const theme = c.req.query('theme') === 'light' ? 'light' : 'dark';
 	const mobile = c.req.query('layout') === 'mobile';
+	const grid = c.req.query('grid') === '1';
 	const svg = renderBand1Svg(
 		composeBand1Model({
 			theme,
@@ -313,6 +314,7 @@ githubProfileRouter.get('/identity', rateLimitRead, async (c) => {
 			avatarDataUri,
 			now,
 		}),
+		{ grid },
 	);
 	return c.body(svg, 200, {
 		'Content-Type': 'image/svg+xml; charset=utf-8',
@@ -326,7 +328,10 @@ githubProfileRouter.get('/activity-map', rateLimitRead, async (c) => {
 	const now = Date.now();
 	const theme = c.req.query('theme') === 'light' ? 'light' : 'dark';
 	const mobile = c.req.query('layout') === 'mobile';
-	const svg = renderBand2Svg(composeBand2Model({ theme, mobile, activityPayload, now }));
+	const grid = c.req.query('grid') === '1';
+	const svg = renderBand2Svg(composeBand2Model({ theme, mobile, activityPayload, now }), {
+		grid,
+	});
 	return c.body(svg, 200, {
 		'Content-Type': 'image/svg+xml; charset=utf-8',
 		'Cache-Control': BANDS_CACHE_CONTROL,
@@ -336,7 +341,10 @@ githubProfileRouter.get('/activity-map', rateLimitRead, async (c) => {
 githubProfileRouter.get('/stack', rateLimitRead, async (c) => {
 	const theme = c.req.query('theme') === 'light' ? 'light' : 'dark';
 	const mobile = c.req.query('layout') === 'mobile';
-	const svg = renderStackSvg({ theme, mobile });
+	// `?grid=1` draws the layout contract (margins, columns, baseline,
+	// type legend) onto the artifact — review/preview use only.
+	const grid = c.req.query('grid') === '1';
+	const svg = renderStackSvg({ theme, mobile, grid });
 	return c.body(svg, 200, {
 		'Content-Type': 'image/svg+xml; charset=utf-8',
 		// Static committed icon set — cache longer than the data bands.

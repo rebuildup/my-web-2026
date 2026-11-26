@@ -108,7 +108,12 @@ export function renderProfileSvg(input: {
 	const stk = drawStackSection({ theme: input.theme, mobile: input.mobile, y0: sh.bottom });
 	s += stk.svg;
 
-	const H = snap(spec, stk.bottom + SPACE.s4) + (input.grid && input.mobile ? 28 : 0);
+	// mobile trades the canvas tail pad for the stack footer's own
+	// caption air — net height is unchanged, the caption clears the
+	// icon row instead of sitting 6px under it
+	const H =
+		snap(spec, stk.bottom + (input.mobile ? SPACE.s2 : SPACE.s4)) +
+		(input.grid && input.mobile ? 28 : 0);
 	let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${spec.width}" height="${H}" viewBox="0 0 ${spec.width} ${H}" font-family="${FONT}">`;
 	svg += '<title>GitHub profile — identity, activity and stack</title>';
 	svg += `<rect width="${spec.width}" height="${H}" fill="${T.bg}"/>`;

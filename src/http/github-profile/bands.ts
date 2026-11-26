@@ -364,7 +364,7 @@ const OWNER_DESCRIPTOR = 'design × code × motion — After Effects tools, web 
 
 interface StatSpec {
 	readonly icon: string;
-	readonly color: keyof typeof SEM | null;
+	readonly swatch: keyof typeof SEM | null;
 	readonly label: string;
 	readonly value: (st: BandStats) => number | null;
 	readonly format?: (v: number) => string;
@@ -374,13 +374,13 @@ interface StatSpec {
 const HERO_STATS: readonly StatSpec[] = [
 	{
 		icon: 'flame',
-		color: 'orange',
+		swatch: 'orange',
 		label: 'DAY STREAK',
 		value: (st) => st.currentStreak,
 	},
 	{
 		icon: 'trending-up',
-		color: 'accent',
+		swatch: 'accent',
 		label: 'ALL-TIME CONTRIBUTIONS',
 		value: (st) => st.totalContributions,
 	},
@@ -388,10 +388,10 @@ const HERO_STATS: readonly StatSpec[] = [
 
 /** Compact secondary metrics — one quiet inline row, not a KPI grid. */
 const META_STATS: readonly StatSpec[] = [
-	{ icon: 'star', color: null, label: 'stars', value: (st) => st.totalStars },
-	{ icon: 'commit', color: null, label: 'commits', value: (st) => st.totalCommits },
-	{ icon: 'pr', color: null, label: 'PRs', value: (st) => st.totalPRs },
-	{ icon: 'issues', color: null, label: 'issues', value: (st) => st.totalIssues },
+	{ icon: 'star', swatch: null, label: 'stars', value: (st) => st.totalStars },
+	{ icon: 'commit', swatch: null, label: 'commits', value: (st) => st.totalCommits },
+	{ icon: 'pr', swatch: null, label: 'PRs', value: (st) => st.totalPRs },
+	{ icon: 'issues', swatch: null, label: 'issues', value: (st) => st.totalIssues },
 ];
 
 function statValue(spec: StatSpec, st: BandStats): { text: string; missing: boolean } {
@@ -418,7 +418,7 @@ function heroStat(
 	endX?: number,
 ): string {
 	const { text, missing } = statValue(spec, stats);
-	const iconColor = spec.color ? sem(spec.color) : T.muted;
+	const iconColor = spec.swatch ? sem(spec.swatch) : T.muted;
 	// `text-anchor="end"` makes x the RIGHT edge — do not subtract the
 	// width again. Estimate generously (800-weight digits run wider
 	// than the 0.56em latin metric) so the glyph keeps clear air left
@@ -525,19 +525,19 @@ function langBar(
 	let s = `<defs><linearGradient id="${gid}" x1="0" y1="0" x2="1" y2="0">${stops}</linearGradient></defs>`;
 	s += `<rect x="${x}" y="${barY}" width="${w}" height="${barH}" rx="${barH / 2}" fill="url(#${gid})"/>`;
 	// leaders: every named language + the Other remainder
-	const leaders: { name: string; pct: number; color: string }[] = langs
+	const leaders: { name: string; pct: number; swatch: string }[] = langs
 		.slice(0, 3)
-		.map((l) => ({ name: l.name, pct: l.pct, color: l.color }));
+		.map((l) => ({ name: l.name, pct: l.pct, swatch: l.color }));
 	const namedPct = leaders.reduce((a, l) => a + l.pct, 0);
 	const otherPct = 100 - namedPct;
 	if (segs.some((g) => g.other) && otherPct > 0.3) {
-		leaders.push({ name: 'Other', pct: otherPct, color: '#8b949e' });
+		leaders.push({ name: 'Other', pct: otherPct, swatch: '#8b949e' });
 	}
 	let lx = x;
 	const ly2 = barY + barH + 15;
 	for (const l of leaders) {
 		const txt = `${l.name} ${l.pct.toFixed(1)}%`;
-		s += `<rect x="${lx}" y="${ly2 - fs * 0.72}" width="7" height="7" fill="${l.color}"/>`;
+		s += `<rect x="${lx}" y="${ly2 - fs * 0.72}" width="7" height="7" fill="${l.swatch}"/>`;
 		s += `<text x="${lx + 11}" y="${ly2}" font-size="${fs}" fill="${T.muted}">${esc(txt)}</text>`;
 		lx += 11 + flowWidth(txt, fs) + 18;
 	}

@@ -1,0 +1,123 @@
+{
+	"version": "1.0.0",
+	"id": "a0770dd0-8e73-418e-8317-067f0d96ca44",
+	"model": null,
+	"resolvedModel": null,
+	"specSha256": "e0f7ba5cb60c2eda56582ba90fa9d6e98ca280abce36a6ec84290572ee70bcc6",
+	"classification": "review-completed",
+	"verified": false,
+	"verdict": {
+		"findings": [
+			{
+				"description": "[Band 1 Desktop — top-right Discord presence line, dark & light] Pinning only the sync timestamp flush-right created a ~95px empty gulf between 'Discord Offline' and '· last synced Nov 24 · 22:46 JST', leaving an orphaned leading middot attached to 'last synced' (v8 #3 regressed). This breaks the Discord status reading on desktop even though the avatar + hollow offline ring itself reads clearly. Direction: keep status head and sync detail as one cohesive right-aligned unit (e.g., render 'Offline · last synced Nov 24 · 22:46 JST' as a single right-anchored <text> with <tspan> weight/color contrast and place the Discord mark via tight measured offset, or stack 'last synced Nov 24 · 22:46 JST' directly beneath right-aligned 'Discord Offline').",
+				"severity": "major"
+			},
+			{
+				"description": "[Band 1 Desktop — middle-right meta stats block, dark & light] Justifying 5 stats across 3+2 lines leaves a ~170px hollow void in the middle of row 2 between '4,637 issues' and 'top 46% on GitHub', breaks vertical column alignment ('16,743 commits' has nothing beneath it and 'top 46% on GitHub' sits left of '5,432 PRs'), and terminates ~25-40px short of the right margin (v8 #3 unresolved). Direction: replace justified line-wrapping with a fixed-column 2x2 grid aligned cleanly to the right margin once the 5th stat is removed.",
+				"severity": "major"
+			},
+			{
+				"description": "[Band 1 All — meta stats content, desktop & mobile, dark & light] Featuring an award-ribbon icon next to 'top 46% on GitHub' actively undermines the profile's strong narrative ('35,303 ALL-TIME CONTRIBUTIONS', '206 DAY STREAK', '16,743 commits')—'top 46%' reads as barely above median / C-grade rather than an achievement. Direction: drop the GitHub rank percentile entirely and retain the 4 complementary, non-conflicting stats (stars, commits, PRs, issues), which also resolves the awkward 5-item orphan wrapping across both breakpoints.",
+				"severity": "major"
+			},
+			{
+				"description": "[Band 2 All — REPO OUTPUT bar chart, desktop & mobile, dark & light] Full-width background track rails behind max-normalized commit bars make the top repo ('FlashBeat', 2.1k commits) read at first glance as a 100%-complete progress bar, forcing viewers to read the tiny 'bar = commits · full = 2.1k' legend manual to undo a misleading encoding (v8 #7 only partially resolved). Direction: remove the background rails completely and render bare horizontal magnitude bars from a clean left baseline (optionally with a hairline zero-axis) so relative commit volume is immediately honest and self-explanatory without a track affordance.",
+				"severity": "major"
+			},
+			{
+				"description": "[Band 1 Mobile — meta stats row 2, dark & light] 'top 46% on GitHub' is shifted ~15px right of '16,743 commits' above it because '4,637 issues' is wider than '174 stars' in a flow row (v8 #8 unresolved). Direction: lay out the meta stats on fixed column x-coordinates (a 2x2 grid once 'top 46%' is dropped) so columns align vertically on mobile as well as desktop.",
+				"severity": "minor"
+			},
+			{
+				"description": "[Band 3 Desktop — INFRA & DEV TOOLS bottom-right lane, dark & light] Vertically centering the 28px substrate chips inside the 40px row box of 'FRAMEWORKS & RUNTIMES' leaves a visibly looser gap (~18-20px vs ~10-12px on the other three lanes) below the 'INFRA & DEV TOOLS' label and floats its bottom edge ~6px above '.NET' (v8 #5 label-gap issue unresolved). Direction: top-align the 28px chip row to the exact same label-to-chip vertical offset used by 'FRAMEWORKS & RUNTIMES' so all four lane headers bind tightly to their icons.",
+				"severity": "minor"
+			},
+			{
+				"description": "[Band 2 All — RECENT PUBLIC EVENTS feed, desktop & mobile, dark & light] Every row repeats 'Nov 24' and 'JST' (6x desktop, 4x mobile) despite the section header already declaring 'observed Nov 24 · 09:00 JST', and inline timestamps after variable-length repo names jitter horizontally instead of scanning cleanly; also note punctuation mismatch ('Nov 24 · 09:00 JST' in header vs 'Nov 24 02:46 JST' in events). On desktop, the 2-column vertical-flow order puts '+23 more' under column 1 rather than after the chronological end in column 2, with wide uneven trailing whitespace. Direction: drop repeated 'JST' (and repeated date when matching the observed day, or align compact timestamps to the right edge of each event column), unify date/time punctuation across Band 1 and Band 2, and anchor '+23 more' cleanly at the feed footer.",
+				"severity": "minor"
+			},
+			{
+				"description": "[Verified v8 resolutions & strengths — all bands] Resolved cleanly: Band 3 full-opacity vibrant chips (v8 #1), Band 1 desktop left-anchored hero KPIs with tight icon spacing (v8 #2), Band 3 mobile 42/30px edge-to-edge lanes with zero dead right margin (v8 #4), Band 3 desktop flush right margins across lanes (v8 #5 partial), Band 2 unified legends, prominent weight-700 Total line, and aligned mobile commits|PRs columns (v8 #7 partial). Overall visual language is admirably restrained, unboxed, and GitHub-native across dark and light modes, with Band 3 mobile and Band 1 mobile very close to ship-ready. Minor data-clarity polish: showing 'Private repos (8)' in Band 2 would make the '38 active repos' sum explicitly self-auditing alongside 'Other public (25)'.",
+				"severity": "info"
+			}
+		],
+		"summary": "REQUEST CHANGES. While v9 lands major wins—Band 3's full-opacity chips and edge-to-edge mobile 42/30px lanes look sharp, Band 1 desktop's left-anchored hero KPIs fix the floating icon, and Band 2's mobile sub-columns and bold Total line improve scannability—three high-impact issues prevent approval on a personal profile I would admire. First-glance comprehension and GitHub-native restraint are strong overall (unboxed layout, honest Discord offline ring + sync timestamp, clear designer-developer identity), and mobile height/legibility at 400px is well-judged, but Band 1 desktop regressed on two layout fronts and introduced a self-undermining metric, while Band 2 retains a progress-bar encoding flaw. Top 3 changes (ranked): (1) Reunite Band 1 desktop's Discord presence ('Discord Offline' and 'last synced Nov 24 · 22:46 JST') into one cohesive right-aligned cluster to eliminate the ~95px chasm and orphaned middot; (2) Remove 'top 46% on GitHub' (which contradicts 35,303 contributions and a 206-day streak) and put the remaining 4 stats (stars, commits, PRs, issues) in a clean, column-aligned 2x2 grid on both desktop and mobile; (3) Remove the full-width background rails in Band 2 REPO OUTPUT so the top repo reads honestly as a magnitude bar rather than a 100%-complete progress bar, and declutter repeated 'Nov 24 ... JST' stamps in RECENT PUBLIC EVENTS.",
+		"verdict": "request-changes"
+	},
+	"agy": {
+		"status": "SUCCESS",
+		"conversationId": "7b72d056-176c-4144-8a5f-90f0335403e3",
+		"durationSeconds": 165.214674,
+		"numTurns": 1,
+		"usage": {
+			"input_tokens": 27610,
+			"output_tokens": 16376,
+			"thinking_tokens": 13625,
+			"cache_read_tokens": 11986,
+			"total_tokens": 43986
+		},
+		"deniedActions": []
+	},
+	"readonly": {
+		"deniedActions": [],
+		"permissionErrors": 0,
+		"protectedPath": null,
+		"protectedCheck": "unavailable",
+		"protectedMutations": []
+	},
+	"isolation": {
+		"workdir": "/Users/rebui/.local/state/agent/agy-review/a0770dd0-8e73-418e-8317-067f0d96ca44",
+		"osSandbox": "seatbelt",
+		"permissionDeny": [
+			"write_file(*)",
+			"command(*)",
+			"read_url(*)",
+			"execute_url(*)",
+			"mcp(*)",
+			"unsandboxed(*)"
+		]
+	},
+	"quota": {
+		"buckets": [
+			{
+				"group": "Gemini Models",
+				"label": "Weekly Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.7,
+				"resetTime": "2026-12-01T00:43:37Z"
+			},
+			{
+				"group": "Gemini Models",
+				"label": "Five Hour Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.92,
+				"resetTime": "2026-11-26T05:18:49Z"
+			},
+			{
+				"group": "Claude and GPT models",
+				"label": "Weekly Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 1,
+				"resetTime": "1970-01-01T00:00:00Z"
+			},
+			{
+				"group": "Claude and GPT models",
+				"label": "Five Hour Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 1,
+				"resetTime": "1970-01-01T00:00:00Z"
+			}
+		],
+		"raw": "Gemini Models\tWeekly Limit Remaining\t70%\t2026-12-01T00:43:37Z\nGemini Models\tFive Hour Limit Remaining\t92%\t2026-11-26T05:18:49Z\nClaude and GPT models\tWeekly Limit Remaining\t100%\t1970-01-01T00:00:00Z\nClaude and GPT models\tFive Hour Limit Remaining\t100%\t1970-01-01T00:00:00Z\n"
+	},
+	"executor": "local",
+	"reasons": ["no protected path supplied; OS/permission layers only"]
+}

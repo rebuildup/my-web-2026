@@ -301,7 +301,21 @@ export const publicApiCatalog: readonly ApiEndpoint[] = [
 			cacheControl: 'public, max-age=300, s-maxage=300',
 		},
 		purpose:
-			'Identity band for the rebuildup/rebuildup profile README (ADR-0026, Issue #1216): avatar, vitals (streak / languages / contributed repos / rank), declared-focus map and Discord presence in one glanceable SVG. Query params: theme=dark|light, layout=mobile. Anonymous access. Returns SVG.',
+			'Identity band for the rebuildup/rebuildup profile README (ADR-0026, Issue #1216): avatar, vitals (streak / languages / contributed repos / rank), latest public signals and a Discord-style presence card in one glanceable SVG. Query params: theme=dark|light, layout=mobile. Anonymous access. Returns SVG.',
+	},
+	{
+		path: '/api/v1/github-profile/stack',
+		method: 'GET',
+		authentication: 'anonymous',
+		authForm: 'none',
+		rateLimitBinding: 'RATE_LIMIT_READ',
+		errorForm: '405 method_not_allowed',
+		responseExample: {
+			contentType: 'image/svg+xml',
+			cacheControl: 'public, max-age=3600, s-maxage=3600',
+		},
+		purpose:
+			'Technology-stack marquee band for the rebuildup/rebuildup profile README (Issue #1216): the committed skill-icons set scrolling horizontally inside one SVG row, replacing the tall vertical icon groups. Query params: theme=dark|light, layout=mobile. Anonymous access. Returns SVG.',
 	},
 	{
 		path: '/api/v1/github-profile/activity-map',

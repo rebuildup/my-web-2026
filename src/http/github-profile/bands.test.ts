@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { PROJECT_ROSTER } from '../../home/current/roster';
 import {
 	BAND1_HEIGHT,
 	BAND1_MOBILE_HEIGHT,
@@ -16,10 +15,12 @@ import {
 import type { ProfileCardModel } from './model';
 
 /**
- * Visual-band contract (Issue #1216, visual doc §18): the approved
- * two-band information design. Same honesty rules as the card stack —
- * observation times inside the image, `—`/empty states for failed
- * upstreams, private data aggregated anonymously, public feed only.
+ * Visual-band contract (Issue #1216, visual doc §18): the GitHub-
+ * native band design — profile head with readme-stats metrics,
+ * per-repo output bars and an observation-anchored activity list.
+ * Same honesty rules as the card stack: observation times inside
+ * the image, `—`/empty states for failed upstreams, private data
+ * aggregated anonymously, unmeasured counts never rendered as zero.
  */
 
 const NOW = Date.parse('2026-11-24T14:00:00Z');
@@ -56,6 +57,10 @@ const FULL_STATS: BandStats = {
 		{ name: 'C++', pct: 7.9, color: '#f34b7d' },
 		{ name: 'HTML', pct: 2.5, color: '#e34c26' },
 	],
+	totalStars: 128,
+	totalCommits: 4211,
+	totalPRs: 1302,
+	totalIssues: 87,
 };
 
 const EMPTY_STATS: BandStats = {
@@ -66,6 +71,10 @@ const EMPTY_STATS: BandStats = {
 	rankLevel: null,
 	rankPercentile: null,
 	topLangs: null,
+	totalStars: null,
+	totalCommits: null,
+	totalPRs: null,
+	totalIssues: null,
 };
 
 const band1 = (over: Partial<Parameters<typeof composeBand1Model>[0]> = {}) =>
@@ -74,7 +83,7 @@ const band1 = (over: Partial<Parameters<typeof composeBand1Model>[0]> = {}) =>
 		mobile: false,
 		model: BASE_MODEL,
 		stats: FULL_STATS,
-		roster: PROJECT_ROSTER,
+		avatarDataUri: null,
 		now: NOW,
 		...over,
 	});
@@ -99,6 +108,12 @@ const ACTIVITY_SNAPSHOT = {
 			kind: 'public',
 			name: 'rebuildup/dotfiles',
 			activity: { events: 10, commits: 240, prs: 96, windowDays: 30 },
+		},
+		{
+			id: 'rebuildup/unmeasured',
+			kind: 'public',
+			name: 'rebuildup/unmeasured',
+			activity: { events: 3, windowDays: 30 },
 		},
 		{
 			id: 'private-a1b2c3d4e5f6',
@@ -149,16 +164,10 @@ const band2 = (over: Partial<Parameters<typeof composeBand2Model>[0]> = {}) =>
 	});
 
 describe('composeBand1Model', () => {
-	it('orders focus nodes by weight level with roster glyphs', () => {
-		const model = band1();
-		const levels = model.focus.map((n) => n.level);
-		expect(levels).toEqual(['primary', 'active', 'side', 'side']);
-		expect(model.focus[0].glyph).toBe('web');
-		expect(model.focus.map((n) => n.name)).toContain('AI coding agent');
-	});
-
-	it('uses the latest observation time across presence and GitHub', () => {
-		expect(band1().observedAt).toBe('2026-11-24T13:30:00Z');
+	it('carries the Discord detail line and avatar slot honestly', () => {
+		const model = band1({ avatarDataUri: 'data:image/png;base64,AAAA' });
+		expect(model.avatarDataUri).toBe('data:image/png;base64,AAAA');
+		expect(model.presenceDetail).toBeNull();
 	});
 
 	it('marks a stale presence honestly', () => {
@@ -169,30 +178,32 @@ describe('composeBand1Model', () => {
 			},
 		});
 		expect(model.presenceOk).toBe(false);
-		expect(model.presenceLabel).toBe('stale');
+		expect(model.presenceLabel).toBe('Offline');
 	});
 });
 
 describe('renderBand1Svg', () => {
-	it('renders the approved desktop geometry', () => {
+	it('renders the profile head with the GitHub stat strip', () => {
 		const svg = renderBand1Svg(band1());
 		expect(svg).toContain(`width="${BAND_WIDTH}" height="${BAND1_HEIGHT}"`);
-		expect(svg).toContain('IN PROGRESS · DECLARED FOCUS');
-		expect(svg).toContain('▮▮▮ primary · ▮▮ active · ▮ side');
-		expect(svg).toContain('my-web-2026');
-		expect(svg).toContain('After Effects');
+		expect(svg).toContain('rebuildup');
+		expect(svg).toContain('DAY STREAK');
+		expect(svg).toContain('CONTRIBUTIONS');
+		expect(svg).toContain('128 stars');
+		expect(svg).toContain('4,211 commits');
+		expect(svg).toContain('87 issues');
 		expect(svg).toContain('204');
-		expect(svg).toContain('B+');
+		expect(svg).toContain('35,239');
 		expect(svg).toContain('45.8%');
-		expect(svg).toContain('CONTRIBUTED TO · 27 REPOS');
-		expect(svg).toContain('Online on Discord');
-		expect(svg).toContain('JST');
+		expect(svg).toContain('Other');
+		expect(svg).toContain('Online');
+		expect(svg).toContain('TOP LANGUAGES');
 	});
 
 	it('renders honest unavailable states when stats fail', () => {
 		const svg = renderBand1Svg(band1({ stats: EMPTY_STATS }));
-		expect(svg).toContain('unavailable');
 		expect(svg).toContain('—');
+		expect(svg).toContain('unavailable');
 	});
 
 	it('supports the light theme and mobile variant', () => {
@@ -200,7 +211,7 @@ describe('renderBand1Svg', () => {
 		expect(light).toContain('fill="#ffffff"');
 		const mob = renderBand1Svg(band1({ mobile: true }));
 		expect(mob).toContain(`width="${BAND_MOBILE_WIDTH}" height="${BAND1_MOBILE_HEIGHT}"`);
-		expect(mob).toContain('IN PROGRESS');
+		expect(mob).toContain('DAY STREAK');
 	});
 
 	it('is deterministic for the same inputs', () => {
@@ -212,9 +223,16 @@ describe('composeBand2Model', () => {
 	it('keeps public repos sorted by commits and aggregates the rest', () => {
 		const model = band2();
 		expect(model.rows[0].name).toBe('my-web-2026');
-		expect(model.rows.map((r) => r.name)).toContain('private repos · sum');
-		const priv = model.rows.find((r) => r.name === 'private repos · sum');
+		expect(model.rows.map((r) => r.name)).toContain('Private repos');
+		const priv = model.rows.find((r) => r.name === 'Private repos');
 		expect(priv?.commits).toBe(1500);
+	});
+
+	it('keeps unmeasured counts null — never a fake zero', () => {
+		const model = band2();
+		const unmeasured = model.rows.find((r) => r.name === 'unmeasured');
+		expect(unmeasured?.commits).toBeNull();
+		expect(unmeasured?.prs).toBeNull();
 	});
 
 	it('filters the 72h feed to public events inside the window', () => {
@@ -225,33 +243,37 @@ describe('composeBand2Model', () => {
 
 	it('fails closed on an invalid snapshot', () => {
 		const model = band2({ activityPayload: { bogus: true } });
+		expect(model.snapshotAvailable).toBe(false);
 		expect(model.rows).toHaveLength(0);
 		expect(model.feed72).toHaveLength(0);
-		expect(model.windowDays).toBe(30);
 	});
 });
 
 describe('renderBand2Svg', () => {
-	it('renders repo rows, pulse shapes and JST feed', () => {
+	it('renders repo rows, the event strip and the observation stamp', () => {
 		const svg = renderBand2Svg(band2());
 		expect(svg).toContain(`width="${BAND_WIDTH}" height="${BAND2_HEIGHT}"`);
-		expect(svg).toContain('REPO OUTPUT · 30D');
-		expect(svg).toContain('LAST 72 HOURS');
-		expect(svg).toContain('rotate(45'); // PR diamond
-		expect(svg).toContain('public events · times JST');
+		expect(svg).toContain('REPO OUTPUT');
+		expect(svg).toContain('RECENT PUBLIC EVENTS');
+		expect(svg).toContain('in 72h');
+		// same-day events collapse to HH:MM — the header already
+		// declares the observed JST day once
+		expect(svg).toContain('pushed · 19:00');
+		expect(svg).toContain('commits');
+		expect(svg).toContain('PRs');
 		expect(svg).toContain('my-web-2026');
 	});
 
-	it('renders the honest empty state with no events', () => {
+	it('says the snapshot is unavailable instead of drawing zeros', () => {
 		const svg = renderBand2Svg(band2({ activityPayload: null }));
-		expect(svg).toContain('no public events in 72h');
-		expect(svg).toContain('0 public events');
+		expect(svg).toContain('unavailable');
+		expect(svg).toContain('no activity snapshot');
 	});
 
 	it('supports light theme and mobile variant', () => {
 		expect(renderBand2Svg(band2({ theme: 'light' }))).toContain('fill="#ffffff"');
 		const mob = renderBand2Svg(band2({ mobile: true }));
 		expect(mob).toContain(`width="${BAND_MOBILE_WIDTH}" height="${BAND2_MOBILE_HEIGHT}"`);
-		expect(mob).toContain('REPO OUTPUT · 30D');
+		expect(mob).toContain('REPO OUTPUT');
 	});
 });

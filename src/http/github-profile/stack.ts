@@ -44,6 +44,9 @@ interface Theme {
 	readonly faint: string;
 	readonly line: string;
 	readonly chipStroke: string;
+	/** tile ground behind every logo — without it light-theme marks
+	 * (Figma, Blender, Python, Unity) dissolve into the white canvas */
+	readonly chipBg: string;
 }
 
 const THEMES: Record<'dark' | 'light', Theme> = {
@@ -55,6 +58,7 @@ const THEMES: Record<'dark' | 'light', Theme> = {
 		line: '#2d333f',
 		// dark-fill tiles (Adobe, .NET) need a stronger edge on #0d1117
 		chipStroke: '#3d4450',
+		chipBg: '#131a22',
 	},
 	light: {
 		bg: '#ffffff',
@@ -63,6 +67,7 @@ const THEMES: Record<'dark' | 'light', Theme> = {
 		faint: '#68717d',
 		line: '#d1d9e0',
 		chipStroke: '#c9d1d9',
+		chipBg: '#f6f8fa',
 	},
 };
 
@@ -112,6 +117,11 @@ interface LaneGeom {
 	readonly iconsY: number;
 	/** label baseline y */
 	readonly labelY: number;
+	/** label x + anchor — desktop rail labels hug the scroll field's
+	 * left edge so the rail doesn't sit as a dead column; mobile
+	 * labels stay on the margin */
+	readonly labelX: number;
+	readonly labelAnchor: 'start' | 'end';
 	/** scroll viewport left edge */
 	readonly vpX: number;
 	/** scroll viewport width */
@@ -126,23 +136,21 @@ interface StackGeom {
 	readonly height: number;
 }
 
-function layout(mobile: boolean): StackGeom {
+function layout(mobile: boolean, startY: number): StackGeom {
 	const spec = canvasSpec(mobile);
 	const groups = resolveGroups();
 	const chip = mobile ? CHIP_MOBILE : LANE.chip;
 	const gap = mobile ? GAP_MOBILE : LANE.gap;
 	const pitch = chip + gap;
 
-	// no header strip — the README's H2 owns the section name, so
-	// the first lane starts at the top margin like every peer band
 	const TT = typeTable(spec);
 
 	if (mobile) {
-		// label ABOVE each lane — the rail can't hold 'Design & motion'
-		// beside a 30px icon row on a 368px canvas
+		// label ABOVE each lane — the rail can't hold 'Languages &
+		// infra' beside a 30px icon row on a 368px canvas
 		const labelRowH = TT.title.lh + SPACE.s1;
 		const laneH = labelRowH + LANE.padY + chip + LANE.padY;
-		let y = SPACE.s4;
+		let y = startY;
 		const lanes = groups.map((g, i) => {
 			const labelY = snap(spec, y + TT.title.lh - 4);
 			const iconsY = snap(spec, y + labelRowH + LANE.padY);
@@ -152,6 +160,8 @@ function layout(mobile: boolean): StackGeom {
 				top: y,
 				iconsY,
 				labelY,
+				labelX: spec.margin,
+				labelAnchor: 'start' as const,
 				vpX: spec.margin,
 				vpW: spec.width - spec.margin * 2,
 				laneH,
@@ -176,7 +186,7 @@ function layout(mobile: boolean): StackGeom {
 	const vpX = gridX(spec, 3);
 	const vpW = spec.width - spec.margin - vpX;
 	const laneH = chip + LANE.padY * 2;
-	let y = SPACE.s4;
+	let y = startY;
 	const lanes = groups.map((g, i) => {
 		const iconsY = snap(spec, y + LANE.padY);
 		// rail label centred on the chip row: baseline sits at the
@@ -188,6 +198,8 @@ function layout(mobile: boolean): StackGeom {
 			top: y,
 			iconsY,
 			labelY,
+			labelX: vpX - SPACE.s4,
+			labelAnchor: 'end' as const,
 			vpX,
 			vpW,
 			laneH,
@@ -203,7 +215,10 @@ function layout(mobile: boolean): StackGeom {
 /** fade zone width per canvas — mobile burns less of its narrow
  * viewport on edge dissolution */
 function fadeWidth(mobile: boolean, vpW: number): number {
-	return mobile ? Math.min(32, vpW / 9) : Math.min(48, vpW / 9);
+	// the fade must be wider than one chip pitch or a half-dissolved
+	// glyph reads as a slice ('"S"' of TypeScript) instead of an
+	// icon materialising at the edge
+	return mobile ? Math.min(60, vpW / 6) : Math.min(72, vpW / 7);
 }
 
 /**
@@ -220,7 +235,7 @@ function iconSymbols(theme: 'dark' | 'light'): string {
 
 /** One chip instance inside a track: hairline + symbol use. */
 function chipUse(icon: StackIcon, x: number, y: number, size: number, T: Theme): string {
-	return `<rect x="${x}" y="${y}" width="${size}" height="${size}" rx="${Math.round(size * 0.24)}" fill="none" stroke="${T.chipStroke}" stroke-width="1"/><use href="#stk-${icon.id}" x="${x}" y="${y}" width="${size}" height="${size}"/>`;
+	return `<rect x="${x}" y="${y}" width="${size}" height="${size}" rx="${Math.round(size * 0.24)}" fill="${T.chipBg}" stroke="${T.chipStroke}" stroke-width="1"/><use href="#stk-${icon.id}" x="${x}" y="${y}" width="${size}" height="${size}"/>`;
 }
 
 /**
@@ -246,29 +261,26 @@ function marqueeLane(lane: LaneGeom, index: number, T: Theme): string {
 	return `<clipPath id="${clipId}"><rect x="${lane.vpX}" y="${lane.iconsY}" width="${lane.vpW}" height="${lane.chip}"/></clipPath><g clip-path="url(#${clipId})"><g mask="url(#stkm)"><g transform="translate(${lane.vpX} ${lane.iconsY})"><g><animateTransform attributeName="transform" type="translate" from="0 0" to="${-seqW} 0" dur="${dur.toFixed(2)}s" repeatCount="indefinite"/>${track}</g></g></g></g>`;
 }
 
-export function renderStackSvg(input: {
+/**
+ * The stack lanes as a reusable section fragment — the standalone
+ * `/stack` band wraps this in its own canvas, and the composed
+ * `/profile` SVG places it under a section head on the same grid.
+ * `y0` is the top of the first lane; the footer meta line is part
+ * of the fragment so both callers get identical chrome.
+ */
+export function drawStackSection(input: {
 	readonly theme: 'dark' | 'light';
 	readonly mobile: boolean;
-	readonly grid?: boolean;
-}): string {
+	readonly y0: number;
+}): { readonly svg: string; readonly bottom: number } {
 	const T = THEMES[input.theme];
 	const spec = canvasSpec(input.mobile);
-	const W = spec.width;
-	const G = layout(input.mobile);
-	// the footer meta line sits below the last lane — the canvas
-	// height is derived after layout so the strip is real space,
-	// and grid=1's bottom legend keeps its own reserve on mobile
-	const contentBottom = G.height - SPACE.s4;
-	const footerY = snap(spec, contentBottom + SPACE.s4);
-	const H = snap(spec, footerY + SPACE.s4) + (input.grid && input.mobile ? 28 : 0);
+	const G = layout(input.mobile, input.y0);
 	const mobile = input.mobile;
 	const groups = resolveGroups();
 	const totalIcons = groups.reduce((a, g) => a + g.icons.length, 0);
 
-	let s = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="${FONT}">`;
-	s += `<title>Technology stack — ${totalIcons} tools in ${groups.length} activity areas</title>`;
-	s += `<rect width="${W}" height="${H}" fill="${T.bg}"/>`;
-
+	let s = '';
 	const TT = typeTable(spec);
 	const firstLane = G.lanes[0];
 	const lastLane = G.lanes[G.lanes.length - 1];
@@ -292,19 +304,48 @@ export function renderStackSvg(input: {
 	G.lanes.forEach((lane, i) => {
 		// lane label — title role, uppercase, tracked; the category
 		// name is the lane's permanent label, not a caption
-		s += `<text x="${spec.margin}" y="${lane.labelY}" font-size="${TT.title.size}" font-weight="${TT.title.weight}" fill="${T.muted}" letter-spacing="${TT.title.track}">${esc(lane.label.toUpperCase())}</text>`;
+		s += `<text x="${lane.labelX}" y="${lane.labelY}" text-anchor="${lane.labelAnchor}" font-size="${TT.title.size}" font-weight="${TT.title.weight}" fill="${T.muted}" letter-spacing="${TT.title.track}">${esc(lane.label.toUpperCase())}</text>`;
 		s += marqueeLane(lane, i, T);
 	});
 
 	// footer meta — bottom-right, matching the band grammar of a
 	// single observation line per module
+	const footerY = G.height;
 	const caption = `${totalIcons} technologies · ${groups.length} categories`;
-	s += `<text x="${W - spec.margin}" y="${footerY}" text-anchor="end" font-size="${TT.caption.size}" fill="${T.faint}">${esc(caption)}</text>`;
+	s += `<text x="${spec.width - spec.margin}" y="${footerY}" text-anchor="end" font-size="${TT.caption.size}" fill="${T.faint}">${esc(caption)}</text>`;
+
+	return { svg: s, bottom: snap(spec, footerY + TT.caption.lh) };
+}
+
+export function renderStackSvg(input: {
+	readonly theme: 'dark' | 'light';
+	readonly mobile: boolean;
+	readonly grid?: boolean;
+}): string {
+	const T = THEMES[input.theme];
+	const spec = canvasSpec(input.mobile);
+	const W = spec.width;
+	const groups = resolveGroups();
+	const totalIcons = groups.reduce((a, g) => a + g.icons.length, 0);
+
+	// first lane starts at the top margin like every peer band
+	const sec = drawStackSection({
+		theme: input.theme,
+		mobile: input.mobile,
+		y0: SPACE.s4,
+	});
+	// grid=1's bottom legend keeps its own reserve on mobile
+	const H = snap(spec, sec.bottom + SPACE.s4) + (input.grid && input.mobile ? 28 : 0);
+
+	let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="${FONT}">`;
+	svg += `<title>Technology stack — ${totalIcons} tools in ${groups.length} activity areas</title>`;
+	svg += `<rect width="${W}" height="${H}" fill="${T.bg}"/>`;
+	svg += sec.svg;
 
 	if (input.grid) {
-		s += gridOverlay(spec, H);
+		svg += gridOverlay(spec, H);
 	}
 
-	s += '</svg>';
-	return s;
+	svg += '</svg>';
+	return svg;
 }

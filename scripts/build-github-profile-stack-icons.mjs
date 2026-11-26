@@ -26,61 +26,39 @@ const OUT = join(ROOT, 'src/http/github-profile/stack-icons.ts');
 // my-web-2025 48-tech tree) grouped by activity area, ordered by
 // what defines the owner: Design & motion leads (the distinctive
 // craft), then the languages they write, the web/app frameworks
-// they build on, and the infra + dev-tool substrate. Lane membership
-// is the reviewed categorisation — the marquee compresses HEIGHT,
-// never coverage: dropping an icon to save space is exactly the
-// unfounded reduction ADR-0026 forbids.
+// they build on, and the infra + dev-tool substrate.
+// Two lanes, not four (Issue #1235 round 2): the README constraint is
+// HEIGHT — 48 legible icons cannot sit still in one row, and four
+// lanes spent ~284px desktop / ~368px mobile re-stating what two
+// honest categories already say. The merge keeps every icon and
+// every group's integrity: lane A is what appears on screen (design
+// tools + web/app frameworks), lane B is what it runs on (languages
+// + infra/dev tools). Order inside each lane mirrors the original
+// group order.
 const ICON_GROUPS = [
 	{
-		// pure creative tools — styling languages moved to the web
-		// lane so this category stays honest at 9 icons (the narrow
-		// col-5 viewport is sized so its period still fills the frame)
-		label: 'Design & motion',
+		label: 'Design & web',
+		// design tools and web frameworks INTERLEAVED — a marquee
+		// window only ever shows ~9 icons, so a blocked order would
+		// hide half the lane's stated domain at any moment
 		ids: [
 			'figma',
-			'blender',
-			'photoshop',
-			'illustrator',
-			'aftereffects',
-			'premiere',
-			'xd',
-			'p5js',
-			'unity',
-		],
-	},
-	{
-		label: 'Languages',
-		// order mirrors the owner's actual code share (Band 1 stats):
-		// TS dominant, then the C-family, then the rest
-		ids: [
-			'typescript',
-			'javascript',
-			'python',
-			'rust',
-			'golang',
-			'csharp',
-			'cpp',
-			'c',
-			'swift',
-			'bash',
-			'powershell',
-			'markdown',
-		],
-	},
-	{
-		// frameworks + runtimes + the styling layer of the web —
-		// vercel/supabase are app platforms, cloudflare is edge infra
-		// and lives in the substrate lane
-		label: 'Web & app',
-		ids: [
 			'react',
+			'blender',
 			'nextjs',
+			'photoshop',
 			'vite',
+			'illustrator',
 			'nodejs',
+			'aftereffects',
 			'tailwind',
+			'premiere',
 			'bun',
+			'xd',
 			'dotnet',
+			'p5js',
 			'vercel',
+			'unity',
 			'supabase',
 			'sass',
 			'html',
@@ -88,21 +66,34 @@ const ICON_GROUPS = [
 		],
 	},
 	{
-		// substrate lane: hosting, VCS, package managers, IDEs, OS —
-		// infra + dev tooling
-		label: 'Infra & dev tools',
+		label: 'Languages & infra',
+		// languages and infra/dev tools interleaved for the same
+		// reason; within each half the order still mirrors the
+		// owner's actual code share (TS dominant, then the C-family)
 		ids: [
+			'typescript',
 			'gcp',
+			'javascript',
 			'github',
+			'python',
 			'git',
+			'rust',
 			'cloudflare',
+			'golang',
 			'pnpm',
+			'csharp',
 			'npm',
+			'cpp',
 			'vscode',
+			'c',
 			'androidstudio',
+			'swift',
 			'visualstudio',
+			'bash',
 			'gradle',
+			'powershell',
 			'sqlite',
+			'markdown',
 			'notion',
 			'linux',
 			'ubuntu',

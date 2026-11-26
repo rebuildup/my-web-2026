@@ -145,12 +145,19 @@ export interface TypeRole {
  * SVG px — at GitHub display size that is ≈12px / ≈11.4px CSS.
  */
 export const TYPE = {
-	/** Band-level title — only where a band owns its section name. */
-	display: { size: 20, msize: 18, weight: 800, track: 1.6, lh: 26 },
+	/** Section-level title — the composed profile's part names
+	 * ('GITHUB ACTIVITY', 'STACK'). One step under hero so a section
+	 * head clearly outranks every module label inside it. */
+	display: { size: 22, msize: 20, weight: 800, track: 1.2, lh: 28 },
 	/** Focal numerals and the profile handle. */
 	hero: { size: 30, msize: 28, weight: 800, track: -0.5, lh: 36 },
-	/** Module label — uppercase, tracked ('REPO OUTPUT'). */
-	title: { size: 12, msize: 13, weight: 700, track: 1.4, lh: 16 },
+	/** Metric numerals in a totals strip — between hero and strong so
+	 * a row of account figures reads as data, not headlines. */
+	stat: { size: 22, msize: 20, weight: 800, track: -0.3, lh: 26 },
+	/** Module label — uppercase, tracked ('REPO OUTPUT'). Same size
+	 * as body but bold + tracked + uppercase, so the kicker reads as
+	 * a label tier, never smaller than the text it introduces. */
+	title: { size: 14, msize: 15, weight: 700, track: 1.2, lh: 20 },
 	/** Primary text. */
 	body: { size: 14, msize: 15, weight: 400, track: 0, lh: 20 },
 	/** Emphasised primary text (names, totals). */

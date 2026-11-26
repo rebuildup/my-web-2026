@@ -23,6 +23,7 @@ import { embedWorkMedia } from './media-embed';
 import { composeProfileCardModel } from './model';
 import { type NowStats, renderProfileNowMobileSvg, renderProfileNowSvg } from './now';
 import { renderPresenceSvg } from './presence';
+import { renderProfileSvg } from './profile';
 import { renderStackSvg } from './stack';
 import { renderProfileStatusSvg } from './status';
 
@@ -322,6 +323,42 @@ githubProfileRouter.get('/identity', rateLimitRead, async (c) => {
 	});
 });
 
+/**
+ * The composed profile — identity + activity + stack as ONE SVG
+ * (Issue #1235 round 2): the README's visual sections share a
+ * single canvas, spine and rhythm instead of stacking three
+ * independent bands. The legacy `/identity` `/activity-map`
+ * `/stack` endpoints keep serving their standalone fragments.
+ */
+githubProfileRouter.get('/profile', rateLimitRead, async (c) => {
+	const env = c.env as unknown as ProfileSnapshotEnv & Env;
+	const { activityPayload, presencePayload } = await readProfileSnapshots(env);
+	const now = Date.now();
+	const [model, stats, avatarDataUri] = await Promise.all([
+		Promise.resolve(
+			composeProfileCardModel({
+				activityPayload,
+				presencePayload,
+				expectedPresenceUserId: env.DISCORD_PRESENCE_USER_ID,
+				now,
+				projects: [],
+			}),
+		),
+		fetchBandStats(env),
+		fetchAvatarDataUri(env),
+	]);
+	const theme = c.req.query('theme') === 'light' ? 'light' : 'dark';
+	const mobile = c.req.query('layout') === 'mobile';
+	const grid = c.req.query('grid') === '1';
+	const band1 = composeBand1Model({ theme, mobile, model, stats, avatarDataUri, now });
+	const band2 = composeBand2Model({ theme, mobile, activityPayload, now });
+	const svg = renderProfileSvg({ theme, mobile, band1, band2, grid });
+	return c.body(svg, 200, {
+		'Content-Type': 'image/svg+xml; charset=utf-8',
+		'Cache-Control': BANDS_CACHE_CONTROL,
+	});
+});
+
 githubProfileRouter.get('/activity-map', rateLimitRead, async (c) => {
 	const env = c.env as unknown as ProfileSnapshotEnv;
 	const activityPayload = await readActivityPayload(env.DB);
@@ -451,5 +488,6 @@ githubProfileRouter.all('/activity', methodNotAllowed(['GET']));
 githubProfileRouter.all('/presence', methodNotAllowed(['GET']));
 githubProfileRouter.all('/current', methodNotAllowed(['GET']));
 githubProfileRouter.all('/identity', methodNotAllowed(['GET']));
+githubProfileRouter.all('/profile', methodNotAllowed(['GET']));
 githubProfileRouter.all('/activity-map', methodNotAllowed(['GET']));
 githubProfileRouter.all('/stack', methodNotAllowed(['GET']));

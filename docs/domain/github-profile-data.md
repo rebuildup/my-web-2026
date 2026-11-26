@@ -163,6 +163,23 @@ sync 時に R2 または stats snapshot 内の data URI として永続化
   snapshot を読む構造へ移行し、指標の意味が面ごとにずれない
   ようにする。
 
+### 7.1 実装マッピング（2026-11-26 時点）
+
+| surface | endpoint | 読む snapshot |
+|---|---|---|
+| Identity(masthead) | `/identity`（band1 互換 fragment: masthead+vitals+langs 合成） | activity + presence + stats + avatar(stats 内) |
+| Presence | `/presence` | discord_presence_snapshot |
+| Vitals | `/vitals`（新規） | github_stats_snapshot |
+| TopLangs | `/top-languages`（新規） | github_stats_snapshot |
+| Activity | `/activity-map` | github_activity_snapshot |
+| Stack | `/stack` | 静的資産 |
+| 互換合成 | `/profile` | 全 snapshot（現行と同一 SVG） |
+| `/now` `/status` `/activity` `/current` `/card` | 既存 | 各 snapshot（request 時上流呼出なし） |
+
+`/identity` は README 未参照の legacy fragment で、分割 surface
+完成までは band1 全体を返す。README 切替時に masthead のみへ
+再定義するか廃止するかは #1240 の視覚作業と合わせて決める。
+
 ## 8. 変更管理
 
 - 本契約の変更は ADR-0027 と visual doc §23 へ波及させる。

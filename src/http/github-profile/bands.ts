@@ -418,19 +418,18 @@ const METRICS: readonly Metric[] = [
  */
 function metricStrip(
 	spec: CanvasSpec,
-	x: number,
 	y: number,
-	w: number,
+	colStart: number,
+	colCount: number,
 	stats: BandStats,
 	T: Theme,
 	sem: (k: string) => string,
 ): { svg: string; bottom: number } {
 	const TT = typeTable(spec);
 	const list = METRICS;
-	// Row plans snap to the column grid: 3+3 cells on both canvases
-	// (desktop 12 cols → 4-column spans, mobile 6 cols → 2-column
-	// spans). Every cell edge lands on a column boundary — no orphan
-	// partial columns, no cells that almost-but-don't align.
+	// Row plans snap to the column grid: 3 cells per row inside the
+	// caller's column span (full width → 4-col spans, right rail →
+	// 2-col spans). Every cell edge lands on a column boundary.
 	const rowPlan: readonly (readonly number[])[] = [
 		[0, 1, 2],
 		[3, 4, 5],
@@ -439,11 +438,11 @@ function metricStrip(
 	// foot, then a full s4 air gap before the next row's stat — the
 	// pair must read as one unit, not label-to-next-value
 	const rowH = TT.stat.lh + TT.label.lh + SPACE.s4;
+	const span = colCount / rowPlan[0].length;
 	let s = '';
 	let cy = y;
 	for (const row of rowPlan) {
-		const span = spec.columns / row.length;
-		let col = 0;
+		let col = colStart;
 		for (const mi of row) {
 			const mt = list[mi];
 			if (!mt) continue;
@@ -623,39 +622,28 @@ function presenceCluster(
 	return s;
 }
 
-/** The 'VITALS' head right-caption: all-time context stated once —
- * the longest streak when measured. */
-function vitalsHeadRight(stats: BandStats, mobile: boolean): string {
-	// all-time context stated once — the longest streak when measured;
-	// repo counts live only in GITHUB ACTIVITY where their public /
-	// private scope is spelled out (an unqualified 'repos contributed'
-	// all-time figure reads as a paradox next to the 30-day active
-	// total, so the cell was dropped rather than relabelled)
-	const parts = ['all-time'];
-	if (stats.longestStreak !== null)
-		parts.push(
-			mobile ? `longest ${stats.longestStreak}d` : `longest streak ${stats.longestStreak}d`,
-		);
-	return parts.length > 1 ? parts.join(' · ') : 'all-time totals';
-}
-
 /**
  * Identity section as a reusable fragment — the masthead (one
- * avatar carrying the Discord status dot, handle, presence cluster
- * on grid columns 8–11), the VITALS metric strip and TOP LANGUAGES.
- * `y0` is the section's top edge; `bottom` is the last content
- * baseline region — callers own inter-section spacing.
+ * avatar carrying the Discord status dot, handle, tagline, presence
+ * cluster on the left rail; the unlabeled vitals grid on the right
+ * rail, desktop) and the TOP LANGUAGES bar. `y0` is the section's
+ * top edge; `bottom` is the last content baseline region — callers
+ * own inter-section spacing.
  */
 function drawIdentityDesktop(model: Band1Model, y0: number): { svg: string; bottom: number } {
 	const spec = canvasSpec(false);
 	const { T, sem } = skinFor(model.theme);
 	const TT = typeTable(spec);
-	const W = spec.width;
-	const right = W - spec.margin;
 	const m = spec.margin;
 	let s = '';
 
-	// masthead — one avatar, Discord-idiom status dot bottom-right
+	// Two-column masthead (v0.15.0 contract §22): LEFT rail cols 0–5
+	// carries the person — avatar, name, tagline, Discord presence as
+	// one vertical identity stack. RIGHT rail cols 6–11 carries the
+	// account state — the vitals grid, unlabeled (icons + numerals
+	// are self-evident; the VITALS head was text the data didn't
+	// need). TOP LANGUAGES closes the zone full-width, also
+	// unlabeled — the bar and its legend explain themselves.
 	const as = 72;
 	const ax = m;
 	const ay = y0;
@@ -685,45 +673,29 @@ function drawIdentityDesktop(model: Band1Model, y0: number): { svg: string; bott
 	// role descriptor — the masthead's one prose line, on the body
 	// role so a first-time viewer learns what the handle makes
 	s += bandText(spec, 'body', nx, snap(spec, nameY + 18), T.muted, OWNER_TAGLINE);
-	// presence cluster — optically centred on the avatar's midline,
-	// right edge flush with the margin spine like every meta block
-	const piv = ay + as / 2;
-	const px = gridX(spec, 8);
-	s += presenceCluster(
-		spec,
-		px,
-		snap(spec, piv - 4),
-		snap(spec, piv + 12),
-		right - px,
-		model,
-		T,
-		right,
-	);
+	// Discord presence directly under the tagline — avatar dot and
+	// status text now share ONE left rail, so the service identity
+	// (Clyde mark + status word + sync stamp) reads as a single
+	// cluster instead of a cluster exiled to the far edge
+	const pY1 = snap(spec, nameY + 18 + TT.body.lh + SPACE.s2);
+	const railRight = gridX(spec, 6) - spec.gutter;
+	s += presenceCluster(spec, nx, pY1, snap(spec, pY1 + 16), railRight - nx, model, T);
 
-	// VITALS — grid-snapped metric rows under the masthead
-	const y = snap(spec, ay + as + SPACE.s6);
-	s += moduleHead(spec, m, y, 'VITALS', vitalsHeadRight(model.stats, false), T);
-	const strip = metricStrip(
-		spec,
-		m,
-		snap(spec, y + TT.title.lh + SPACE.s2),
-		contentWidth(spec),
-		model.stats,
-		T,
-		sem,
-	);
-	s += strip.svg;
+	// VITALS — unlabeled state grid on the right rail (cols 6–11),
+	// top-aligned with the avatar so the two rails share one top edge
+	const vit = metricStrip(spec, y0 + SPACE.s2, 6, 6, model.stats, T, sem);
+	s += vit.svg;
 
-	// TOP LANGUAGES — share bar + wrapped legend
-	const ly = snap(spec, strip.bottom + SPACE.s6);
-	s += moduleHead(spec, m, ly, 'TOP LANGUAGES', null, T);
-	const barTop = snap(spec, ly + 18);
+	// TOP LANGUAGES — share bar + wrapped legend, full width below
+	// both rails; unlabeled per the contract's state-zone rule
+	const ly = snap(spec, Math.max(vit.bottom, snap(spec, pY1 + 16) + SPACE.s2) + SPACE.s6);
 	const langs = model.stats.topLangs;
 	let bottom: number;
 	if (!langs || langs.length === 0) {
-		s += bandText(spec, 'body', m, snap(spec, barTop + 20), T.faint, 'language data unavailable');
-		bottom = snap(spec, barTop + 36);
+		s += bandText(spec, 'body', m, snap(spec, ly + 20), T.faint, 'language data unavailable');
+		bottom = snap(spec, ly + 36);
 	} else {
+		const barTop = ly + 10;
 		const bar = langBar(spec, m, barTop, contentWidth(spec), langs, T);
 		s += bar.svg;
 		bottom = bar.bottom;
@@ -735,7 +707,6 @@ function drawIdentityMobile(model: Band1Model, y0: number): { svg: string; botto
 	const spec = canvasSpec(true);
 	const { T, sem } = skinFor(model.theme);
 	const TT = typeTable(spec);
-	const W = spec.width;
 	const m = spec.margin;
 	let s = '';
 
@@ -772,30 +743,20 @@ function drawIdentityMobile(model: Band1Model, y0: number): { svg: string; botto
 	const clusterY = snap(spec, ay + as + SPACE.s6 + SPACE.s1);
 	s += presenceCluster(spec, m, clusterY, clusterY + 16, contentWidth(spec), model, T);
 
-	// VITALS — 3+3 cell re-grid on the 6-column canvas
+	// state zone — unlabeled per contract §22: the 3+3 vitals grid and
+	// the language bar explain themselves through icons and shape
 	const y = snap(spec, clusterY + 16 + SPACE.s4);
-	s += moduleHead(spec, m, y, 'VITALS', vitalsHeadRight(model.stats, true), T);
-	const strip = metricStrip(
-		spec,
-		m,
-		snap(spec, y + TT.title.lh + SPACE.s2),
-		contentWidth(spec),
-		model.stats,
-		T,
-		sem,
-	);
+	const strip = metricStrip(spec, y, 0, spec.columns, model.stats, T, sem);
 	s += strip.svg;
 
-	// TOP LANGUAGES
 	const ly = snap(spec, strip.bottom + SPACE.s4);
-	s += moduleHead(spec, m, ly, 'TOP LANGUAGES', null, T);
-	const barTop = snap(spec, ly + 18);
 	const langs = model.stats.topLangs;
 	let bottom: number;
 	if (!langs || langs.length === 0) {
-		s += bandText(spec, 'body', m, snap(spec, barTop + 20), T.faint, 'language data unavailable');
-		bottom = snap(spec, barTop + 36);
+		s += bandText(spec, 'body', m, snap(spec, ly + 20), T.faint, 'language data unavailable');
+		bottom = snap(spec, ly + 36);
 	} else {
+		const barTop = ly + 10;
 		const bar = langBar(spec, m, barTop, contentWidth(spec), langs, T);
 		s += bar.svg;
 		bottom = bar.bottom;

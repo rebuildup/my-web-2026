@@ -749,14 +749,17 @@ function drawIdentityMobile(model: Band1Model, y0: number): { svg: string; botto
 	const strip = metricStrip(spec, y, 0, spec.columns, model.stats, T, sem);
 	s += strip.svg;
 
-	const ly = snap(spec, strip.bottom + SPACE.s4);
+	// the vitals→bar air is tighter than desktop's s4+s10: the removed
+	// module heads left a ghost gap here, and the bar+legend pair
+	// still needs its own breathing room before the section break
+	const ly = snap(spec, strip.bottom + SPACE.s1);
 	const langs = model.stats.topLangs;
 	let bottom: number;
 	if (!langs || langs.length === 0) {
 		s += bandText(spec, 'body', m, snap(spec, ly + 20), T.faint, 'language data unavailable');
 		bottom = snap(spec, ly + 36);
 	} else {
-		const barTop = ly + 10;
+		const barTop = ly + 6;
 		const bar = langBar(spec, m, barTop, contentWidth(spec), langs, T);
 		s += bar.svg;
 		bottom = bar.bottom;
@@ -1116,12 +1119,13 @@ function renderRepoTable(
 			s += prCount(spec, prsRight, ry, r.prs, TT, T);
 			if (r.commits !== null) {
 				// meter zone runs name-edge -> commits column edge with a
-				// whisper track so the bar reads as a meter, not a divider
-				const zoneW = commitsRight - x - 6;
-				s += `<rect x="${x}" y="${ry + 6}" width="${zoneW}" height="5" rx="2.5" fill="${T.line}" opacity="0.4"/>`;
+				// whisper track so the bar reads as a meter, not a divider;
+				// it ends flush on the commits column it encodes
+				const zoneW = commitsRight - x;
+				s += `<rect x="${x}" y="${ry + 8}" width="${zoneW}" height="5" rx="2.5" fill="${T.line}" opacity="0.4"/>`;
 				if ((r.commits ?? 0) > 0) {
 					const bw = zoneW * ((r.commits ?? 0) / maxC);
-					s += `<rect x="${x}" y="${ry + 6}" width="${Math.max(3, bw)}" height="5" rx="2.5" fill="${sem('accent')}" opacity="0.9"/>`;
+					s += `<rect x="${x}" y="${ry + 8}" width="${Math.max(3, bw)}" height="5" rx="2.5" fill="${sem('accent')}" opacity="0.9"/>`;
 				}
 			}
 			ry += rowH;
@@ -1160,14 +1164,14 @@ function renderRepoTable(
 		s += bandText(spec, 'caption', x, ay, T.faint, truncate(d.name, nameW, TT.caption.size));
 		s += commitCount(spec, commitsRight, ay, d.commits, TT, T, true);
 		s += prCount(spec, prsRight, ay, d.prs, TT, T, true);
-		ay += compact ? 22 : 20;
+		ay += compact ? 18 : 20;
 	}
 
 	let bottom = ay;
 	if (model.repoCount > 0) {
-		// clear the last aggregate bar (mobile bars reach ay+11) before
-		// the total line's baseline
-		bottom = snap(spec, ay + (compact ? 22 : 14));
+		// clear the last aggregate row before the total line's baseline —
+		// mobile keeps a tighter step than desktop's module air
+		bottom = snap(spec, ay + (compact ? 16 : 14));
 		s += bandText(
 			spec,
 			'strong',
@@ -1182,10 +1186,14 @@ function renderRepoTable(
 			s += bandText(spec, 'caption', x + w, bottom, T.faint, legendTxt, { anchor: 'end' });
 		}
 		bottom += TT.strong.lh;
-		// mobile drops the legend line: the commits/PRs units already
-		// live in the Total string and the meter sits inside the
-		// commits column — a third text line bought little and cost
-		// the events module a full row of air.
+		if (hasCommits && compact) {
+			// mobile has no room beside the long Total string — the bar
+			// key drops to its own caption line, funded by the tighter
+			// vitals→bar and aggregate→total air reclaimed in r2
+			const lg = snap(spec, bottom + SPACE.s1);
+			s += bandText(spec, 'caption', x, lg, T.faint, legendTxt);
+			bottom = lg + TT.caption.lh;
+		}
 	}
 	return { svg: s, bottom: snap(spec, bottom + SPACE.s2) };
 }
@@ -1337,10 +1345,12 @@ function drawActivityMobile(
 	// a second 'RECENT EVENTS' head spent a full module row restating
 	// what the glyphs and verbs already say.
 	s += moduleHead(spec, m, py, 'LAST 72 HOURS', pulseCaption, T);
-	const pulse = renderPulse72(spec, m, snap(spec, py + 14), contentWidth(spec), model, T, sem);
+	const pulse = renderPulse72(spec, m, snap(spec, py + 12), contentWidth(spec), model, T, sem);
 	s += pulse.svg;
 
-	const ey = snap(spec, pulse.bottom + SPACE.s2);
+	// the event ledger gets a wider break than the head→chart gap so
+	// the two sub-blocks under the shared head don't read as equals
+	const ey = snap(spec, pulse.bottom + SPACE.s4);
 	const events = renderRecentActivity(spec, m, ey, contentWidth(spec), model, T, true);
 	s += events.svg;
 

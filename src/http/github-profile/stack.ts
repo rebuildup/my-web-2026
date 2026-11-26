@@ -169,11 +169,13 @@ function layout(mobile: boolean, startY: number): StackGeom {
 				pitch,
 			};
 			// mobile lanes keep s2 air between icon row and the next
-			// label — s4 read as dead canvas on the narrow grid
+			// label — s4 read as dead canvas on the narrow grid; the
+			// s4 tail below the last lane is the footer caption's own
+			// air, not lane spacing
 			y += laneH + (i < groups.length - 1 ? SPACE.s2 : 0);
 			return lane;
 		});
-		return { lanes, height: snap(spec, y + SPACE.s2) };
+		return { lanes, height: snap(spec, y + SPACE.s4) };
 	}
 
 	// desktop — label rail on grid columns 0–2, scroll field from

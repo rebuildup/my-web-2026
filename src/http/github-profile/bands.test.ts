@@ -196,7 +196,6 @@ describe('renderBand1Svg', () => {
 		expect(svg).toContain('45.8%');
 		expect(svg).toContain('Other');
 		expect(svg).toContain('Online');
-		expect(svg).toContain('TOP LANGUAGES');
 	});
 
 	it('renders honest unavailable states when stats fail', () => {

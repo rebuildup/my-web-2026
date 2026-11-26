@@ -899,3 +899,72 @@ v14（§20）の agy APPROVE は受入判定としない。コミット済み v1
 
 Stack の旧静的版は desktop 235px / mobile 365px — マーキー化で
 高さが増えており、これは定量的に不合格。
+
+## 22. v0.15.0 共通設計契約: プロフィール全体の構図（Issue #1240 / #1241、2026-11-26）
+
+v0.14.0 公開版を before 基準とし、#1240（`/profile` SVG）と #1241
+（README Selected Work）が**独立した画面設計を行わない**ための共通
+契約。個別資産の座標調整ではなく、ページ全体の構図・色面・情報階層・
+資産境界を先に固定する。実装はこの契約の各条項に対応する。
+
+### ページ構成（上から順）
+
+1. 導入 chrome（tagline + リンク）— GitHub markdown 側の余白は制御
+   不能なので、契約が決めるのは**資産の順序・画像幅・リスト構造**
+   のみ。
+2. `## Selected work` — `showcase.webp` をヒーロー媒体、サブ作品は
+   構造化インデックス（#1241）。
+3. `/profile` SVG — ページを閉じるデータプレート。内部順は
+   Identity masthead → ACTIVITY → STACK の 3 ゾーン固定。
+
+### 色面（surface）の三層
+
+- **PAGE**: GitHub の markdown 面。SVG/画像がその上に載る。
+- **PLATE**: `/profile` SVG が塗る全面背景 rect — ページ内で唯一の
+  全面色面であり、「プロフィールのプレート」として機能する。
+  内部モジュールに追加の面（panel）は敷かない — 面を増やすと
+  貼り合わせ感が戻る。
+- **MEDIA**: `showcase.webp` / works カバー — 内容を持つ画像。
+  `<picture>` でテーマ追従（#1242 で light バリアント）。
+
+### 情報階層（プレート内部）
+
+- **H0 display**: セクションヘッドのみ。Identity masthead は
+  ヘッドを持たない（それ自体が頭）。`GITHUB ACTIVITY` / `STACK`
+  の 2 つだけ。
+- **H1 title**: セクション内モジュールヘッド（`REPO OUTPUT` /
+  `LAST 72 HOURS` / `RECENT EVENTS`）。
+- **無ラベル state**: Identity ゾーンの VITALS / TOP LANGUAGES は
+  モジュールヘッドを**持たない**。アイコン + 数値 + 言語バーは
+  自己説明的であり、ラベルを外すことがテキスト依存の削減そのもの。
+  standalone `/identity` バンドも同一構成を描く（ unlabeled state
+  は単体でも自己説明的）。
+- **body/strong/data/label/caption**: 既存 TYPE ロールをそのまま使用。
+
+### 構図ルール
+
+- **2 カラム・マストヘッド**（desktop）: 左列（cols 0–5）に
+  アバター + 名前 + tagline + Discord presence を縦積み、右列
+  （cols 6–11）に VITALS 3列×2行グリッド。全幅の横積みストリップを
+  やめ、左右の図と地を作る。モバイルは 6 カラムの再グリッドで
+  縦積みを維持（縮小ではなく再配置）。
+- **縦予算（実測目標）**: `/profile` desktop ≤ 950px（現行 1092）、
+  mobile ≤ 1180px（現行 1368）。
+- **Stack レーン分類**: `Design & web` / `Languages & infra` は
+  実内容と不一致（nodejs/dotnet/vercel が design 側、vscode/
+  markdown/notion が languages 側）。実態に合わせ `Design & media`
+  / `Code & platform` に再編し、全 48 アイコンを維持する。
+- **モーション**: SMIL マーキー（STACK）と animated WebP
+  （showcase）の 2 系統のみ。新規アニメーションは追加しない。
+- **資産境界**: README は見出し・順序・リスト構造、SVG はプレート
+  内部、WebP は媒体 — いずれも共通の左スパイン思想（GitHub 本文
+  カラム内での左揃え）を共有し、SVG 内部は 12/6 カラム契約を継続。
+
+### 検証
+
+- 変更前後を同条件で実測（SVG 高さ・セクション占有）。
+- before 基準: v0.14.0 公開版 `.tmp/v16-baseline/`（8 枚の実画面
+  PNG + 4 SVG + showcase.webp）。証跡は `docs/verification/
+  github-profile/` へコミット。
+- レビューは最新全ページレンダリング + 実アニメーションを対象とし、
+  過去の APPROVE を品質保証として引き継がない。

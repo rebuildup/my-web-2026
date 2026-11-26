@@ -637,7 +637,7 @@ function drawIdentityDesktop(model: Band1Model, y0: number): { svg: string; bott
 	const m = spec.margin;
 	let s = '';
 
-	// Two-column masthead (v0.15.0 contract §22): LEFT rail cols 0–5
+	// Two-column masthead (contract §22): LEFT rail cols 0–5
 	// carries the person — avatar, name, tagline, Discord presence as
 	// one vertical identity stack. RIGHT rail cols 6–11 carries the
 	// account state — the vitals grid, unlabeled (icons + numerals

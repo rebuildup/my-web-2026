@@ -183,8 +183,8 @@ describe('renderBand1Svg', () => {
 		const svg = renderBand1Svg(band1());
 		expect(svg).toContain(`width="${BAND_WIDTH}"`);
 		expect(svg).toContain('rebuildup');
-		expect(svg).toContain('DAY STREAK');
-		expect(svg).toContain('CONTRIBUTIONS');
+		expect(svg).toContain('streak');
+		expect(svg).toContain('contributions');
 		expect(svg).toContain('128');
 		expect(svg).toContain('stars');
 		expect(svg).toContain('4,211');
@@ -210,7 +210,7 @@ describe('renderBand1Svg', () => {
 		expect(light).toContain('fill="#ffffff"');
 		const mob = renderBand1Svg(band1({ mobile: true }));
 		expect(mob).toContain(`width="${BAND_MOBILE_WIDTH}"`);
-		expect(mob).toContain('DAY STREAK');
+		expect(mob).toContain('streak');
 	});
 
 	it('is deterministic for the same inputs', () => {
@@ -258,9 +258,10 @@ describe('renderBand2Svg', () => {
 		// same-day events collapse to HH:MM in their own right-aligned
 		// stamp column — the footer already declares the observed day
 		expect(svg).toContain('· pushed');
-		expect(svg).toContain('>19:00<');
-		expect(svg).toContain('COMMITS');
-		expect(svg).toContain('PRS');
+		expect(svg).toContain('19:00');
+		// units live once in the Total legend line, not per-row headers
+		expect(svg).toContain('commits');
+		expect(svg).toContain('PRs');
 		expect(svg).toContain('my-web-2026');
 	});
 

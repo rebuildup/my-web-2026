@@ -52,7 +52,7 @@ export const BAND_MOBILE_WIDTH = 400;
 const FONT = "-apple-system,'Segoe UI',Helvetica,Arial,sans-serif";
 const MONO = "ui-monospace,'SF Mono',Menlo,monospace";
 
-interface Theme {
+export interface Theme {
 	readonly bg: string;
 	readonly panel: string;
 	readonly panel2: string;
@@ -130,13 +130,13 @@ function observedJst(iso: string | null | undefined): string {
  * theme name becomes concrete colors. Renderers receive a `skin`
  * instead of re-deriving `THEMES`/`SEM` lookups.
  */
-interface Skin {
+export interface Skin {
 	readonly T: Theme;
 	readonly sem: (k: string) => string;
 	readonly typeColor: (t: string) => string;
 }
 
-function skinFor(theme: 'dark' | 'light'): Skin {
+export function skinFor(theme: 'dark' | 'light'): Skin {
 	const T = THEMES[theme];
 	const isDark = theme === 'dark';
 	const sem = (k: string) => SEM[k][isDark ? 'dark' : 'light'];
@@ -317,7 +317,7 @@ function discordDotColor(model: Band1Model): string {
  * contract (`design.ts`) plus position/fill/anchor. Renderers never
  * pass a raw font-size — the 11px legibility floor is enforced here.
  */
-function bandText(
+export function bandText(
 	spec: CanvasSpec,
 	role: TypeName,
 	x: number,
@@ -364,190 +364,117 @@ function moduleHead(
 	return s;
 }
 
-/**
- * Unified Discord presence module — one card carrying the brand
- * glyph with the client-style status dot, the status word in the
- * status color, the detail line and the honest sync stamp. The
- * avatar badge uses the same dot color, so badge and card read as
- * a single presence signal instead of two disconnected marks.
- */
-function presenceCard(
-	spec: CanvasSpec,
-	x: number,
-	y: number,
-	w: number,
-	h: number,
-	model: Band1Model,
-	T: Theme,
-): string {
-	const TT = typeTable(spec);
-	const statusColor = model.presenceOk ? discordDotColor(model) : T.faint;
-	// whisper surface — the only card in the band, so it must not
-	// carry more contrast than the hero numerals beside it
-	let s = `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="12" fill="${T.panel}" stroke="${T.line}" stroke-width="0.75"/>`;
-	// circular user avatar with the Discord-idiom status dot on its
-	// bottom-right corner: card-colour cutout ring, then status fill
-	// (hollow grey ring when offline / unknown — never a filled "off")
-	const as = h >= 60 ? 34 : 32;
-	const ax = x + SPACE.s4;
-	const ay = y + (h - as) / 2;
-	const acx = ax + as / 2;
-	const acy = ay + as / 2;
-	if (model.avatarDataUri) {
-		s += `<clipPath id="pcav"><circle cx="${acx}" cy="${acy}" r="${as / 2}"/></clipPath>`;
-		s += `<image href="${model.avatarDataUri}" x="${ax}" y="${ay}" width="${as}" height="${as}" preserveAspectRatio="xMidYMid slice" clip-path="url(#pcav)"/>`;
-	} else {
-		s += `<circle cx="${acx}" cy="${acy}" r="${as / 2}" fill="${T.panel2}" stroke="${T.line}"/>`;
-		s += lucide('user', acx, acy, as * 0.55, T.faint);
-	}
-	// hairline under the status-dot cutout — on dark themes the avatar
-	// photo's own edge can dissolve into the card fill
-	s += `<circle cx="${acx}" cy="${acy}" r="${as / 2}" fill="none" stroke="${T.line}" stroke-width="1"/>`;
-	const dotColor = discordDotColor(model);
-	const dotX = ax + as - 1;
-	const dotY = ay + as - 1;
-	s += `<circle cx="${dotX}" cy="${dotY}" r="${as * 0.3}" fill="${T.panel}"/>`;
-	if (model.presenceOk) {
-		s += `<circle cx="${dotX}" cy="${dotY}" r="${as * 0.19}" fill="${dotColor}"/>`;
-	} else {
-		s += `<circle cx="${dotX}" cy="${dotY}" r="${as * 0.19}" fill="none" stroke="#80848e" stroke-width="1.8"/>`;
-	}
-	// text block is optically spaced from the avatar — never snapped
-	// to the page column grid inside a widget
-	const l1 = y + h / 2 - 4;
-	const textX = ax + as + 12;
-	const detail = model.presenceDetail;
-	const detailTxt = detail ? ` · ${truncate(detail, 200, TT.strong.size)}` : '';
-	s += `<text x="${textX}" y="${l1}" xml:space="preserve"><tspan font-size="${TT.strong.size}" font-weight="${TT.strong.weight}" fill="${statusColor}">${esc(model.presenceLabel)}</tspan><tspan font-size="${TT.label.size}" fill="${T.muted}">${esc(detailTxt)}</tspan></text>`;
-	// footer identifies the source with a small Clyde mark + one
-	// honest sync stamp — never repeated inline
-	const stamp = model.presenceObservedAt ? observedJst(model.presenceObservedAt) : 'never synced';
-	const clyde = 12;
-	const cly = l1 + 9 - clyde / 2;
-	s += `<svg x="${textX}" y="${cly}" width="${clyde}" height="${clyde}" viewBox="0 0 24 24">${DISCORD_LOGO.replace('/>', ` fill="${T.discord}"/>`)}</svg>`;
-	s += bandText(
-		spec,
-		'caption',
-		textX + clyde + 5,
-		l1 + 15,
-		T.faint,
-		`Synced via Discord · ${stamp}`,
-	);
-	return s;
-}
-
 const OWNER_NAME = 'rebuildup';
+/** One-line role descriptor under the handle — the masthead's only
+ * prose. Desktop carries the full claim set; the 400px canvas only
+ * has ~300px beside the avatar, so mobile keeps the same three
+ * domains in a shorter form ('tools'/'design' are implied by the
+ * stack lanes directly below). */
+const OWNER_TAGLINE = 'After Effects tools · Web apps · Motion design';
+const OWNER_TAGLINE_MOBILE = 'After Effects · Web apps · Motion';
 
-interface FocalStat {
+interface Metric {
 	readonly icon: string;
-	readonly swatch: keyof typeof SEM | null;
+	readonly swatch?: keyof typeof SEM | null;
 	readonly label: string;
 	readonly value: (st: BandStats) => number | null;
 	readonly unit: string | null;
-	readonly note: (st: BandStats) => string | null;
 }
 
-/** Two focal metrics — the figures a profile should be remembered
- * by. Everything else is context, rendered smaller in TOTAL_STATS. */
-const FOCAL_STATS: readonly FocalStat[] = [
+/**
+ * One uniform strip of account figures — streak first (the figure a
+ * profile is remembered by), then the GitHub all-time totals. Every
+ * cell shares the same anatomy (icon + `stat` numeral + `label`
+ * noun) so no metric shouts over its neighbours; all-time context
+ * lives once in the strip's head caption, not repeated per cell.
+ */
+const METRICS: readonly Metric[] = [
 	{
 		icon: 'flame',
 		swatch: 'orange',
-		label: 'DAY STREAK',
+		label: 'streak',
 		value: (st) => st.currentStreak,
 		unit: 'days',
-		note: (st) => (st.longestStreak !== null ? `best ${st.longestStreak}d` : null),
 	},
 	{
 		icon: 'trending-up',
 		swatch: 'accent',
-		label: 'CONTRIBUTIONS',
+		label: 'contributions',
 		value: (st) => st.totalContributions,
 		unit: null,
-		note: (st) =>
-			st.contributedTo !== null ? `all-time · ${st.contributedTo} public repos` : 'all-time',
 	},
+	{ icon: 'star', label: 'stars', value: (st) => st.totalStars, unit: null },
+	{ icon: 'commit', label: 'commits', value: (st) => st.totalCommits, unit: null },
+	{ icon: 'pr', label: 'PRs', value: (st) => st.totalPRs, unit: null },
+	{ icon: 'issues', label: 'issues', value: (st) => st.totalIssues, unit: null },
 ];
 
-/** Secondary account totals — one quiet 2×2 module, never a KPI wall. */
-const TOTAL_STATS = [
-	{ icon: 'star', label: 'stars', value: (st: BandStats) => st.totalStars },
-	{ icon: 'commit', label: 'commits', value: (st: BandStats) => st.totalCommits },
-	{ icon: 'pr', label: 'PRs', value: (st: BandStats) => st.totalPRs },
-	{ icon: 'issues', label: 'issues', value: (st: BandStats) => st.totalIssues },
-] as const;
-
 /**
- * Focal metric module on the shared anatomy: title-role label, then
- * licensed glyph + hero numeral + unit on one baseline, caption note
- * underneath. Missing metrics render `—` and keep their slot — an
- * absent upstream never collapses the grid.
+ * The metrics strip: equal cells on the column grid — icon +
+ * `stat`-role numeral (+ unit tspan) on the first baseline, `label`
+ * noun on the second. Unmeasured metrics render `—` and keep their
+ * slot; the head's right caption carries the all-time context
+ * (`longest streak`) exactly once.
  */
-function focalStat(
+function metricStrip(
 	spec: CanvasSpec,
 	x: number,
 	y: number,
-	stat: FocalStat,
+	w: number,
 	stats: BandStats,
 	T: Theme,
 	sem: (k: string) => string,
 ): { svg: string; bottom: number } {
 	const TT = typeTable(spec);
-	let s = bandText(spec, 'title', x, snap(spec, y + 12), T.muted, stat.label);
-	const v = stat.value(stats);
-	const missing = v === null;
-	const num = missing ? '—' : v.toLocaleString('en-US');
-	const iconColor = missing ? T.faint : stat.swatch ? sem(stat.swatch) : T.muted;
-	const numY = snap(spec, y + 42);
-	const iconSize = ICON.md + 2;
-	s += lucide(
-		stat.icon,
-		x + iconSize / 2,
-		iconCenterY(numY, TT.hero.size) + iconSize * 0.1,
-		iconSize,
-		iconColor,
-	);
-	const numX = x + iconSize + SPACE.s2;
-	const unitTxt = !missing && stat.unit ? ` ${stat.unit}` : '';
-	s += `<text x="${numX}" y="${numY}" xml:space="preserve"><tspan font-size="${TT.hero.size}" font-weight="${TT.hero.weight}" fill="${missing ? T.faint : T.fg}">${esc(num)}</tspan><tspan font-size="${TT.strong.size}" font-weight="${TT.strong.weight}" fill="${T.muted}">${esc(unitTxt)}</tspan></text>`;
-	const raw = stat.note(stats);
-	// the note must fit inside its own module's column span — measure
-	// with the flowing estimator first so proportional text isn't cut
-	// mid-word while space remains
-	const availW = spec.width - spec.margin - x - SPACE.s2;
-	const note =
-		raw && flowWidth(raw, TT.caption.size) > availW ? truncate(raw, availW, TT.caption.size) : raw;
-	if (note) {
-		s += bandText(spec, 'caption', x, snap(spec, numY + 16), T.faint, note);
+	const list = METRICS;
+	// Row plans snap to the column grid: 3+3 cells on both canvases
+	// (desktop 12 cols → 4-column spans, mobile 6 cols → 2-column
+	// spans). Every cell edge lands on a column boundary — no orphan
+	// partial columns, no cells that almost-but-don't align.
+	const rowPlan: readonly (readonly number[])[] = [
+		[0, 1, 2],
+		[3, 4, 5],
+	];
+	// cell anatomy: stat baseline → label ~6px below the numeral's
+	// foot, then a full s4 air gap before the next row's stat — the
+	// pair must read as one unit, not label-to-next-value
+	const rowH = TT.stat.lh + TT.label.lh + SPACE.s4;
+	let s = '';
+	let cy = y;
+	for (const row of rowPlan) {
+		const span = spec.columns / row.length;
+		let col = 0;
+		for (const mi of row) {
+			const mt = list[mi];
+			if (!mt) continue;
+			const cx = gridX(spec, col);
+			col += span;
+			const v = mt.value(stats);
+			const missing = v === null;
+			const iconColor = missing ? T.faint : mt.swatch ? sem(mt.swatch) : T.muted;
+			s += lucide(
+				mt.icon,
+				cx + ICON.sm / 2,
+				iconCenterY(cy + TT.stat.size * 0.7, TT.stat.size),
+				ICON.sm,
+				iconColor,
+			);
+			const numX = cx + ICON.sm + SPACE.s2;
+			const num = missing ? '—' : v.toLocaleString('en-US');
+			const unitTxt = !missing && mt.unit ? ` ${mt.unit}` : '';
+			s += `<text x="${numX}" y="${cy + TT.stat.size * 0.7}" xml:space="preserve"><tspan font-size="${TT.stat.size}" font-weight="${TT.stat.weight}" fill="${missing ? T.faint : T.fg}">${esc(num)}</tspan><tspan font-size="${TT.label.size}" font-weight="${TT.label.weight}" fill="${T.muted}">${esc(unitTxt)}</tspan></text>`;
+			s += bandText(spec, 'label', cx, snap(spec, cy + TT.stat.size * 0.7 + 16), T.muted, mt.label);
+		}
+		cy += rowH;
 	}
-	return { svg: s, bottom: snap(spec, numY + (note ? 22 : 10)) };
-}
-
-/** 'GITHUB TOTALS' module — 2×2 cells of icon + value + noun, all on
- * the strong/caption roles. Unmeasured metrics are omitted, not zeroed. */
-function totalsGrid(
-	spec: CanvasSpec,
-	x: number,
-	y: number,
-	w: number,
-	stats: BandStats,
-	T: Theme,
-): { svg: string; bottom: number } {
-	const TT = typeTable(spec);
-	let s = bandText(spec, 'title', x, snap(spec, y + 12), T.muted, 'GITHUB TOTALS');
-	const items = TOTAL_STATS.filter((it) => it.value(stats) !== null);
-	const cellW = (w - SPACE.s4) / 2;
-	const rowH = 22;
-	const firstBaseline = snap(spec, y + 32);
-	items.forEach((it, i) => {
-		const cx = x + (i % 2) * (cellW + SPACE.s4);
-		const ry = firstBaseline + Math.floor(i / 2) * rowH;
-		const v = it.value(stats) ?? 0;
-		s += lucide(it.icon, cx + ICON.sm / 2, iconCenterY(ry, TT.strong.size), ICON.sm, T.faint);
-		s += `<text x="${cx + ICON.sm + SPACE.s2}" y="${ry}" xml:space="preserve" font-family="${FONT}"><tspan font-size="${TT.strong.size}" font-weight="${TT.strong.weight}" fill="${T.fg}">${v.toLocaleString('en-US')}</tspan><tspan font-size="${TT.caption.size}" fill="${T.muted}"> ${esc(it.label)}</tspan></text>`;
-	});
-	const rows = Math.max(1, Math.ceil(items.length / 2));
-	return { svg: s, bottom: firstBaseline + rows * rowH + SPACE.s1 };
+	const rows = rowPlan.length;
+	// bottom hugs the last row's content — the s4 inter-row air gap
+	// belongs BETWEEN rows only, never as trailing space before the
+	// next module head
+	return {
+		svg: s,
+		bottom: snap(spec, y + (rows - 1) * rowH + TT.stat.lh + TT.label.lh + SPACE.s2),
+	};
 }
 
 /** Per-char advance estimate for flowing legend text — narrower than
@@ -572,8 +499,13 @@ function flowWidth(text: string, fontSize: number): number {
 			width += fontSize * 0.66;
 		} else if (/[mwMW]/.test(ch)) {
 			width += fontSize * 0.85;
-		} else if (/[iljtf.,;:'%!|()[\]{}]/.test(ch)) {
+		} else if (/[iljtf.,;:'|()[\]{}]/.test(ch)) {
 			width += fontSize * 0.34;
+		} else if (/[%+#&]/.test(ch)) {
+			// wide punctuation — '%' especially is ~0.85em in the UI
+			// sans; leaving it in the narrow class made legend items
+			// drift together ('C++ 7.7%' → 'Other' gap collapsed)
+			width += fontSize * 0.68;
 		} else if (/[0-9]/.test(ch)) {
 			width += fontSize * 0.56;
 		} else {
@@ -584,8 +516,10 @@ function flowWidth(text: string, fontSize: number): number {
 }
 
 /** Language share bar: one pill track with hard-stop gradient
- * segments (crisp edges, rounded ends) + labelled leaders on the
- * label role. The bar and its legend share one x axis. */
+ * segments (crisp edges, rounded ends) + a legend that WRAPS inside
+ * the bar's own width — every item keeps bar order, and a wrapped
+ * second line still sits under the bar it explains. Returns the
+ * fragment plus its bottom edge so callers space the next module. */
 function langBar(
 	spec: CanvasSpec,
 	x: number,
@@ -593,7 +527,7 @@ function langBar(
 	w: number,
 	langs: readonly BandLang[],
 	T: Theme,
-): string {
+): { svg: string; bottom: number } {
 	const TT = typeTable(spec);
 	const segs = langSegments(langs);
 	const barY = y + 10;
@@ -610,7 +544,7 @@ function langBar(
 	}
 	let s = `<defs><linearGradient id="${gid}" x1="0" y1="0" x2="1" y2="0">${stops}</linearGradient></defs>`;
 	s += `<rect x="${x}" y="${barY}" width="${w}" height="${barH}" rx="${barH / 2}" fill="url(#${gid})"/>`;
-	// leaders: every named language + the Other remainder
+	// leaders: every named language + the Other remainder, in bar order
 	const leaders: { name: string; pct: number; swatch: string }[] = langs
 		.slice(0, 3)
 		.map((l) => ({ name: l.name, pct: l.pct, swatch: l.color }));
@@ -620,24 +554,99 @@ function langBar(
 		leaders.push({ name: 'Other', pct: otherPct, swatch: '#8b949e' });
 	}
 	let lx = x;
-	const ly2 = barY + barH + 15;
+	let ly2 = barY + barH + 15;
 	for (const l of leaders) {
 		const txt = `${l.name} ${l.pct.toFixed(1)}%`;
+		const itemW = 10 + flowWidth(txt, fs) + 14;
+		if (lx > x && lx + itemW > x + w) {
+			lx = x;
+			// wrapped legend rows need more air than the first row's
+			// bar gap — 16px baseline step on 13px type left only ~3px
+			// between the row above's descenders and this row's caps
+			ly2 += TT.label.lh + 1;
+		}
 		s += `<rect x="${lx}" y="${ly2 - fs * 0.72}" width="7" height="7" fill="${l.swatch}"/>`;
 		s += bandText(spec, 'label', lx + 11, ly2, T.muted, txt);
-		lx += 11 + flowWidth(txt, fs) + 18;
+		lx += itemW;
 	}
-	return s;
+	return { svg: s, bottom: snap(spec, ly2 + 8) };
 }
 
 /**
- * Band 1 — the profile head on the shared contract. One left rail
- * (avatar + name + descriptor), one presence card on grid columns
- * 6–11, then focal stats and account totals as titled modules, and
- * the language share bar last. Height is computed from the modules,
- * never a fixed canvas.
+ * Discord presence as a two-line cluster — the Clyde mark + status
+ * word in the client status color + muted detail on the first
+ * baseline, one honest sync stamp on the second. There is exactly
+ * ONE avatar in the whole composition: it sits in the masthead and
+ * carries the Discord-idiom status dot, so badge and cluster read
+ * as a single presence signal (the previous separate card repeated
+ * the same portrait and split the hierarchy).
  */
-function renderBand1Desktop(model: Band1Model, grid: boolean): string {
+function presenceCluster(
+	spec: CanvasSpec,
+	x: number,
+	y1: number,
+	y2: number,
+	availW: number,
+	model: Band1Model,
+	T: Theme,
+	/** right edge the whole cluster must end on — desktop passes the
+	 * margin edge so the block sits flush with the spine instead of
+	 * floating at its rail start. */
+	endX?: number,
+): string {
+	const TT = typeTable(spec);
+	const statusColor = model.presenceOk ? discordDotColor(model) : T.faint;
+	const detail = model.presenceDetail;
+	const detailTxt = detail
+		? ` · ${truncate(detail, Math.max(40, availW - 140), TT.label.size)}`
+		: '';
+	const stamp = model.presenceObservedAt
+		? `last synced ${observedJst(model.presenceObservedAt)}`
+		: 'never synced';
+	let s: string;
+	if (endX !== undefined) {
+		// right-anchored cluster: both text lines end flush on the
+		// spine, the Clyde mark sits just left of the status run —
+		// no ragged left edge, no measured-width drift on the right
+		const w1 =
+			(flowWidth(model.presenceLabel, TT.strong.size) + flowWidth(detailTxt, TT.label.size)) * 1.05;
+		const glyphX = endX - w1 - 4 - 14;
+		s = `<svg x="${glyphX}" y="${y1 - 13}" width="14" height="14" viewBox="0 0 24 24">${DISCORD_LOGO.replace('/>', ` fill="${T.discord}"/>`)}</svg>`;
+		s += `<text x="${endX}" y="${y1}" text-anchor="end" xml:space="preserve"><tspan font-size="${TT.strong.size}" font-weight="${TT.strong.weight}" fill="${statusColor}">${esc(model.presenceLabel)}</tspan><tspan font-size="${TT.label.size}" fill="${T.muted}">${esc(detailTxt)}</tspan></text>`;
+		s += bandText(spec, 'caption', endX, y2, T.faint, stamp, { anchor: 'end' });
+		return s;
+	}
+	s = `<svg x="${x}" y="${y1 - 13}" width="14" height="14" viewBox="0 0 24 24">${DISCORD_LOGO.replace('/>', ` fill="${T.discord}"/>`)}</svg>`;
+	const tx = x + 19;
+	s += `<text x="${tx}" y="${y1}" xml:space="preserve"><tspan font-size="${TT.strong.size}" font-weight="${TT.strong.weight}" fill="${statusColor}">${esc(model.presenceLabel)}</tspan><tspan font-size="${TT.label.size}" fill="${T.muted}">${esc(detailTxt)}</tspan></text>`;
+	s += bandText(spec, 'caption', tx, y2, T.faint, stamp);
+	return s;
+}
+
+/** The 'VITALS' head right-caption: all-time context stated once —
+ * the longest streak when measured. */
+function vitalsHeadRight(stats: BandStats, mobile: boolean): string {
+	// all-time context stated once — the longest streak when measured;
+	// repo counts live only in GITHUB ACTIVITY where their public /
+	// private scope is spelled out (an unqualified 'repos contributed'
+	// all-time figure reads as a paradox next to the 30-day active
+	// total, so the cell was dropped rather than relabelled)
+	const parts = ['all-time'];
+	if (stats.longestStreak !== null)
+		parts.push(
+			mobile ? `longest ${stats.longestStreak}d` : `longest streak ${stats.longestStreak}d`,
+		);
+	return parts.length > 1 ? parts.join(' · ') : 'all-time totals';
+}
+
+/**
+ * Identity section as a reusable fragment — the masthead (one
+ * avatar carrying the Discord status dot, handle, presence cluster
+ * on grid columns 8–11), the VITALS metric strip and TOP LANGUAGES.
+ * `y0` is the section's top edge; `bottom` is the last content
+ * baseline region — callers own inter-section spacing.
+ */
+function drawIdentityDesktop(model: Band1Model, y0: number): { svg: string; bottom: number } {
 	const spec = canvasSpec(false);
 	const { T, sem } = skinFor(model.theme);
 	const TT = typeTable(spec);
@@ -645,146 +654,174 @@ function renderBand1Desktop(model: Band1Model, grid: boolean): string {
 	const right = W - spec.margin;
 	const m = spec.margin;
 	let s = '';
-	let y: number = SPACE.s6;
 
-	// identity rail — avatar carries the Discord-style status badge
-	const as = 80;
+	// masthead — one avatar, Discord-idiom status dot bottom-right
+	const as = 72;
 	const ax = m;
-	const ay = y;
+	const ay = y0;
 	if (model.avatarDataUri) {
-		s += `<clipPath id="b1av"><rect x="${ax}" y="${ay}" width="${as}" height="${as}" rx="16"/></clipPath>`;
+		s += `<clipPath id="b1av"><rect x="${ax}" y="${ay}" width="${as}" height="${as}" rx="18"/></clipPath>`;
 		s += `<image href="${model.avatarDataUri}" x="${ax}" y="${ay}" width="${as}" height="${as}" preserveAspectRatio="xMidYMid slice" clip-path="url(#b1av)"/>`;
-		s += `<rect x="${ax}" y="${ay}" width="${as}" height="${as}" rx="16" fill="none" stroke="${T.line}"/>`;
+		s += `<rect x="${ax}" y="${ay}" width="${as}" height="${as}" rx="18" fill="none" stroke="${T.line}"/>`;
 	} else {
-		// No portrait fetched: a neutral disc, never a letter stand-in.
-		s += `<circle cx="${ax + as / 2}" cy="${ay + as / 2}" r="${as / 2}" fill="${T.panel2}" stroke="${T.line}"/>`;
-		s += lucide('commit', ax + as / 2, ay + as / 2, 28, T.faint);
+		// No portrait fetched: a neutral rounded tile, never a letter
+		// stand-in and never a second glyph pretending to be a face.
+		s += `<rect x="${ax}" y="${ay}" width="${as}" height="${as}" rx="18" fill="${T.panel2}" stroke="${T.line}"/>`;
 	}
-	// name + descriptor lockup — a fixed gap from the avatar keeps the
-	// pair reading as one identity block (a full empty column between
-	// them reads as two unrelated objects)
+	// Discord client idiom: canvas-coloured cutout ring, then the
+	// status fill (hollow grey ring when offline / unknown)
+	const dotX = ax + as - 2;
+	const dotY = ay + as - 2;
+	s += `<circle cx="${dotX}" cy="${dotY}" r="13" fill="${T.bg}"/>`;
+	if (model.presenceOk) {
+		s += `<circle cx="${dotX}" cy="${dotY}" r="8.5" fill="${discordDotColor(model)}"/>`;
+	} else {
+		s += `<circle cx="${dotX}" cy="${dotY}" r="8.5" fill="none" stroke="#80848e" stroke-width="2"/>`;
+	}
+	// name lockup — fixed gap from the avatar reads as one block
 	const nx = ax + as + SPACE.s4;
 	const nameY = snap(spec, ay + as / 2 + TT.hero.size * 0.34);
 	s += bandText(spec, 'hero', nx, nameY, T.fg, OWNER_NAME);
-	// presence card — sized to its content (~312px) and right-aligned;
-	// stretching it across cols 6–11 left a third of the stroke framing
-	// empty air
-	const cardW = 312;
-	const cardX = right - cardW;
-	const cardH = 64;
-	// centre the card on the avatar's midline — top-aligned left a
-	// ~12px step under the taller avatar
-	s += presenceCard(spec, cardX, ay + (as - cardH) / 2, cardW, cardH, model, T);
-	const blockBottom = Math.max(ay + as, nameY + 6, ay + cardH);
-	y = snap(spec, blockBottom) + SPACE.s6;
+	// role descriptor — the masthead's one prose line, on the body
+	// role so a first-time viewer learns what the handle makes
+	s += bandText(spec, 'body', nx, snap(spec, nameY + 18), T.muted, OWNER_TAGLINE);
+	// presence cluster — optically centred on the avatar's midline,
+	// right edge flush with the margin spine like every meta block
+	const piv = ay + as / 2;
+	const px = gridX(spec, 8);
+	s += presenceCluster(
+		spec,
+		px,
+		snap(spec, piv - 4),
+		snap(spec, piv + 12),
+		right - px,
+		model,
+		T,
+		right,
+	);
 
-	// stats row: two focal modules on columns 0–2 / 3–5, totals on 6–11
-	const hy = snap(spec, y);
-	const modX2 = gridX(spec, 3);
-	const f1 = focalStat(spec, m, hy, FOCAL_STATS[0], model.stats, T, sem);
-	const f2 = focalStat(spec, modX2, hy, FOCAL_STATS[1], model.stats, T, sem);
-	const totals = totalsGrid(spec, cardX, hy, cardW, model.stats, T);
-	s += f1.svg + f2.svg + totals.svg;
-	const rowBottom = Math.max(f1.bottom, f2.bottom, totals.bottom);
+	// VITALS — grid-snapped metric rows under the masthead
+	const y = snap(spec, ay + as + SPACE.s6);
+	s += moduleHead(spec, m, y, 'VITALS', vitalsHeadRight(model.stats, false), T);
+	const strip = metricStrip(
+		spec,
+		m,
+		snap(spec, y + TT.title.lh + SPACE.s2),
+		contentWidth(spec),
+		model.stats,
+		T,
+		sem,
+	);
+	s += strip.svg;
 
-	// languages module — share bar + labelled leaders
-	const ly = snap(spec, rowBottom + SPACE.s6);
+	// TOP LANGUAGES — share bar + wrapped legend
+	const ly = snap(spec, strip.bottom + SPACE.s6);
 	s += moduleHead(spec, m, ly, 'TOP LANGUAGES', null, T);
 	const barTop = snap(spec, ly + 18);
 	const langs = model.stats.topLangs;
+	let bottom: number;
 	if (!langs || langs.length === 0) {
 		s += bandText(spec, 'body', m, snap(spec, barTop + 20), T.faint, 'language data unavailable');
-		y = snap(spec, barTop + 36);
+		bottom = snap(spec, barTop + 36);
 	} else {
-		s += langBar(spec, m, barTop, contentWidth(spec), langs, T);
-		y = snap(spec, barTop + 46);
+		const bar = langBar(spec, m, barTop, contentWidth(spec), langs, T);
+		s += bar.svg;
+		bottom = bar.bottom;
 	}
-	const H = snap(spec, y + SPACE.s4);
-
-	let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="${FONT}">`;
-	svg += `<rect width="${W}" height="${H}" fill="${T.bg}"/>`;
-	svg += s;
-	if (grid) svg += gridOverlay(spec, H);
-	svg += '</svg>';
-	return svg;
+	return { svg: s, bottom: snap(spec, bottom + SPACE.s4) };
 }
 
-function renderBand1Mobile(model: Band1Model, grid: boolean): string {
+function drawIdentityMobile(model: Band1Model, y0: number): { svg: string; bottom: number } {
 	const spec = canvasSpec(true);
 	const { T, sem } = skinFor(model.theme);
 	const TT = typeTable(spec);
 	const W = spec.width;
 	const m = spec.margin;
 	let s = '';
-	let y: number = SPACE.s4;
 
-	// identity rail — compact avatar + name + descriptor
-	const as = 48;
+	// masthead — compact avatar + name; the tagline lives in the
+	// README intro line
+	const as = 56;
 	const ax = m;
-	const ay = y;
+	const ay = y0;
 	if (model.avatarDataUri) {
-		s += `<clipPath id="b1mav"><rect x="${ax}" y="${ay}" width="${as}" height="${as}" rx="12"/></clipPath>`;
+		s += `<clipPath id="b1mav"><rect x="${ax}" y="${ay}" width="${as}" height="${as}" rx="14"/></clipPath>`;
 		s += `<image href="${model.avatarDataUri}" x="${ax}" y="${ay}" width="${as}" height="${as}" preserveAspectRatio="xMidYMid slice" clip-path="url(#b1mav)"/>`;
-		s += `<rect x="${ax}" y="${ay}" width="${as}" height="${as}" rx="12" fill="none" stroke="${T.line}"/>`;
+		s += `<rect x="${ax}" y="${ay}" width="${as}" height="${as}" rx="14" fill="none" stroke="${T.line}"/>`;
 	} else {
-		s += `<circle cx="${ax + as / 2}" cy="${ay + as / 2}" r="${as / 2}" fill="${T.panel2}" stroke="${T.line}"/>`;
+		s += `<rect x="${ax}" y="${ay}" width="${as}" height="${as}" rx="14" fill="${T.panel2}" stroke="${T.line}"/>`;
 	}
-	const nx = ax + as + SPACE.s2;
-	// name only on mobile — the tagline lives in the README intro
-	// line, and a second baseline under a 28px handle collides
+	const dotX = ax + as - 2;
+	const dotY = ay + as - 2;
+	s += `<circle cx="${dotX}" cy="${dotY}" r="11" fill="${T.bg}"/>`;
+	if (model.presenceOk) {
+		s += `<circle cx="${dotX}" cy="${dotY}" r="7" fill="${discordDotColor(model)}"/>`;
+	} else {
+		s += `<circle cx="${dotX}" cy="${dotY}" r="7" fill="none" stroke="#80848e" stroke-width="1.8"/>`;
+	}
+	// s4 gap: the status ring's outer edge reaches ~9px past the
+	// avatar's right side — s2 left the bio's first glyph ~3px clear
+	const nx = ax + as + SPACE.s4;
 	const nameY = snap(spec, ay + as / 2 + TT.hero.size * 0.34);
 	s += bandText(spec, 'hero', nx, nameY, T.fg, OWNER_NAME);
-	y = ay + as + SPACE.s4;
+	// role descriptor beside the avatar — label role keeps it inside
+	// the ~300px that remains on the row
+	s += bandText(spec, 'label', nx, snap(spec, nameY + 16), T.muted, OWNER_TAGLINE_MOBILE);
+	// presence cluster — full content width under the masthead row,
+	// cleared below the avatar's status dot (dot bottom ≈ ay+as+9)
+	const clusterY = snap(spec, ay + as + SPACE.s6 + SPACE.s1);
+	s += presenceCluster(spec, m, clusterY, clusterY + 16, contentWidth(spec), model, T);
 
-	// presence card — full content width, single Discord surface
-	const cardH = 56;
-	s += presenceCard(spec, m, y, contentWidth(spec), cardH, model, T);
-	y += cardH + SPACE.s4;
-
-	// focal stats — two modules on the 6-column re-grid (cols 0–2 / 3–5)
-	const hy = snap(spec, y);
-	const f1 = focalStat(spec, m, hy, FOCAL_STATS[0], model.stats, T, sem);
-	const f2 = focalStat(spec, gridX(spec, 3), hy, FOCAL_STATS[1], model.stats, T, sem);
-	s += f1.svg + f2.svg;
-	const rowBottom = Math.max(f1.bottom, f2.bottom);
-
-	// totals module — full width, 2×2
-	const totals = totalsGrid(
+	// VITALS — 3+3 cell re-grid on the 6-column canvas
+	const y = snap(spec, clusterY + 16 + SPACE.s4);
+	s += moduleHead(spec, m, y, 'VITALS', vitalsHeadRight(model.stats, true), T);
+	const strip = metricStrip(
 		spec,
 		m,
-		snap(spec, rowBottom + SPACE.s4),
+		snap(spec, y + TT.title.lh + SPACE.s2),
 		contentWidth(spec),
 		model.stats,
 		T,
+		sem,
 	);
-	s += totals.svg;
+	s += strip.svg;
 
-	// languages module
-	const ly = snap(spec, totals.bottom + SPACE.s2);
+	// TOP LANGUAGES
+	const ly = snap(spec, strip.bottom + SPACE.s4);
 	s += moduleHead(spec, m, ly, 'TOP LANGUAGES', null, T);
 	const barTop = snap(spec, ly + 18);
 	const langs = model.stats.topLangs;
+	let bottom: number;
 	if (!langs || langs.length === 0) {
 		s += bandText(spec, 'body', m, snap(spec, barTop + 20), T.faint, 'language data unavailable');
-		y = snap(spec, barTop + 36);
+		bottom = snap(spec, barTop + 36);
 	} else {
-		s += langBar(spec, m, barTop, contentWidth(spec), langs, T);
-		y = snap(spec, barTop + 46);
+		const bar = langBar(spec, m, barTop, contentWidth(spec), langs, T);
+		s += bar.svg;
+		bottom = bar.bottom;
 	}
-	const H = snap(spec, y + SPACE.s4);
+	return { svg: s, bottom: snap(spec, bottom + SPACE.s4) };
+}
 
-	let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="${FONT}">`;
-	svg += `<rect width="${W}" height="${H}" fill="${T.bg}"/>`;
-	svg += s;
-	if (grid) svg += gridOverlay(spec, H);
-	svg += '</svg>';
-	return svg;
+/** Identity section — dispatches on the model's canvas. */
+export function drawIdentitySection(
+	model: Band1Model,
+	y0: number,
+): { svg: string; bottom: number } {
+	return model.mobile ? drawIdentityMobile(model, y0) : drawIdentityDesktop(model, y0);
 }
 
 export function renderBand1Svg(model: Band1Model, opts: { grid?: boolean } = {}): string {
-	return model.mobile
-		? renderBand1Mobile(model, opts.grid === true)
-		: renderBand1Desktop(model, opts.grid === true);
+	const spec = canvasSpec(model.mobile);
+	const { T } = skinFor(model.theme);
+	const sec = drawIdentitySection(model, SPACE.s6);
+	const H = snap(spec, sec.bottom + SPACE.s4) + (opts.grid && model.mobile ? 28 : 0);
+	let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${spec.width}" height="${H}" viewBox="0 0 ${spec.width} ${H}" font-family="${FONT}">`;
+	svg += `<rect width="${spec.width}" height="${H}" fill="${T.bg}"/>`;
+	svg += sec.svg;
+	if (opts.grid) svg += gridOverlay(spec, H);
+	svg += '</svg>';
+	return svg;
 }
 
 // ---- Band 2 ----
@@ -820,18 +857,12 @@ function jstDayKey(iso: string): string {
 	return `${get('year')}-${get('month')}-${get('day')}`;
 }
 
-function eventStamp(at: string, observedAt: string | null): string {
-	// compact absolute stamp. The band header already declares the JST
-	// timezone and the observed day, so events landing on that same day
-	// collapse to 'HH:MM'; other days keep 'Nov 24 · 02:46'. Still
-	// absolute — a static SVG never prints relative ages that rot.
+function eventStamp(at: string): string {
+	// absolute stamp with date — 'Nov 24 02:46'. A bare '02:46' reads
+	// as a duration; the date makes every event unambiguously placed.
+	// Still absolute — a static SVG never prints relative ages.
 	if (!at) return 'unknown time';
-	const full = observedJst(at).replace(' JST', '');
-	if (observedAt && jstDayKey(at) === jstDayKey(observedAt)) {
-		return full.split(' · ')[1] ?? full;
-	}
-	// 'Nov 24 · 02:46' -> 'Nov 24 02:46' — tighter, still absolute
-	return full.replace(' · ', ' ');
+	return observedJst(at).replace(' JST', '').replace(' · ', ' ');
 }
 
 /** Recent public activity as a compact notification-style list —
@@ -866,28 +897,27 @@ function renderRecentActivity(
 			runs.push({ repo, type: e.type, at: e.at, count: 1 });
 		}
 	}
-	const maxRows = compact ? 4 : 5;
-	const rowH = 20;
+	const maxRows = compact ? 4 : 6;
+	const rowH = 22;
 	const shown = runs.slice(0, maxRows);
 	const firstBaseline = snap(spec, y + 24);
 	// one column on every canvas — a second packed column was the
 	// source of the desktop collisions; the stamp gets its own
 	// right-aligned column so repo names truncate instead of pushing
 	// the timestamp off the canvas edge
-	const stampW = 92;
+	const stampW = 104;
 	shown.forEach((r, i) => {
 		const ry = firstBaseline + i * rowH;
 		s += eventGlyph(r.type, x + 6, iconCenterY(ry, TT.data.size), ICON.sm - 2, typeColor(r.type));
 		const verb =
 			r.count > 1 ? `${r.count} ${EVENT_NOUN[r.type] ?? r.type}` : (EVENT_VERB[r.type] ?? r.type);
-		// repo owns the strong slot in the UI sans; the verb is a muted
-		// caption tspan so rows don't shout over their module head
-		const repoFs = TT.data.size - 1;
+		// repo owns the strong role — events are the band's readable
+		// payload, so nothing here sits below the legibility floor
 		const verbTxt = ` · ${verb}`;
-		const verbW = textWidth(verbTxt, TT.caption.size);
-		const repo = truncate(r.repo, w - stampW - 24 - verbW - 8, repoFs);
-		s += `<text x="${x + 20}" y="${ry}" xml:space="preserve"><tspan font-family="${FONT}" font-size="${repoFs}" font-weight="600" fill="${T.fg}">${esc(repo)}</tspan><tspan font-family="${FONT}" font-size="${TT.caption.size}" fill="${T.muted}">${esc(verbTxt)}</tspan></text>`;
-		s += bandText(spec, 'caption', x + w, ry, T.faint, eventStamp(r.at, model.observedAt), {
+		const verbW = flowWidth(verbTxt, TT.label.size);
+		const repo = truncate(r.repo, w - stampW - 24 - verbW - 8, TT.strong.size);
+		s += `<text x="${x + 20}" y="${ry}" xml:space="preserve"><tspan font-family="${FONT}" font-size="${TT.strong.size}" font-weight="${TT.strong.weight}" fill="${T.fg}">${esc(repo)}</tspan><tspan font-family="${FONT}" font-size="${TT.label.size}" fill="${T.muted}">${esc(verbTxt)}</tspan></text>`;
+		s += bandText(spec, 'caption', x + w, ry, T.faint, eventStamp(r.at), {
 			anchor: 'end',
 			mono: true,
 		});
@@ -939,7 +969,7 @@ function renderPulse72(
 	T: Theme,
 	sem: (k: string) => string,
 ): { svg: string; bottom: number; peak: number } {
-	const stripH = 44;
+	const stripH = 56;
 	const stripTop = snap(spec, y + 22);
 	const baselineY = stripTop + stripH;
 	const counts = new Array<number>(72).fill(0);
@@ -956,7 +986,7 @@ function renderPulse72(
 	}
 	const peak = Math.max(0, ...counts);
 	const pitch = w / 72;
-	const barW = Math.min(9, pitch * 0.72);
+	const barW = Math.min(10, pitch * 0.8);
 	let s = `<line x1="${x}" y1="${baselineY}" x2="${x + w}" y2="${baselineY}" stroke="${T.line}"/>`;
 	// whisper guide at the peak bar top — the caption quotes the value,
 	// the line gives the height a referent
@@ -997,9 +1027,12 @@ function renderPulse72(
 	}
 	counts.forEach((c, i) => {
 		if (c === 0) return;
-		const bh = Math.min(stripH - 6, 6 + c * 6);
+		const bh = Math.min(stripH - 8, 8 + c * 7);
 		const bx = x + i * pitch + (pitch - barW) / 2;
-		s += `<rect x="${bx.toFixed(1)}" y="${(baselineY - bh).toFixed(1)}" width="${barW.toFixed(1)}" height="${bh}" rx="2" fill="${hasPR[i] ? sem('purple') : sem('accent')}"/>`;
+		const col = hasPR[i] ? sem('purple') : sem('accent');
+		// one solid bar per hour — the earlier two-tone stem/cap read
+		// as a stacked or range encoding, not a single count
+		s += `<rect x="${bx.toFixed(1)}" y="${(baselineY - bh).toFixed(1)}" width="${barW.toFixed(1)}" height="${bh.toFixed(1)}" rx="2" fill="${col}" opacity="0.9"/>`;
 	});
 	s += bandText(spec, 'caption', x, snap(spec, baselineY + 17), T.faint, '72h ago');
 	// the header already carries the full observed stamp — the axis
@@ -1020,6 +1053,60 @@ function renderPulse72(
  * instead of repeated inside every cell. Unmeasured counts render
  * `—`, never a fake zero.
  */
+/**
+ * PR count cell — the licensed `pr` glyph carries the unit so the
+ * number never needs a 'PRs' label repeated per row. Right-aligned
+ * at the column edge; unmeasured renders `—` with no glyph (an
+ * absent upstream is not a zero).
+ */
+function prCount(
+	spec: CanvasSpec,
+	right: number,
+	ry: number,
+	prs: number | null,
+	TT: ReturnType<typeof typeTable>,
+	T: Theme,
+	/** aggregate rows dim the WHOLE cell — a muted label beside a
+	 * full-contrast count made rollups shout louder than named repos */
+	dim = false,
+): string {
+	const numFill = dim ? T.faint : T.fg;
+	if (prs === null) {
+		return bandText(spec, 'data', right, ry, T.faint, '—', { anchor: 'end', mono: true });
+	}
+	const num = countLabel(prs);
+	// conservative advance for the glyph offset — mono digits run
+	// ~0.6em; overshooting left only widens the gap, never overlaps
+	const numW = num.length * TT.data.size * 0.62;
+	const glyphX = right - numW - 4 - 11;
+	let s = lucide('pr', glyphX + 5.5, iconCenterY(ry, TT.data.size), 11, T.faint);
+	s += bandText(spec, 'data', right, ry, numFill, num, { anchor: 'end', mono: true });
+	return s;
+}
+
+/** Commit count cell — the `commit` glyph carries the unit exactly
+ * like the PR glyph does, so neither count needs a repeated label. */
+function commitCount(
+	spec: CanvasSpec,
+	right: number,
+	ry: number,
+	commits: number | null,
+	TT: ReturnType<typeof typeTable>,
+	T: Theme,
+	dim = false,
+): string {
+	const numFill = dim ? T.faint : T.fg;
+	if (commits === null) {
+		return bandText(spec, 'data', right, ry, T.faint, '—', { anchor: 'end', mono: true });
+	}
+	const num = countLabel(commits);
+	const numW = num.length * TT.data.size * 0.62;
+	const glyphX = right - numW - 4 - 11;
+	let s = lucide('commit', glyphX + 5.5, iconCenterY(ry, TT.data.size), 11, T.faint);
+	s += bandText(spec, 'data', right, ry, numFill, num, { anchor: 'end', mono: true });
+	return s;
+}
+
 function renderRepoTable(
 	spec: CanvasSpec,
 	x: number,
@@ -1038,76 +1125,38 @@ function renderRepoTable(
 		1,
 		...model.rows.filter((r) => r.commits !== null).map((r) => r.commits ?? 0),
 	);
-	// column right edges: desktop uses the grid; mobile packs two
-	// count columns against the right margin
-	const commitsRight = compact ? x + w - 76 : gridRight(spec, 8, 2);
+	// column right edges: desktop snaps to the grid — commits end at
+	// the column-10 edge so the two count columns sit one gutter
+	// apart instead of leaving an empty column between them; mobile
+	// snaps commits to the column-4 edge for the same reason
+	const commitsRight = compact ? gridRight(spec, 4, 1) : gridRight(spec, 10, 1);
 	const prsRight = spec.width - spec.margin;
 	const barX = gridX(spec, 3);
-	// the longest bar lands exactly on the column-8 right edge —
+	// the longest bar lands exactly on the column-9 right edge —
 	// bars are grid furniture, not free-floating marks
-	const barZoneW = gridRight(spec, 8, 1) - barX;
-	const rowH = compact ? 40 : 24;
+	const barZoneW = gridRight(spec, 9, 1) - barX;
+	const rowH = compact ? 36 : 24;
 	let s = '';
-	let ry = snap(spec, y + 22);
+	// no column-header row — the units live once in the Total/legend
+	// line below, so bare counts never repeat 'commits'/'PRs' per row
+	let ry = snap(spec, y + (compact ? 18 : 20));
 
-	if (compact && named.length > 0) {
-		// compact column headers — units stay intact ('30D COMMITS',
-		// not a stripped '30D'); the 'REPO' sub-label is redundant
-		// under the REPO OUTPUT module head
-		s += bandText(spec, 'caption', commitsRight, snap(spec, y + 14), T.faint, '30D COMMITS', {
-			anchor: 'end',
-			ls: 1,
-		});
-		s += bandText(spec, 'caption', prsRight, snap(spec, y + 14), T.faint, 'PRS', {
-			anchor: 'end',
-			ls: 1,
-		});
-		ry = snap(spec, y + 34);
-	}
-
-	if (!compact) {
-		// column headers — units live here, once; no 'REPO' label,
-		// the module head already names the column
-		s += bandText(spec, 'caption', commitsRight, snap(spec, y + 14), T.faint, '30D COMMITS', {
-			anchor: 'end',
-			ls: 1.2,
-		});
-		s += bandText(spec, 'caption', prsRight, snap(spec, y + 14), T.faint, 'PRS', {
-			anchor: 'end',
-			ls: 1.2,
-		});
-		ry = snap(spec, y + 36);
-	}
-
-	const nameW = compact ? w - 150 : 160;
+	const nameW = compact ? commitsRight - x - 8 : 160;
 	for (const r of named) {
 		if (compact) {
-			// two-line mobile row: name + bare counts, bar underneath —
+			// two-line mobile row: name + counts, bar underneath —
 			// commits and PRs share the table's right-edge columns
 			s += `<text x="${x}" y="${ry}" font-family="${FONT}" font-size="${TT.data.size}" font-weight="600" fill="${T.fg}">${esc(truncate(r.name, nameW, TT.data.size))}</text>`;
-			s += bandText(
-				spec,
-				'data',
-				commitsRight,
-				ry,
-				r.commits !== null ? T.fg : T.faint,
-				r.commits !== null ? countLabel(r.commits) : '—',
-				{ anchor: 'end', mono: true },
-			);
-			if (r.prs !== null) {
-				const num = countLabel(r.prs);
-				s += bandText(spec, 'data', prsRight, ry, T.fg, num, { anchor: 'end', mono: true });
-			} else {
-				s += bandText(spec, 'data', prsRight, ry, T.faint, '—', { anchor: 'end', mono: true });
-			}
+			s += commitCount(spec, commitsRight, ry, r.commits, TT, T);
+			s += prCount(spec, prsRight, ry, r.prs, TT, T);
 			if (r.commits !== null) {
 				// meter zone runs name-edge -> commits column edge with a
 				// whisper track so the bar reads as a meter, not a divider
 				const zoneW = commitsRight - x - 6;
-				s += `<rect x="${x}" y="${ry + 6}" width="${zoneW}" height="6" rx="3" fill="${T.line}" opacity="0.4"/>`;
+				s += `<rect x="${x}" y="${ry + 6}" width="${zoneW}" height="5" rx="2.5" fill="${T.line}" opacity="0.4"/>`;
 				if ((r.commits ?? 0) > 0) {
 					const bw = zoneW * ((r.commits ?? 0) / maxC);
-					s += `<rect x="${x}" y="${ry + 6}" width="${Math.max(3, bw)}" height="6" rx="3" fill="${sem('accent')}" opacity="0.9"/>`;
+					s += `<rect x="${x}" y="${ry + 6}" width="${Math.max(3, bw)}" height="5" rx="2.5" fill="${sem('accent')}" opacity="0.9"/>`;
 				}
 			}
 			ry += rowH;
@@ -1121,21 +1170,8 @@ function renderRepoTable(
 				s += `<rect x="${barX}" y="${ry - 11}" width="${Math.max(3, bw)}" height="8" rx="4" fill="${sem('accent')}"/>`;
 			}
 		}
-		s += bandText(
-			spec,
-			'data',
-			commitsRight,
-			ry,
-			r.commits !== null ? T.fg : T.faint,
-			r.commits !== null ? countLabel(r.commits) : '—',
-			{ anchor: 'end', mono: true },
-		);
-		if (r.prs !== null) {
-			const num = countLabel(r.prs);
-			s += bandText(spec, 'data', prsRight, ry, T.fg, num, { anchor: 'end', mono: true });
-		} else {
-			s += bandText(spec, 'data', prsRight, ry, T.faint, '—', { anchor: 'end', mono: true });
-		}
+		s += commitCount(spec, commitsRight, ry, r.commits, TT, T);
+		s += prCount(spec, prsRight, ry, r.prs, TT, T);
 		ry += rowH;
 	}
 
@@ -1158,25 +1194,9 @@ function renderRepoTable(
 			}
 		}
 		s += bandText(spec, 'caption', x, ay, T.faint, truncate(d.name, nameW, TT.caption.size));
-		s += bandText(
-			spec,
-			'caption',
-			commitsRight,
-			ay,
-			T.faint,
-			d.commits !== null ? countLabel(d.commits) : '—',
-			{
-				anchor: 'end',
-				mono: true,
-			},
-		);
-		if (d.prs !== null) {
-			s += bandText(spec, 'caption', prsRight, ay, T.faint, countLabel(d.prs), {
-				anchor: 'end',
-				mono: true,
-			});
-		}
-		ay += compact ? 32 : 20;
+		s += commitCount(spec, commitsRight, ay, d.commits, TT, T, true);
+		s += prCount(spec, prsRight, ay, d.prs, TT, T, true);
+		ay += compact ? 30 : 20;
 	}
 
 	let bottom = ay;
@@ -1220,52 +1240,63 @@ function sourceWarn(model: Band2Model): string {
 	return bad.length > 0 ? ` · source ${bad.join(' + ')} not ok` : '';
 }
 
-function renderBand2Desktop(model: Band2Model, grid: boolean): string {
+/** Head meta for the activity section — window + observation. On
+ * mobile the degraded-source warning is NOT appended (it would
+ * overflow into the title); callers print it as its own caption. */
+export function activityHeadMeta(model: Band2Model, mobile: boolean): string {
+	return mobile
+		? `30d · ${observedJst(model.observedAt).replace(' · ', ' ')}`
+		: `last ${model.windowDays} days · observed ${observedJst(model.observedAt)}${sourceWarn(model)}`;
+}
+
+/** The degraded-source warning as a standalone caption — used by
+ * mobile compositions whose head meta has no room for it. */
+export function activitySourceWarn(model: Band2Model): string {
+	return sourceWarn(model).trim();
+}
+
+/**
+ * Activity section as a reusable fragment — repo output table, then
+ * the 72-hour pulse beside the recent-events list (side-by-side on
+ * desktop, stacked on the mobile re-grid). `sectioned` tells the
+ * drawer whether a section-level head ('GITHUB ACTIVITY') was
+ * already drawn by the composer: standalone bands keep the
+ * 'REPO OUTPUT' module head with the window meta; the composed
+ * profile moves that meta onto the section head instead.
+ */
+function drawActivityDesktop(
+	model: Band2Model,
+	y0: number,
+	sectioned: boolean,
+): { svg: string; bottom: number } {
 	const spec = canvasSpec(false);
 	const { T, sem } = skinFor(model.theme);
-	const W = spec.width;
 	const m = spec.margin;
 	let s = '';
-	// no band header — the README H2 owns the section name and the
-	// observation meta lives on the REPO OUTPUT module head
-	const y: number = SPACE.s4;
+	const y = y0;
 
 	if (!model.snapshotAvailable) {
-		const H = snap(spec, y + 120);
 		s += bandText(
 			spec,
 			'body',
-			W / 2,
-			snap(spec, y + 60),
+			spec.width / 2,
+			snap(spec, y + 40),
 			T.faint,
 			'no activity snapshot — the sync pipeline has not published data',
-			{
-				anchor: 'middle',
-			},
+			{ anchor: 'middle' },
 		);
-		let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="${FONT}">`;
-		svg += `<rect width="${W}" height="${H}" fill="${T.bg}"/>`;
-		svg += s;
-		if (grid) svg += gridOverlay(spec, H);
-		svg += '</svg>';
-		return svg;
+		return { svg: s, bottom: snap(spec, y + 80) };
 	}
 
 	// REPO OUTPUT — named repos on fixed columns; aggregates footnoted.
-	// The window + observation meta lives on THIS module's head so it
-	// is attributed to the table, never to the feed below it
-	const headRight = `last ${model.windowDays} days · observed ${observedJst(model.observedAt)}`;
-	s += moduleHead(spec, m, y, 'REPO OUTPUT', headRight + sourceWarn(model), T);
-	const table = renderRepoTable(
-		spec,
-		m,
-		snap(spec, y + 18),
-		contentWidth(spec),
-		model,
-		T,
-		sem,
-		false,
-	);
+	// Standalone bands carry the window meta on this module's head;
+	// the composed profile already stated it on the section head.
+	let tableTop = y;
+	if (!sectioned) {
+		s += moduleHead(spec, m, y, 'REPO OUTPUT', activityHeadMeta(model, false), T);
+		tableTop = snap(spec, y + 18);
+	}
+	const table = renderRepoTable(spec, m, tableTop, contentWidth(spec), model, T, sem, false);
 	s += table.svg;
 
 	// LAST 72 HOURS + RECENT EVENTS — peer modules sharing one row
@@ -1295,58 +1326,49 @@ function renderBand2Desktop(model: Band2Model, grid: boolean): string {
 	);
 	s += pulse.svg + events.svg;
 
-	const contentBottom = Math.max(pulse.bottom, events.bottom);
-	const H = snap(spec, contentBottom + SPACE.s6);
-	let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="${FONT}">`;
-	svg += `<rect width="${W}" height="${H}" fill="${T.bg}"/>`;
-	svg += s;
-	if (grid) svg += gridOverlay(spec, H);
-	svg += '</svg>';
-	return svg;
+	return { svg: s, bottom: Math.max(pulse.bottom, events.bottom) };
 }
 
-function renderBand2Mobile(model: Band2Model, grid: boolean): string {
+function drawActivityMobile(
+	model: Band2Model,
+	y0: number,
+	sectioned: boolean,
+): { svg: string; bottom: number } {
 	const spec = canvasSpec(true);
 	const { T, sem } = skinFor(model.theme);
-	const W = spec.width;
 	const m = spec.margin;
 	let s = '';
-	// no band header — the README H2 owns the name; observation meta
-	// lives on the REPO OUTPUT module head
-	const y: number = SPACE.s4;
+	const y = y0;
 
 	if (!model.snapshotAvailable) {
-		const H = snap(spec, y + 80);
 		s += bandText(
 			spec,
 			'body',
-			W / 2,
+			spec.width / 2,
 			snap(spec, y + 40),
 			T.faint,
 			'no activity snapshot published',
-			{
-				anchor: 'middle',
-			},
+			{ anchor: 'middle' },
 		);
-		let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="${FONT}">`;
-		svg += `<rect width="${W}" height="${H}" fill="${T.bg}"/>`;
-		svg += s;
-		if (grid) svg += gridOverlay(spec, H);
-		svg += '</svg>';
-		return svg;
+		return { svg: s, bottom: snap(spec, y + 80) };
 	}
 
-	// compact canvas: shorten the window meta so the module-head
-	// caption can't collide with the title — '30D COMMITS' column
-	// header already carries the window. A degraded-source warning
-	// gets its own caption line: appended to the meta it would
-	// overflow back into the title
+	// compact canvas: the window meta is short enough to share the
+	// module head; a degraded source gets its own caption line —
+	// appended to the meta it would overflow back into the title
 	const warn = sourceWarn(model);
-	const headRight = `30d · observed ${observedJst(model.observedAt)}`;
-	s += moduleHead(spec, m, y, 'REPO OUTPUT', headRight, T);
-	const tableTop = snap(spec, y + 16 + (warn ? 20 : 0));
-	if (warn) {
-		s += bandText(spec, 'caption', m, snap(spec, y + 32), T.faint, warn.trim());
+	let tableTop = y;
+	if (!sectioned) {
+		s += moduleHead(spec, m, y, 'REPO OUTPUT', activityHeadMeta(model, true), T);
+		tableTop = snap(spec, y + 16 + (warn ? 20 : 0));
+		if (warn) {
+			s += bandText(spec, 'caption', m, snap(spec, y + 32), T.faint, warn.trim());
+		}
+	} else if (warn) {
+		// the section head carries no room for the warning on 400px —
+		// it gets its own caption line above the table
+		s += bandText(spec, 'caption', m, snap(spec, y + 14), T.faint, warn.trim());
+		tableTop = snap(spec, y + 30);
 	}
 	const table = renderRepoTable(spec, m, tableTop, contentWidth(spec), model, T, sem, true);
 	s += table.svg;
@@ -1371,19 +1393,32 @@ function renderBand2Mobile(model: Band2Model, grid: boolean): string {
 	);
 	s += events.svg;
 
-	const H = snap(spec, events.bottom + SPACE.s6);
-	let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="${FONT}">`;
-	svg += `<rect width="${W}" height="${H}" fill="${T.bg}"/>`;
-	svg += s;
-	if (grid) svg += gridOverlay(spec, H);
-	svg += '</svg>';
-	return svg;
+	return { svg: s, bottom: events.bottom };
+}
+
+/** Activity section — dispatches on the model's canvas. */
+export function drawActivitySection(
+	model: Band2Model,
+	y0: number,
+	opts: { sectioned?: boolean } = {},
+): { svg: string; bottom: number } {
+	const sectioned = opts.sectioned === true;
+	return model.mobile
+		? drawActivityMobile(model, y0, sectioned)
+		: drawActivityDesktop(model, y0, sectioned);
 }
 
 export function renderBand2Svg(model: Band2Model, opts: { grid?: boolean } = {}): string {
-	return model.mobile
-		? renderBand2Mobile(model, opts.grid === true)
-		: renderBand2Desktop(model, opts.grid === true);
+	const spec = canvasSpec(model.mobile);
+	const { T } = skinFor(model.theme);
+	const sec = drawActivitySection(model, SPACE.s4);
+	const H = snap(spec, sec.bottom + SPACE.s6) + (opts.grid && model.mobile ? 28 : 0);
+	let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${spec.width}" height="${H}" viewBox="0 0 ${spec.width} ${H}" font-family="${FONT}">`;
+	svg += `<rect width="${spec.width}" height="${H}" fill="${T.bg}"/>`;
+	svg += sec.svg;
+	if (opts.grid) svg += gridOverlay(spec, H);
+	svg += '</svg>';
+	return svg;
 }
 
 // ---- model composition (pure, fail-closed) ----

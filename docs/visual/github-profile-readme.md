@@ -1044,3 +1044,14 @@ top-languages,streak-fetcher}.ts`、`calculateRank.ts`、
   （README Selected Work）・#1242（showcase light）
 - ticket PR は局所検証で `release-0-15-0` へ統合。包括的検証は
   候補確定後。v0.14.0 公開維持、v0.15.0 リリースは明示承認制。
+
+### 23.5 共通データ契約（2026-11-26 追加）
+
+#1244（配信分離）と #1245（集計範囲）の共通データ契約の正本は
+`docs/domain/github-profile-data.md`。要点: 帰属スコープ
+`owned` / `org-member`（所属≠コントリビュート、実績計測で絞る）/
+`collaborator` / `external-public`（affiliation 外の公開 repo も
+search で回収）、全指標が `{scope, window}` を宣言、snapshot は
+`github_activity_snapshot`（拡張）+ `github_stats_snapshot`
+（新規・独立更新）+ `discord_presence_snapshot`（既存）に分離、
+画像リクエストは上流 API を呼ばない、公開境界（anonId/HMAC）維持。

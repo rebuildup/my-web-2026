@@ -74,3 +74,10 @@ Identity / Presence / Vitals / Activity / Top Languages / Stack を
   実態」を反映し、指標の意味が名前と一致する。
 - 単一 SVG の視覚的成果（構図・グリッド・階層）は資産として
   継承し、実装単位だけが変わる。
+
+## 4. データ契約の正本
+
+#1244 / #1245 が共有するデータ契約（発見・帰属・指標意味論・
+公開範囲・鮮度・永続化・増分同期・部分失敗）の正本は
+`docs/domain/github-profile-data.md`。契約変更は本 ADR と
+visual doc §23 へ波及させる。

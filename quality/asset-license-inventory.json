@@ -877,6 +877,60 @@
 			"publication": "published",
 			"ownerConfirmation": "unconfirmed",
 			"externalHosts": []
+		},
+		{
+			"id": "github-profile-showcase-light",
+			"kind": "image",
+			"title": "GitHubプロフィール作品ショーケース Light版（animated WebP 1点・main/sub/decor リレー）",
+			"summary": "scripts/build-github-profile-showcase.mjs --config src/http/github-profile/showcase.light.json が生成する Light テーマ版ショーケース。スロット/アクト/遷移/呼吸/ドリフトの構成は dark 版 showcase.json と同一で、canvas 背景（#f6f8fa）と theme ブロック（panelFill/vignette/rim/frameUnderlay/frameAccent/dockFill/dockStroke）のみが異なる（Issue #1242）。rebuildup/rebuildup のプロフィールREADMEが <picture> の light ソースとして参照する予定。写っているのは全て rebuildup 自身の制作物の公開プロモーション映像・素材であり、この記録は権利・出所の記録であり、owner承認の記録ではない（ownerConfirmation: unconfirmed）。",
+			"covers": ["public/github-profile/showcase-light.webp"],
+			"publicPaths": ["/github-profile/showcase-light.webp"],
+			"origin": "repository-generated",
+			"rightsHolder": "rebuildup",
+			"license": {
+				"spdx": "MIT",
+				"redistribution": "bundled",
+				"attributionRequired": false,
+				"attributionText": null,
+				"attributionDeliveredAt": null,
+				"conditions": [
+					"各作品の出典は src/portfolio/notion/generated/snapshot.json が published+public とするレコードの links[].kind==='video' の YouTube URL または isCover の image/gif メディアのみ（src/http/github-profile/clips.json が出典マニフェスト）。/media/<key> が 200 を返すキーだけが使える（公開境界は Worker 側が fail-closed で判定）。",
+					"作品が公開集合から外れた場合、スクリプトは fail-closed で失敗し showcase-light.webp を更新しない。",
+					"変換は scripts/build-github-profile-showcase.mjs --config src/http/github-profile/showcase.light.json（yt-dlp + ffmpeg で要素正規化、sharp でフレーム合成、img2webp で animated WebP 化）で showcase.light.json の定義から再生成できる。",
+					"全出力フレームのサンプルに対する輝度ゲートで暗転・ローディングフレームの混入をビルド時に拒否する。"
+				]
+			},
+			"verification": {
+				"method": "repository-evidence",
+				"checkedOn": "2026-11-27",
+				"note": "生成スクリプトと showcase.light.json/clips.json の slug・出典種別、snapshot.json の公開状態が出所を固定する。dark 版と同一の素材・構成で、テーマ配色のみ light へ置き換えた派生物。owner 承認の記録ではない。"
+			},
+			"evidence": [
+				{
+					"kind": "repository-file",
+					"path": "LICENSE",
+					"sha256": "5b250fafdf2626580f8669360151dd1ab0f7712398452393751e684da3978e6d"
+				},
+				{
+					"kind": "repository-file",
+					"path": "scripts/build-github-profile-showcase.mjs"
+				},
+				{
+					"kind": "repository-file",
+					"path": "src/http/github-profile/showcase.light.json"
+				},
+				{
+					"kind": "repository-file",
+					"path": "src/http/github-profile/clips.json"
+				},
+				{
+					"kind": "repository-file",
+					"path": "src/portfolio/notion/generated/snapshot.json"
+				}
+			],
+			"publication": "published",
+			"ownerConfirmation": "unconfirmed",
+			"externalHosts": []
 		}
 	]
 }

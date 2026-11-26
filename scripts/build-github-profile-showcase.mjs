@@ -42,8 +42,16 @@
  *   secondary streams) -> img2webp animated WebP.
  *
  * Usage:
- *   node scripts/build-github-profile-showcase.mjs           # regenerate
- *   node scripts/build-github-profile-showcase.mjs --review  # dump frames
+ *   node scripts/build-github-profile-showcase.mjs                    # regenerate
+ *   node scripts/build-github-profile-showcase.mjs --review           # dump frames
+ *   node scripts/build-github-profile-showcase.mjs --config <path>    # variant config
+ *
+ * Theme variants (Issue #1242): the decorative colors live in the
+ * config's optional `theme` block — `vignette`, `panelFill`, `rim`,
+ * `frameUnderlay`, `frameAccent`, `dockFill`, `dockStroke`. Absent
+ * keys fall back to the dark-theme values, so `showcase.json` is
+ * unchanged; `showcase.light.json` carries the light set and its own
+ * `output` path.
  */
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -53,7 +61,11 @@ import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const SHOWCASE_PATH = join(REPO_ROOT, 'src/http/github-profile/showcase.json');
+const configArg = process.argv.indexOf('--config');
+const SHOWCASE_PATH =
+	configArg > -1 && process.argv[configArg + 1]
+		? join(REPO_ROOT, process.argv[configArg + 1])
+		: join(REPO_ROOT, 'src/http/github-profile/showcase.json');
 const SOURCES_PATH = join(REPO_ROOT, 'src/http/github-profile/clips.json');
 const SNAPSHOT_PATH = join(REPO_ROOT, 'src/portfolio/notion/generated/snapshot.json');
 const MEDIA_BASE = 'https://rebuildup.dev/media';
@@ -61,7 +73,6 @@ const WORK_DIR = join(REPO_ROOT, '.tmp/showcase-build');
 const SRC_CACHE = join(REPO_ROOT, '.tmp/showcase-src');
 const REVIEW_DIR = join(REPO_ROOT, '.tmp/showcase-review');
 const REVIEW = process.argv.includes('--review');
-const OUT_PATH = join(REPO_ROOT, 'public/github-profile/showcase.webp');
 const MIN_LUMA = 18;
 const YT_ID = /(?:youtube\.com\/(?:watch\?[^ ]*v=|shorts\/|embed\/)|youtu\.be\/)([\w-]{11})/;
 
@@ -387,6 +398,19 @@ async function decorPng(path, svg) {
 async function main() {
 	const showcase = loadJson(SHOWCASE_PATH);
 	const sources = loadJson(SOURCES_PATH);
+	// Decorative colors: config `theme` overrides the dark defaults
+	// (Issue #1242). `showcase.json` declares none → identical output.
+	const theme = {
+		panelFill: 'rgba(9,13,19,0.72)',
+		vignette: '#0B0F14',
+		rim: 'rgba(255,255,255,0.26)',
+		frameUnderlay: 'rgba(5,10,18,0.6)',
+		frameAccent: 'rgba(140,188,246,0.78)',
+		dockFill: 'rgba(22,30,42,0.9)',
+		dockStroke: 'rgba(255,255,255,0.10)',
+		...(showcase.theme ?? {}),
+	};
+	const outPath = join(REPO_ROOT, showcase.output ?? 'public/github-profile/showcase.webp');
 	const canvas = showcase.canvas;
 	const { width: W, height: H, fps, quality } = canvas;
 	const bgRgb = {
@@ -523,7 +547,7 @@ async function main() {
 	const panelSvgs = showcase.slots.subs.map((slot, i) => {
 		const w = slot.w + PAD * 2;
 		const h = slot.h + PAD * 2;
-		return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><rect x="0.5" y="0.5" width="${w - 1}" height="${h - 1}" rx="${R}" fill="rgba(9,13,19,0.72)"/></svg>`;
+		return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><rect x="0.5" y="0.5" width="${w - 1}" height="${h - 1}" rx="${R}" fill="${theme.panelFill}"/></svg>`;
 	});
 	const panelFiles = [];
 	for (const [i, svg] of panelSvgs.entries()) {
@@ -535,7 +559,7 @@ async function main() {
 	// the main card breathes and travels between slots, so a static
 	// wireframe would detach from it. renderFrame draws the frame
 	// around whichever element is currently largest instead.
-	const FRAME_STROKE = 'rgba(140,188,246,0.78)';
+	const FRAME_STROKE = theme.frameAccent;
 	const FRAME_WIDTH = 3;
 
 	// ---- decor: bake background + sub panels + main frame into one
@@ -572,7 +596,7 @@ async function main() {
 			const y1 = Math.max(...parks.map((r) => r.y + r.h)) + 14;
 			const dockW = x1 - x0;
 			const dockH = y1 - y0;
-			const dockSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="${dockW}" height="${dockH}"><rect x="0.5" y="0.5" width="${dockW - 1}" height="${dockH - 1}" rx="14" fill="rgba(22,30,42,0.9)" stroke="rgba(255,255,255,0.10)"/></svg>`;
+			const dockSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="${dockW}" height="${dockH}"><rect x="0.5" y="0.5" width="${dockW - 1}" height="${dockH - 1}" rx="14" fill="${theme.dockFill}" stroke="${theme.dockStroke}"/></svg>`;
 			const dockPath = join(decorDir, 'dock.png');
 			await decorPng(dockPath, dockSvg);
 			dockLayer = await sharp(dockPath).png().toBuffer();
@@ -701,7 +725,7 @@ async function main() {
 			rimCache.set(
 				key,
 				Buffer.from(
-					`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><rect x="1" y="1" width="${w - 2}" height="${h - 2}" rx="${r}" fill="none" stroke="rgba(255,255,255,0.26)" stroke-width="1"/></svg>`,
+					`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><rect x="1" y="1" width="${w - 2}" height="${h - 2}" rx="${r}" fill="none" stroke="${theme.rim}" stroke-width="1"/></svg>`,
 				),
 			);
 		}
@@ -719,7 +743,7 @@ async function main() {
 			frameCache.set(
 				key,
 				Buffer.from(
-					`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><rect x="${FRAME_WIDTH / 2}" y="${FRAME_WIDTH / 2}" width="${w - FRAME_WIDTH}" height="${h - FRAME_WIDTH}" rx="${r}" fill="none" stroke="rgba(5,10,18,0.6)" stroke-width="${FRAME_WIDTH + 5}"/><rect x="${FRAME_WIDTH / 2}" y="${FRAME_WIDTH / 2}" width="${w - FRAME_WIDTH}" height="${h - FRAME_WIDTH}" rx="${r}" fill="none" stroke="${FRAME_STROKE}" stroke-width="${FRAME_WIDTH}"/></svg>`,
+					`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><rect x="${FRAME_WIDTH / 2}" y="${FRAME_WIDTH / 2}" width="${w - FRAME_WIDTH}" height="${h - FRAME_WIDTH}" rx="${r}" fill="none" stroke="${theme.frameUnderlay}" stroke-width="${FRAME_WIDTH + 5}"/><rect x="${FRAME_WIDTH / 2}" y="${FRAME_WIDTH / 2}" width="${w - FRAME_WIDTH}" height="${h - FRAME_WIDTH}" rx="${r}" fill="none" stroke="${FRAME_STROKE}" stroke-width="${FRAME_WIDTH}"/></svg>`,
 				),
 			);
 		}
@@ -746,7 +770,7 @@ async function main() {
 			// hero-overlap seam sits inside the dark zone rather than
 			// on its decay tail (the v21 failure mode).
 			const grad = (id, x1, y1, x2, y2) =>
-				`<linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"><stop offset="0" stop-color="#0B0F14" stop-opacity="0"/><stop offset="0.45" stop-color="#0B0F14" stop-opacity="0.88"/><stop offset="1" stop-color="#0B0F14" stop-opacity="0.88"/></linearGradient>`;
+				`<linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"><stop offset="0" stop-color="${theme.vignette}" stop-opacity="0"/><stop offset="0.45" stop-color="${theme.vignette}" stop-opacity="0.88"/><stop offset="1" stop-color="${theme.vignette}" stop-opacity="0.88"/></linearGradient>`;
 			const defs = [];
 			if (sideH === 'right') {
 				defs.push(grad('gh', w - bandX, 0, w, 0));
@@ -950,7 +974,7 @@ async function main() {
 	// Encode PNG sequence -> animated WebP via img2webp (libwebp tools).
 	// This keeps full-color frames — the previous ffmpeg->GIF pipe
 	// posterized every frame to a 256-colour palette (visible dithering).
-	mkdirSync(dirname(OUT_PATH), { recursive: true });
+	mkdirSync(dirname(outPath), { recursive: true });
 	const framePaths = [];
 	for (let n = 0; n < N; n += 1) {
 		framePaths.push(join(FRAMES_DIR, `f${String(n).padStart(4, '0')}.png`));
@@ -976,11 +1000,11 @@ async function main() {
 		'12',
 		p,
 	]);
-	run('img2webp', ['-loop', '0', '-sharp_yuv', ...frameArgs, '-o', OUT_PATH]);
-	console.log(`[showcase] wrote ${OUT_PATH}`);
+	run('img2webp', ['-loop', '0', '-sharp_yuv', ...frameArgs, '-o', outPath]);
+	console.log(`[showcase] wrote ${outPath}`);
 
 	// Sampled-frame luma gate across the whole loop.
-	const meta = await sharp(readFileSync(OUT_PATH), { animated: true }).metadata();
+	const meta = await sharp(readFileSync(outPath), { animated: true }).metadata();
 	const pages = meta.pages ?? 1;
 	let failures = 0;
 	const samples = 12;
@@ -989,7 +1013,7 @@ async function main() {
 		// near the luma floor by design.
 		const idx = Math.min(pages - 1, Math.floor(pages * (0.1 + (0.8 * i) / samples)));
 		const png = join(WORK_DIR, `sample-${i}.png`);
-		writeFileSync(png, await sharp(readFileSync(OUT_PATH), { page: idx }).png().toBuffer());
+		writeFileSync(png, await sharp(readFileSync(outPath), { page: idx }).png().toBuffer());
 		const luma = meanLuma(png);
 		if (luma !== null && luma < MIN_LUMA) {
 			console.error(`[showcase] dark frame page=${idx} luma=${luma.toFixed(1)}`);

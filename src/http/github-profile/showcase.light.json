@@ -1,0 +1,111 @@
+{
+	"schema": "github-profile-showcase.v3",
+	"issue": "rebuildup/rebuildup#8",
+	"adr": "docs/adr/ADR-0026-github-profile-redesign.md",
+	"output": "public/github-profile/showcase-light.webp",
+	"canvas": {
+		"width": 800,
+		"height": 360,
+		"background": "#f6f8fa",
+		"fps": 8,
+		"quality": 80
+	},
+	"duration": 28,
+	"elementSeconds": 28,
+	"transition": 1.0,
+	"fade": 0.35,
+	"element": {
+		"w": 640,
+		"h": 360
+	},
+	"slots": {
+		"main": {
+			"w": 520,
+			"h": 293,
+			"x": 140,
+			"y": 34
+		},
+		"subs": [
+			{
+				"w": 190,
+				"h": 107,
+				"x": 16,
+				"y": 16
+			},
+			{
+				"w": 190,
+				"h": 107,
+				"x": 594,
+				"y": 16
+			},
+			{
+				"w": 190,
+				"h": 107,
+				"x": 16,
+				"y": 237
+			},
+			{
+				"w": 190,
+				"h": 107,
+				"x": 594,
+				"y": 237
+			}
+		],
+		"parks": []
+	},
+	"breathing": {
+		"amp": 0.03,
+		"period": 28
+	},
+	"drift": {
+		"amp": 3,
+		"period": 9
+	},
+	"acts": [
+		{
+			"main": "prototype",
+			"preview": "flashbeat",
+			"prev": "kosen",
+			"context": "multislicer",
+			"duration": 6.0
+		},
+		{
+			"main": "flashbeat",
+			"preview": "foldlayers",
+			"prev": "prototype",
+			"context": "aulymo-v02",
+			"duration": 5.0
+		},
+		{
+			"main": "foldlayers",
+			"preview": "homura",
+			"prev": "flashbeat",
+			"context": "ugoita",
+			"duration": 5.5
+		},
+		{
+			"main": "homura",
+			"preview": "kosen",
+			"prev": "foldlayers",
+			"context": "multislicer",
+			"duration": 6.0
+		},
+		{
+			"main": "multislicer",
+			"preview": "prototype",
+			"prev": "homura",
+			"context": "ugoita",
+			"duration": 5.5
+		}
+	],
+	"sources": "src/http/github-profile/clips.json",
+	"theme": {
+		"panelFill": "rgba(255,255,255,0.82)",
+		"vignette": "#f6f8fa",
+		"rim": "rgba(31,35,40,0.16)",
+		"frameUnderlay": "rgba(255,255,255,0.85)",
+		"frameAccent": "rgba(9,105,218,0.9)",
+		"dockFill": "rgba(255,255,255,0.94)",
+		"dockStroke": "rgba(31,35,40,0.10)"
+	}
+}

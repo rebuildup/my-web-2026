@@ -34,9 +34,6 @@ import { escapeXml } from './card';
 import { SPACE, canvasSpec, gridOverlay, gridX, marqueePeriod, snap, typeTable } from './design';
 import { STACK_GROUPS, STACK_ICONS, type StackIcon } from './stack-icons';
 
-export const STACK_WIDTH = 800;
-export const STACK_MOBILE_WIDTH = 400;
-
 const FONT = "-apple-system,'Segoe UI',Helvetica,Arial,sans-serif";
 const esc = escapeXml;
 

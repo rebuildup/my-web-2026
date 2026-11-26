@@ -6,13 +6,13 @@
 		"capabilities": [
 			"read_content"
 		],
-		"fetchedAt": "2026-11-25T15:48:01.787Z",
+		"fetchedAt": "2026-11-26T02:55:32.694Z",
 		"sourceUrl": null
 	},
 	"availability": "public",
 	"unavailableReason": null,
-	"observedAt": "2026-11-25T15:48:01.787Z",
-	"contentDigest": "sha256:7a871b757ff036f6cb8c4754d20b06cbc619375fe8bae7fefbb4f503277f9807",
+	"observedAt": "2026-11-26T02:55:32.694Z",
+	"contentDigest": "sha256:824c8df21a4a0abfb369a466ed3c616c65dc224bfb8c7736afed427e8fb9f549",
 	"records": [
 		{
 			"pageId": "423d54e3-32c3-817f-bc73-feab36936e70",
@@ -278,8 +278,75 @@
 					"displayOrder": 1
 				}
 			],
-			"media": [],
-			"editedAt": "2026-11-25T08:23:00.000Z"
+			"media": [
+				{
+					"r2Key": "portfolio/notion/0da042a6acf1715bd43738a3232592f4db024acf90619ffbaa4d9bc42738e50a.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "ty-plus — プリセットをタイルとして整理し、ワークスペース上でプレビュー・適用できる After Effects 拡張",
+					"caption": "ty-plus — プリセットをタイルとして整理し、ワークスペース上でプレビュー・適用できる After Effects 拡張",
+					"isCover": true,
+					"displayOrder": 0,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/notion/d1f312c2b222ce67068611432de2326e3078020dc2f1f9f54f9ccd047238fa19.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "ty-plus のプリセットタイル10面（AE2026 実機パネルの高解像度キャプチャ）",
+					"caption": "ty-plus のプリセットタイル10面（AE2026 実機パネルの高解像度キャプチャ）",
+					"isCover": false,
+					"displayOrder": 1,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/notion/6ccff1edc666b617569d2806c67ca53126b0d2ee881aa6c7bee62b2b24022a86.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "ty-plus ワークスペース上部のユーティリティウィジェット帯（Curve/Bounce/Elastic・Align/Distribute/Spacing）",
+					"caption": "ty-plus ワークスペース上部のユーティリティウィジェット帯（Curve/Bounce/Elastic・Align/Distribute/Spacing）",
+					"isCover": false,
+					"displayOrder": 2,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/notion/689baa2c30dc9f70dc9364a38136b21074c75ca33865eb9270ca52a58d3141cb.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "ty-plus 下部ゾーン（情報ウィジェットとフォントビューア）",
+					"caption": "ty-plus 下部ゾーン（情報ウィジェットとフォントビューア）",
+					"isCover": false,
+					"displayOrder": 3,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/notion/ae5f17f0825187ad16441bafaf9d6a23722824d679d0cd088f16e3969b43bcc7.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "ty-plus Local Presets ダイアログ実画面",
+					"caption": "ty-plus Local Presets ダイアログ実画面",
+					"isCover": false,
+					"displayOrder": 4,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/notion/01c7bc4f701189183ebaf175b75204e4481010f84a05a49a1bfee86240deb588.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "ty-plus Add Widget ダイアログ実画面",
+					"caption": "ty-plus Add Widget ダイアログ実画面",
+					"isCover": false,
+					"displayOrder": 5,
+					"rights": "unrecorded"
+				}
+			],
+			"editedAt": "2026-11-26T02:37:00.000Z"
 		},
 		{
 			"pageId": "423d54e3-32c3-815a-8c74-f7c9c4c4f1b8",

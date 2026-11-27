@@ -1,4 +1,6 @@
 import type { renderStatsCard } from '../../vendor/github-readme-stats-fast/cards/stats.ts';
+import type { renderStreakCard } from '../../vendor/github-readme-stats-fast/cards/streak-card.ts';
+import type { renderTopLanguages } from '../../vendor/github-readme-stats-fast/cards/top-languages.ts';
 import { parseStatsSnapshot } from '../github-profile/stats-source';
 import type { GitHubStatsSnapshotValue } from '../stats/schema';
 
@@ -75,19 +77,81 @@ export function statsCardFromSnapshot(
 	};
 }
 
-/** D1 read + parse for the stats card route. Literal SQL per the
+type StreakCardData = Parameters<typeof renderStreakCard>[1];
+type TopLangsCardData = Parameters<typeof renderTopLanguages>[0];
+
+/**
+ * Streak card ← `github_stats_snapshot.streak` (Issue #1268). The
+ * snapshot's streak block carries every field `StreakData` needs —
+ * the card and `/vitals` can never disagree. `null` → caller degrades.
+ */
+export function streakCardFromSnapshot(
+	snapshot: GitHubStatsSnapshotValue | null,
+): StreakCardData | null {
+	const s = snapshot?.streak;
+	if (!s) return null;
+	return {
+		currentStreak: s.currentStreak,
+		longestStreak: s.longestStreak,
+		totalContributions: s.totalContributions,
+		firstContribution: s.firstContribution,
+		currentStreakStart: s.currentStreakStart,
+		currentStreakEnd: s.currentStreakEnd,
+		longestStreakStart: s.longestStreakStart,
+		longestStreakEnd: s.longestStreakEnd,
+	};
+}
+
+/**
+ * Top-langs card ← `github_stats_snapshot.languages.owned` (Issue
+ * #1268). The card historically showed the owner's repo language
+ * mix — the owned scope is the same population, now measured by the
+ * sync pipeline instead of a request-time GraphQL call. `null` or an
+ * unmeasured scope → caller degrades (never an invented card).
+ */
+export function topLangsCardFromSnapshot(
+	snapshot: GitHubStatsSnapshotValue | null,
+): TopLangsCardData | null {
+	const langs = snapshot?.languages?.owned;
+	if (!langs || langs.length === 0) return null;
+	const out: Record<string, { name: string; color: string | null; size: number; count: number }> =
+		{};
+	for (const l of langs) {
+		out[l.name] = { name: l.name, color: l.color, size: l.size, count: l.count };
+	}
+	return out;
+}
+
+/** Shared D1 read for the snapshot-backed cards. Literal SQL per the
  * D1 binding gate. */
-export async function loadStatsCardProjection(
-	db: D1Database | undefined,
-): Promise<StatsCardProjection | null> {
+async function loadSnapshot(db: D1Database | undefined): Promise<GitHubStatsSnapshotValue | null> {
 	if (!db) return null;
 	try {
 		const row = await db
 			.prepare('SELECT payload FROM github_stats_snapshot WHERE id = 1')
 			.first<{ payload: string }>();
 		const payload = typeof row?.payload === 'string' ? JSON.parse(row.payload) : null;
-		return statsCardFromSnapshot(parseStatsSnapshot(payload));
+		return parseStatsSnapshot(payload);
 	} catch {
 		return null;
 	}
+}
+
+/** D1 read + parse for the stats card route. */
+export async function loadStatsCardProjection(
+	db: D1Database | undefined,
+): Promise<StatsCardProjection | null> {
+	return statsCardFromSnapshot(await loadSnapshot(db));
+}
+
+export async function loadStreakCardData(
+	db: D1Database | undefined,
+): Promise<StreakCardData | null> {
+	return streakCardFromSnapshot(await loadSnapshot(db));
+}
+
+export async function loadTopLangsCardData(
+	db: D1Database | undefined,
+): Promise<TopLangsCardData | null> {
+	return topLangsCardFromSnapshot(await loadSnapshot(db));
 }

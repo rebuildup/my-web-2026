@@ -30,6 +30,15 @@ import { upsertGitHubActivitySnapshot } from './store';
  * pushes, the Worker serves the new document on the next request.
  */
 
+// The activity snapshot carries up to 200 repo entries plus a 100-item
+// feed (schema ceilings in `./schema.ts`), so the shared 16 KiB JSON
+// cap cannot hold a schema-valid document — repo discovery growth
+// pushed the production payload past it and the daily sync was refused
+// with 413 (Issue #1256, same class as #1251). The cap here is sized to
+// the schema's own worst case; the global default stays untouched for
+// every other ingest route.
+const ACTIVITY_SNAPSHOT_MAX_BODY_BYTES = 1024 * 1024;
+
 export const activityRouter = new Hono<{
 	Bindings: Env;
 	Variables: { apiKey: ApiKeyContext };
@@ -39,7 +48,7 @@ activityRouter.put(
 	'/github',
 	requireApiKey,
 	rateLimitWrite,
-	jsonBody(GitHubActivitySnapshotBody),
+	jsonBody(GitHubActivitySnapshotBody, { maxBytes: ACTIVITY_SNAPSHOT_MAX_BODY_BYTES }),
 	async (c) => {
 		requireResourceAction(c, 'github_activity', 'write');
 		const snapshot = c.get('boundaryBody') as GitHubActivitySnapshotValue;

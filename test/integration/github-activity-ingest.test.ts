@@ -156,6 +156,27 @@ describe('PUT /api/v1/activity/github', () => {
 		});
 	});
 
+	it('accepts a snapshot larger than the shared 16 KiB JSON cap (Issue #1256)', async () => {
+		await clearRows();
+		// ~20 KiB of repo entries — over MAX_JSON_BODY_BYTES, well under
+		// the route's own cap and the schema's 200-repo ceiling. The
+		// production payload crossed 16 KiB on 2026-11-27 and the daily
+		// sync was refused with 413.
+		const manyRepos = Array.from({ length: 80 }, (_, i) => ({
+			id: `rebuildup/repo-${String(i).padStart(3, '0')}-with-a-longish-name`,
+			kind: 'public' as const,
+			name: `repo-${i}`,
+			repoFullName: `rebuildup/repo-${i}`,
+			htmlUrl: `https://github.com/rebuildup/repo-${i}`,
+			summaryJa: 'あ'.repeat(200),
+			scope: 'owned' as const,
+			lastActiveAt: OBSERVED_AT,
+			activity: { events: i, commits: i, prs: 0, windowDays: 30 },
+		}));
+		const res = await put({ ...VALID_SNAPSHOT, repos: manyRepos }, writeKey);
+		expect(res.status).toBe(200);
+	}, 30_000);
+
 	it('the stored payload re-validates through the public reader and wins selection', async () => {
 		await clearRows();
 		await put(VALID_SNAPSHOT, writeKey);

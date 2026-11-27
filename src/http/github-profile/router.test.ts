@@ -273,19 +273,20 @@ describe('GET /vitals', () => {
 		expect(res.status).toBe(405);
 	});
 
-	it('renders the participated-scope lane when the snapshot measured it (Issue #1262)', async () => {
+	it('renders the participated scope as one muted line when measured (Issue #1264)', async () => {
 		const res = await githubProfileRouter.request('/vitals', { method: 'GET' }, {
 			...ENV_BASE,
 			DB: fakeDb({ github_stats_snapshot: STATS }),
 		} as never);
 		expect(res.status).toBe(200);
 		const body = await res.text();
-		expect(body).toContain('PARTICIPATED');
-		expect(body).toContain('projects');
-		expect(body).toContain('>60<');
+		expect(body).toContain('12 contributed projects');
+		expect(body).toContain('60 stars');
+		// The scope note must not read as a second metric lane.
+		expect(body).not.toContain('PARTICIPATED');
 	});
 
-	it('hides the participated lane when the scope was not measured', async () => {
+	it('hides the participated line when the scope was not measured', async () => {
 		const unmeasured = {
 			...STATS,
 			metrics: { ...STATS.metrics, contributedTo: null },
@@ -298,6 +299,7 @@ describe('GET /vitals', () => {
 		} as never);
 		expect(res.status).toBe(200);
 		const body = await res.text();
+		expect(body).not.toContain('contributed projects');
 		expect(body).not.toContain('PARTICIPATED');
 	});
 });

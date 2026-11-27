@@ -5,6 +5,7 @@ import {
 	type BandStats,
 	composeBand1Model,
 	composeBand2Model,
+	drawIdentitySection,
 	renderBand1Svg,
 	renderBand2Svg,
 } from './bands';
@@ -195,29 +196,37 @@ describe('composeBand1Model', () => {
 });
 
 describe('renderBand1Svg', () => {
-	it('renders the profile head with the GitHub stat strip', () => {
+	// Issue #1286: the standalone `/identity` surface is the person
+	// fragment only — vitals and the language bar belong to the
+	// independent `/vitals` + `/top-languages` assets the README
+	// serves alongside it, so no stats value may leak back in.
+	it('renders the person masthead without account stats', () => {
 		const svg = renderBand1Svg(band1());
 		expect(svg).toContain(`width="${BAND_WIDTH}"`);
 		expect(svg).toContain('rebuildup');
-		expect(svg).toContain('streak');
-		expect(svg).toContain('contributions');
-		expect(svg).toContain('128');
-		expect(svg).toContain('stars');
-		expect(svg).toContain('4,211');
-		expect(svg).toContain('commits');
-		expect(svg).toContain('87');
-		expect(svg).toContain('issues');
-		expect(svg).toContain('204');
-		expect(svg).toContain('35,239');
-		expect(svg).toContain('45.8%');
-		expect(svg).toContain('Other');
 		expect(svg).toContain('Online');
+		for (const leaked of [
+			'streak',
+			'contributions',
+			'commits',
+			'issues',
+			'stars',
+			'128',
+			'4,211',
+			'35,239',
+			'45.8%',
+			'TypeScript',
+			'Other',
+			'unavailable',
+		]) {
+			expect(svg).not.toContain(leaked);
+		}
 	});
 
-	it('renders honest unavailable states when stats fail', () => {
+	it('stays person-only even when the stats snapshot is empty', () => {
 		const svg = renderBand1Svg(band1({ stats: EMPTY_STATS }));
-		expect(svg).toContain('—');
-		expect(svg).toContain('unavailable');
+		expect(svg).toContain('rebuildup');
+		expect(svg).not.toContain('unavailable');
 	});
 
 	it('supports the light theme and mobile variant', () => {
@@ -225,7 +234,17 @@ describe('renderBand1Svg', () => {
 		expect(light).toContain('fill="#ffffff"');
 		const mob = renderBand1Svg(band1({ mobile: true }));
 		expect(mob).toContain(`width="${BAND_MOBILE_WIDTH}"`);
-		expect(mob).toContain('streak');
+		expect(mob).toContain('rebuildup');
+		expect(mob).not.toContain('streak');
+	});
+
+	it('keeps the compat /profile composition intact by default', () => {
+		const compat = drawIdentitySection(band1(), 0);
+		expect(compat.svg).toContain('streak');
+		expect(compat.svg).toContain('TypeScript');
+		const scoped = drawIdentitySection(band1(), 0, { accountStats: false });
+		expect(scoped.svg).not.toContain('streak');
+		expect(scoped.bottom).toBeLessThan(compat.bottom);
 	});
 
 	it('is deterministic for the same inputs', () => {

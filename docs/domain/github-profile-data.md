@@ -225,7 +225,7 @@ sync 時に R2 または stats snapshot 内の data URI として永続化
 
 | surface | endpoint | 読む snapshot |
 |---|---|---|
-| Identity(masthead) | `/identity`（band1 互換 fragment: masthead+vitals+langs 合成） | activity + presence + stats + avatar(stats 内) |
+| Identity(masthead) | `/identity`（person fragment のみ: avatar+name+tagline+Discord presence。Issue #1286 で vitals/language bar を除去 — 公開 README が `/vitals` `/top-languages` を独立資産として配信するため責務を分離） | activity + presence + stats snapshot は avatar 取得のみに使用 |
 | Presence | `/presence` | discord_presence_snapshot |
 | Vitals | `/vitals`（新規） | github_stats_snapshot |
 | TopLangs | `/top-languages`（新規） | github_stats_snapshot |
@@ -235,9 +235,11 @@ sync 時に R2 または stats snapshot 内の data URI として永続化
 | `/now` `/status` `/activity` `/current` `/card` | 既存 | 各 snapshot（request 時上流呼出なし） |
 | サイト GitHub STATUS カード `/api/v1/github-readme-stats/api{,/top-langs/,/streak}` | 既存 | **github_stats_snapshot**（stats: Issue #1262、top-langs/streak: Issue #1268 で request 時 upstream fetch から移行。top-langs は `languages.owned`（旧 fetchTopLanguages と同一の owned 母集団）、streak は `streak` ブロックをそのまま投影。未計測・snapshot 不在は 503 degraded + SWR stale 配信。`/api/pin/` は repo 単位の動的取得のため引き続き upstream fetch） |
 
-`/identity` は README 未参照の legacy fragment で、分割 surface
-完成までは band1 全体を返す。README 切替時に masthead のみへ
-再定義するか廃止するかは #1240 の視覚作業と合わせて決める。
+`/identity` は person fragment（masthead + Discord presence）に
+再定義済み（Issue #1286）。vitals 数値と言語構成は `/vitals`・
+`/top-languages` が唯一の描画責務を持ち、README 上で統計情報が
+重複しない。互換 `/profile` 合成 SVG は `drawIdentitySection` の
+`accountStats` 既定値（true）で従来どおり vitals+langs を内包する。
 
 ## 8. 変更管理
 

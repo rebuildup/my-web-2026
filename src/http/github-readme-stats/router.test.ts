@@ -27,41 +27,72 @@ function createMockRequest(path: string, query: Record<string, string> = {}) {
 	return new Request(url.toString(), { method: 'GET', headers: { 'User-Agent': 'test' } });
 }
 
-function createMockEnv(overrides: Record<string, string | undefined> = {}) {
+function createMockEnv(overrides: Record<string, unknown> = {}) {
 	return { ...mockEnv, ...overrides } as unknown as Env;
+}
+
+/**
+ * Issue #1262: the stats card reads `github_stats_snapshot` from D1
+ * instead of calling GitHub at request time. The fake answers the
+ * single-row `SELECT payload ... WHERE id = 1` read.
+ */
+const STATS_SNAPSHOT = {
+	schemaVersion: 1,
+	generatedOn: '2026-11-27',
+	observedAt: '2026-11-27T00:00:00Z',
+	owner: 'rebuildup',
+	sources: {
+		graphql: { status: 'ok', observedAt: '2026-11-27T00:00:00Z' },
+		streak: { status: 'ok' },
+		search: { status: 'ok' },
+		avatar: { status: 'ok' },
+	},
+	streak: null,
+	metrics: {
+		contributionsY1: 800,
+		reviewsY1: 5,
+		commitsAuthoredAllTime: 25221,
+		prsAuthoredAllTime: 900,
+		issuesAuthoredAllTime: 400,
+		prsOpenedAllTime: 5852,
+		issuesOpenedAllTime: 5019,
+		contributedTo: 28,
+		followers: 20,
+	},
+	repos: { owned: 129, contributedTo: 28, participated: 28, complete: true },
+	stars: { owned: 174, participated: 53144 },
+	languages: null,
+	rank: {
+		inputs: {
+			all_commits: true,
+			commits: 25221,
+			prs: 900,
+			issues: 400,
+			reviews: 5,
+			repos: 129,
+			stars: 174,
+			followers: 20,
+		},
+		current: { level: 'B+', percentile: 40.1 },
+		legacy: { level: 'A+', percentile: 10.2 },
+	},
+	avatarDataUri: null,
+};
+
+function fakeStatsDb(payload: unknown): D1Database {
+	return {
+		prepare: () => ({
+			first: async () => ({ payload: JSON.stringify(payload) }),
+		}),
+	} as unknown as D1Database;
+}
+
+function createMockEnvWithStats(overrides: Record<string, unknown> = {}) {
+	return createMockEnv({ DB: fakeStatsDb(STATS_SNAPSHOT), ...overrides });
 }
 
 function createGraphQLMock(data: unknown, errors?: unknown[]) {
 	return { ok: true, json: async () => ({ data, errors }) };
-}
-
-const STATS_USER = {
-	name: 'Rebuildup',
-	login: 'rebuildup',
-	contributionsCollection: {
-		totalCommitContributions: 100,
-		totalPullRequestReviewContributions: 50,
-	},
-	repositoriesContributedTo: { totalCount: 10 },
-	pullRequests: { totalCount: 20 },
-	mergedPullRequests: { totalCount: 15 },
-	openIssues: { totalCount: 5 },
-	closedIssues: { totalCount: 3 },
-	followers: { totalCount: 100 },
-	repositoryDiscussions: { totalCount: 2 },
-	repositoryDiscussionComments: { totalCount: 1 },
-	repositories: {
-		totalCount: 25,
-		nodes: [
-			{ name: 'repo1', stargazerCount: 10 },
-			{ name: 'repo2', stargazerCount: 5 },
-		],
-		pageInfo: { hasNextPage: false, endCursor: null },
-	},
-};
-
-function mockStatsGraphQL() {
-	mockFetch.mockResolvedValue(createGraphQLMock({ user: STATS_USER }));
 }
 
 function mockTopLangsGraphQL(edges?: unknown[]) {
@@ -143,8 +174,7 @@ describe('GitHub Readme Stats Router (personal-fixed, Issue #1164)', () => {
 	});
 
 	describe('Stats card: /api', () => {
-		it('returns the rebuildup stats SVG and ignores query params', async () => {
-			mockStatsGraphQL();
+		it('renders the snapshot-driven stats SVG without any upstream call (Issue #1262)', async () => {
 			// `username` and every visual param are ignored — the card is
 			// always rendered for OWNER_LOGIN with default styling.
 			const req = createMockRequest('/api', {
@@ -152,24 +182,41 @@ describe('GitHub Readme Stats Router (personal-fixed, Issue #1164)', () => {
 				theme: 'radical',
 				locale: 'ja',
 			});
-			const res = await githubReadmeStatsRouter.fetch(req, createMockEnv());
+			const res = await githubReadmeStatsRouter.fetch(req, createMockEnvWithStats());
 			expect(res.status).toBe(200);
 			expect(res.headers.get('Content-Type')).toBe('image/svg+xml');
 			const body = await res.text();
 			expect(body).toContain('<svg');
-			expect(body).toContain('Rebuildup');
+			expect(body).toContain('rebuildup');
 			expect(body).toContain('Total Stars');
-			// The upstream call must target the fixed owner, not the param.
-			// fetchStats passes the login as a GraphQL variable.
-			const graphqlBody = JSON.parse(String(mockFetch.mock.calls[0]?.[1]?.body ?? '{}')) as {
-				variables?: { login?: string };
+			// Snapshot figures, not the retired upstream fetch: all-time
+			// authored commits (25,221) and owned-scope stars (174).
+			expect(body).toContain('25.2k');
+			expect(body).toContain('174');
+			// No GitHub API call may happen on this route anymore.
+			expect(mockFetch).not.toHaveBeenCalled();
+		});
+
+		it('hides stats the snapshot did not measure instead of zeroing them', async () => {
+			const partial = {
+				...STATS_SNAPSHOT,
+				metrics: { ...STATS_SNAPSHOT.metrics, prsOpenedAllTime: null },
 			};
-			expect(graphqlBody.variables?.login).toBe('rebuildup');
+			const res = await githubReadmeStatsRouter.fetch(
+				createMockRequest('/api'),
+				createMockEnv({ DB: fakeStatsDb(partial) }),
+			);
+			expect(res.status).toBe(200);
+			const body = await res.text();
+			expect(body).not.toContain('Total PRs');
+			expect(body).toContain('Total Stars');
 		});
 
 		it('opts into shared caching with a public positive lifetime', async () => {
-			mockStatsGraphQL();
-			const res = await githubReadmeStatsRouter.fetch(createMockRequest('/api'), createMockEnv());
+			const res = await githubReadmeStatsRouter.fetch(
+				createMockRequest('/api'),
+				createMockEnvWithStats(),
+			);
 			const cacheControl = res.headers.get('Cache-Control') ?? '';
 			expect(cacheControl).toContain('public');
 			expect(cacheControl).toContain('max-age=86400');
@@ -322,7 +369,10 @@ describe('GitHub Readme Stats Router (personal-fixed, Issue #1164)', () => {
 					errors: [{ type: 'RATE_LIMITED', message: 'API rate limit exceeded' }],
 				}),
 			});
-			const res = await githubReadmeStatsRouter.fetch(createMockRequest('/api'), createMockEnv());
+			const res = await githubReadmeStatsRouter.fetch(
+				createMockRequest('/api/top-langs/'),
+				createMockEnv(),
+			);
 			expect(res.status).toBe(503);
 			expect(res.headers.get('Content-Type')).toBe('image/svg+xml');
 			const body = await res.text();
@@ -345,7 +395,10 @@ describe('GitHub Readme Stats Router (personal-fixed, Issue #1164)', () => {
 	describe('Security: Error sanitization', () => {
 		it('does not expose tokens in error responses', async () => {
 			mockFetch.mockRejectedValue(new Error('Network error'));
-			const res = await githubReadmeStatsRouter.fetch(createMockRequest('/api'), createMockEnv());
+			const res = await githubReadmeStatsRouter.fetch(
+				createMockRequest('/api/top-langs/'),
+				createMockEnv(),
+			);
 			const body = await res.text();
 			expect(body).not.toContain('ghp_test_token_12345');
 			expect(body).not.toContain('ghp_pat_token_1');
@@ -383,7 +436,10 @@ describe('GitHub Readme Stats Router (personal-fixed, Issue #1164)', () => {
 
 		it('collapses a non-authored error message to the fixed fallback (Issue #996)', async () => {
 			mockFetch.mockRejectedValue(new Error('ECONNRESET internal-worker-detail'));
-			const res = await githubReadmeStatsRouter.fetch(createMockRequest('/api'), createMockEnv());
+			const res = await githubReadmeStatsRouter.fetch(
+				createMockRequest('/api/top-langs/'),
+				createMockEnv(),
+			);
 			const body = await res.text();
 			expect(body).not.toContain('ECONNRESET');
 			expect(body).not.toContain('internal-worker-detail');
@@ -393,21 +449,22 @@ describe('GitHub Readme Stats Router (personal-fixed, Issue #1164)', () => {
 
 	describe('Persistent SVG store (stale-while-revalidate, Issue #1164)', () => {
 		it('serves the stored card without touching upstream on a fresh hit', async () => {
-			mockStatsGraphQL();
-			const first = await githubReadmeStatsRouter.fetch(createMockRequest('/api'), createMockEnv());
+			const first = await githubReadmeStatsRouter.fetch(
+				createMockRequest('/api'),
+				createMockEnvWithStats(),
+			);
 			expect(first.status).toBe(200);
 			const firstBody = await first.text();
-			const callsAfterFirst = mockFetch.mock.calls.length;
-			expect(callsAfterFirst).toBeGreaterThan(0);
 
-			// Second request: store hit → no upstream call at all.
+			// Second request: store hit → the snapshot is not even read
+			// again, and no upstream call exists on this route.
 			const second = await githubReadmeStatsRouter.fetch(
 				createMockRequest('/api'),
-				createMockEnv(),
+				createMockEnvWithStats(),
 			);
 			expect(second.status).toBe(200);
 			expect(await second.text()).toBe(firstBody);
-			expect(mockFetch.mock.calls.length).toBe(callsAfterFirst);
+			expect(mockFetch).not.toHaveBeenCalled();
 		});
 
 		it('serves the stale card immediately even when upstream fails', async () => {
@@ -430,33 +487,28 @@ describe('GitHub Readme Stats Router (personal-fixed, Issue #1164)', () => {
 		it('refreshes a stale entry in the background and keeps the stale body', async () => {
 			const staleSvg = '<svg><text>OLD</text></svg>';
 			await svgStorePut('card:stats', staleSvg, Date.now() - 2 * 24 * 60 * 60 * 1000);
-			mockStatsGraphQL();
 
-			const res = await githubReadmeStatsRouter.fetch(createMockRequest('/api'), createMockEnv());
+			const res = await githubReadmeStatsRouter.fetch(
+				createMockRequest('/api'),
+				createMockEnvWithStats(),
+			);
 			expect(res.status).toBe(200);
 			// Response is the stale bytes; the refresh ran inline because
 			// the unit env has no ExecutionContext.
 			expect(await res.text()).toBe(staleSvg);
-			expect(mockFetch).toHaveBeenCalled();
 
 			// The store now holds the refreshed card: a follow-up request
 			// returns the new render, not the stale marker.
-			const next = await githubReadmeStatsRouter.fetch(createMockRequest('/api'), createMockEnv());
+			const next = await githubReadmeStatsRouter.fetch(
+				createMockRequest('/api'),
+				createMockEnvWithStats(),
+			);
 			const nextBody = await next.text();
 			expect(nextBody).not.toBe(staleSvg);
-			expect(nextBody).toContain('Rebuildup');
+			expect(nextBody).toContain('rebuildup');
 		});
 
-		it('still returns 503 when nothing was ever stored and upstream fails', async () => {
-			mockFetch.mockResolvedValue({
-				ok: true,
-				status: 200,
-				statusText: 'OK',
-				json: async () => ({
-					data: null,
-					errors: [{ type: 'RATE_LIMITED', message: 'API rate limit exceeded' }],
-				}),
-			});
+		it('still returns 503 when nothing was ever stored and the snapshot is absent', async () => {
 			const res = await githubReadmeStatsRouter.fetch(createMockRequest('/api'), createMockEnv());
 			expect(res.status).toBe(503);
 		});

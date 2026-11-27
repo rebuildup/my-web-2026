@@ -101,9 +101,37 @@ snapshot は同一入力で `rank.current`（vendored calculateRank）と
 データとして残す。いずれかの入力が未計測（null）の場合 rank 全体を
 `null` とし、欠損を 0 として計算しない。
 
+**表示採用（2026-11-27 決定、Issue #1262）**: surface が表示するのは
+`rank.current` のみ。根拠: (1) 入力が all-time authored commits
+（`all_commits=true` の weight-10 経路）で、legacy 式は repos 入力を
+使わず median 中心の古い重み付けのため同じ入力でも系統的に上位
+（実測: current B+ 40.1% vs legacy A+ 10.2%）を返し、比較対象とし
+ては残すが表示には採用しない。(2) vendored `calculateRank` は
+upstream が維持する現行式で、owned スコープ入力との整合が契約で
+固定済み。`rank.legacy` は snapshot に残し、乖離の監視用データと
+して扱う（表示面には出さない）。
+
 - 検証証跡: `scripts/sync-github-stats.test.mjs` が同一入力での
   両式出力と null 伝播を固定。実データでの新旧差分は初回 sync 後の
   snapshot 値で確認する（`docs/verification/` に記録予定）。
+
+### 3.2 participated スコープの表示意味論（Issue #1262）
+
+`languages.*` / `stars.*` / `repos.*` は **リポジトリ単位の集計**
+であり、本人のコード変更量ではない。表示面はこの区別を保つ:
+
+- `/vitals`: account/owned 指標の strip に続けて PARTICIPATED レーン
+  （参加プロジェクト数・参加 repo の stars・contributedTo affiliation
+  数）を muted 数値 + scope キャプションで従属表示する。参加指標を
+  owned 指標へ合算・混在させない。
+- `/top-languages`: OWNED REPOS / PARTICIPATED REPOS の 2 系統バー。
+  各バーは「その scope の repo が持つ言語構成（bytes）」であり、
+  本人がその言語で書いた量ではない — キャプションで scope を明示
+  し、混合バーは作らない。
+- `/profile`（互換合成）は凍結済みの旧構成を維持し、参加指標を
+  追加しない（モバイル高さ予算・README 未参照の legacy 面）。
+- participated 集計が未計測（null）の場合、レーン/バー自体を出さ
+  ない — 「参加なし」と「未計測」を区別する。
 
 ## 4. 公開範囲
 
@@ -175,6 +203,7 @@ sync 時に R2 または stats snapshot 内の data URI として永続化
 | Stack | `/stack` | 静的資産 |
 | 互換合成 | `/profile` | 全 snapshot（現行と同一 SVG） |
 | `/now` `/status` `/activity` `/current` `/card` | 既存 | 各 snapshot（request 時上流呼出なし） |
+| サイト GitHub STATUS 統計カード `/api/v1/github-readme-stats/api` | 既存 | **github_stats_snapshot**（Issue #1262 で request 時 `fetchStats` から移行。未計測フィールドは `hide`、snapshot 不在は 503 degraded。top-langs/streak/pin カードは引き続き upstream fetch — 別指標で snapshot 未整備） |
 
 `/identity` は README 未参照の legacy fragment で、分割 surface
 完成までは band1 全体を返す。README 切替時に masthead のみへ

@@ -57,6 +57,13 @@ const FULL_STATS: BandStats = {
 	totalCommits: 4211,
 	totalPRs: 1302,
 	totalIssues: 87,
+	participatedRepos: 26,
+	participatedStars: 48120,
+	participatedLangs: [
+		{ name: 'Rust', pct: 38.2, color: '#dea584' },
+		{ name: 'TypeScript', pct: 21.4, color: '#3178c6' },
+		{ name: 'Go', pct: 12.1, color: '#00add8' },
+	],
 };
 
 const EMPTY_STATS: BandStats = {
@@ -71,6 +78,9 @@ const EMPTY_STATS: BandStats = {
 	totalCommits: null,
 	totalPRs: null,
 	totalIssues: null,
+	participatedRepos: null,
+	participatedStars: null,
+	participatedLangs: null,
 };
 
 const band1 = (over: Partial<Parameters<typeof composeBand1Model>[0]> = {}) =>

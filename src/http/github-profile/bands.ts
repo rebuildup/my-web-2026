@@ -167,6 +167,10 @@ const LUCIDE_INNER: Record<string, string> = {
 	'trending-up':
 		'<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>',
 	user: '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+	'git-fork':
+		'<circle cx="12" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><path d="M18 9v2c0 .6-.4 1-1 1H7c-.6 0-1-.4-1-1V9"/><path d="M12 12v3"/>',
+	users:
+		'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
 };
 
 /** Lucide glyph centered on (cx, cy), `size` px square. */
@@ -224,6 +228,16 @@ export interface BandStats {
 	readonly totalCommits: number | null;
 	readonly totalPRs: number | null;
 	readonly totalIssues: number | null;
+	/**
+	 * Participated scope (Issue #1262, contract §2.1): repos the
+	 * account contributed to but does not own, the stars those repos
+	 * carry, and their language composition. `null` when the
+	 * snapshot's participated aggregation was not measured — the
+	 * surface hides the lane rather than printing a zero.
+	 */
+	readonly participatedRepos: number | null;
+	readonly participatedStars: number | null;
+	readonly participatedLangs: readonly BandLang[] | null;
 }
 
 export interface Band1Model {
@@ -410,6 +424,24 @@ const METRICS: readonly Metric[] = [
 ];
 
 /**
+ * Participated scope (Issue #1262): repos contributed to but not
+ * owned, the stars they carry, and the affiliation count. Kept as a
+ * separate strip — these figures measure reach into OTHER people's
+ * projects, so folding them into the owned figures would misstate
+ * both (contract §2.1).
+ */
+const PARTICIPATED_METRICS: readonly Metric[] = [
+	{
+		icon: 'git-fork',
+		label: 'projects',
+		value: (st) => st.participatedRepos,
+		unit: null,
+	},
+	{ icon: 'star', label: 'stars', value: (st) => st.participatedStars, unit: null },
+	{ icon: 'users', label: 'contrib', value: (st) => st.contributedTo, unit: null },
+];
+
+/**
  * The metrics strip: equal cells on the column grid — icon +
  * `stat`-role numeral (+ unit tspan) on the first baseline, `label`
  * noun on the second. Unmeasured metrics render `—` and keep their
@@ -424,22 +456,28 @@ function metricStrip(
 	stats: BandStats,
 	T: Theme,
 	sem: (k: string) => string,
+	opts: { metrics?: readonly Metric[]; caption?: string; muted?: boolean } = {},
 ): { svg: string; bottom: number } {
 	const TT = typeTable(spec);
-	const list = METRICS;
+	const list = opts.metrics ?? METRICS;
 	// Row plans snap to the column grid: 3 cells per row inside the
 	// caller's column span (full width → 4-col spans, right rail →
 	// 2-col spans). Every cell edge lands on a column boundary.
-	const rowPlan: readonly (readonly number[])[] = [
-		[0, 1, 2],
-		[3, 4, 5],
-	];
+	const perRow = 3;
+	const rowCount = Math.ceil(list.length / perRow);
+	const rowPlan: readonly (readonly number[])[] = Array.from(
+		{ length: rowCount },
+		(_, r) => [r * perRow, r * perRow + 1, r * perRow + 2] as const,
+	);
 	// cell anatomy: stat baseline → label ~6px below the numeral's
 	// foot, then a full s4 air gap before the next row's stat — the
 	// pair must read as one unit, not label-to-next-value
 	const rowH = TT.stat.lh + TT.label.lh + (spec.mobile ? SPACE.s2 : SPACE.s4);
-	const span = colCount / rowPlan[0].length;
+	const span = colCount / perRow;
 	let s = '';
+	if (opts.caption) {
+		s += bandText(spec, 'caption', gridX(spec, colStart), snap(spec, y - 8), T.faint, opts.caption);
+	}
 	let cy = y;
 	for (const row of rowPlan) {
 		let col = colStart;
@@ -461,12 +499,13 @@ function metricStrip(
 			const numX = cx + ICON.sm + SPACE.s2;
 			const num = missing ? '—' : v.toLocaleString('en-US');
 			const unitTxt = !missing && mt.unit ? ` ${mt.unit}` : '';
-			s += `<text x="${numX}" y="${cy + TT.stat.size * 0.7}" xml:space="preserve"><tspan font-size="${TT.stat.size}" font-weight="${TT.stat.weight}" fill="${missing ? T.faint : T.fg}">${esc(num)}</tspan><tspan font-size="${TT.label.size}" font-weight="${TT.label.weight}" fill="${T.muted}">${esc(unitTxt)}</tspan></text>`;
+			const numFill = missing ? T.faint : opts.muted ? T.muted : T.fg;
+			s += `<text x="${numX}" y="${cy + TT.stat.size * 0.7}" xml:space="preserve"><tspan font-size="${TT.stat.size}" font-weight="${TT.stat.weight}" fill="${numFill}">${esc(num)}</tspan><tspan font-size="${TT.label.size}" font-weight="${TT.label.weight}" fill="${T.muted}">${esc(unitTxt)}</tspan></text>`;
 			s += bandText(spec, 'label', cx, snap(spec, cy + TT.stat.size * 0.7 + 16), T.muted, mt.label);
 		}
 		cy += rowH;
 	}
-	const rows = rowPlan.length;
+	const rows = rowCount;
 	// bottom hugs the last row's content — the s4 inter-row air gap
 	// belongs BETWEEN rows only, never as trailing space before the
 	// next module head
@@ -825,24 +864,63 @@ export function renderVitalsSvg(model: StatsSurfaceModel, opts: { grid?: boolean
 	const spec = canvasSpec(model.mobile);
 	const { T, sem } = skinFor(model.theme);
 	const strip = metricStrip(spec, SPACE.s6, 0, spec.columns, model.stats, T, sem);
-	return statsSurfaceShell(model, strip.svg, strip.bottom, opts);
+	let body = strip.svg;
+	let bottom = strip.bottom;
+	// Participated lane (Issue #1262): shown only when the snapshot
+	// measured the scope — an absent aggregation hides the lane
+	// instead of printing a row of dashes that reads as "no
+	// participation". Muted numerals + the scope caption keep it
+	// visually subordinate to the account figures.
+	const st = model.stats;
+	const hasParticipated =
+		st.participatedRepos !== null || st.participatedStars !== null || st.contributedTo !== null;
+	if (hasParticipated) {
+		const laneY = bottom + SPACE.s4 + 14;
+		const lane = metricStrip(spec, laneY, 0, spec.columns, st, T, sem, {
+			metrics: PARTICIPATED_METRICS,
+			caption: 'PARTICIPATED — repos contributed to, not owned',
+			muted: true,
+		});
+		body += lane.svg;
+		bottom = lane.bottom;
+	}
+	return statsSurfaceShell(model, body, bottom, opts);
+}
+
+/** Scope caption above one language bar — the two scopes measure
+ * different populations (owned repos vs repos contributed to), so
+ * each bar names its scope instead of implying one blended mix. */
+function scopeCaption(spec: CanvasSpec, x: number, y: number, T: Theme, label: string): string {
+	return bandText(spec, 'caption', x, snap(spec, y), T.faint, label);
 }
 
 /** TOP LANGUAGES — the owned-scope share bar + legend alone
- * (github_stats_snapshot). */
+ * (github_stats_snapshot), plus the participated-scope bar when the
+ * snapshot measured it (Issue #1262). Both bars show REPOSITORY
+ * language composition (bytes), never the owner's personal change
+ * volume — the captions keep that meaning explicit. */
 export function renderTopLangsSvg(model: StatsSurfaceModel, opts: { grid?: boolean } = {}): string {
 	const spec = canvasSpec(model.mobile);
 	const { T } = skinFor(model.theme);
 	const m = spec.margin;
 	const y = SPACE.s6;
 	const langs = model.stats.topLangs;
+	const participated = model.stats.participatedLangs;
 	let s = '';
 	let bottom: number;
 	if (!langs || langs.length === 0) {
 		s += bandText(spec, 'body', m, snap(spec, y + 20), T.faint, 'language data unavailable');
 		bottom = snap(spec, y + 36);
 	} else {
-		const bar = langBar(spec, m, y + 10, contentWidth(spec), langs, T);
+		s += scopeCaption(spec, m, y, T, 'OWNED REPOS');
+		const bar = langBar(spec, m, y + 14, contentWidth(spec), langs, T);
+		s += bar.svg;
+		bottom = bar.bottom;
+	}
+	if (participated && participated.length > 0) {
+		const laneY = bottom + SPACE.s4 + 6;
+		s += scopeCaption(spec, m, laneY, T, 'PARTICIPATED REPOS');
+		const bar = langBar(spec, m, laneY + 14, contentWidth(spec), participated, T);
 		s += bar.svg;
 		bottom = bar.bottom;
 	}

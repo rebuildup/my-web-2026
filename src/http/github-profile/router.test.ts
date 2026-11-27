@@ -272,6 +272,34 @@ describe('GET /vitals', () => {
 		} as never);
 		expect(res.status).toBe(405);
 	});
+
+	it('renders the participated-scope lane when the snapshot measured it (Issue #1262)', async () => {
+		const res = await githubProfileRouter.request('/vitals', { method: 'GET' }, {
+			...ENV_BASE,
+			DB: fakeDb({ github_stats_snapshot: STATS }),
+		} as never);
+		expect(res.status).toBe(200);
+		const body = await res.text();
+		expect(body).toContain('PARTICIPATED');
+		expect(body).toContain('projects');
+		expect(body).toContain('>60<');
+	});
+
+	it('hides the participated lane when the scope was not measured', async () => {
+		const unmeasured = {
+			...STATS,
+			metrics: { ...STATS.metrics, contributedTo: null },
+			repos: { ...STATS.repos, participated: null },
+			stars: { ...STATS.stars, participated: null },
+		};
+		const res = await githubProfileRouter.request('/vitals', { method: 'GET' }, {
+			...ENV_BASE,
+			DB: fakeDb({ github_stats_snapshot: unmeasured }),
+		} as never);
+		expect(res.status).toBe(200);
+		const body = await res.text();
+		expect(body).not.toContain('PARTICIPATED');
+	});
 });
 
 describe('GET /top-languages', () => {
@@ -302,6 +330,29 @@ describe('GET /top-languages', () => {
 			...ENV_BASE,
 		} as never);
 		expect(res.status).toBe(405);
+	});
+
+	it('renders the participated-scope bar when the snapshot measured it (Issue #1262)', async () => {
+		const withParticipated = {
+			...STATS,
+			languages: {
+				...STATS.languages,
+				participated: [
+					{ name: 'Rust', color: '#dea584', size: 800, count: 6 },
+					{ name: 'Go', color: '#00add8', size: 200, count: 2 },
+				],
+			},
+		};
+		const res = await githubProfileRouter.request('/top-languages', { method: 'GET' }, {
+			...ENV_BASE,
+			DB: fakeDb({ github_stats_snapshot: withParticipated }),
+		} as never);
+		expect(res.status).toBe(200);
+		const body = await res.text();
+		expect(body).toContain('OWNED REPOS');
+		expect(body).toContain('PARTICIPATED REPOS');
+		expect(body).toContain('Rust');
+		expect(body).toContain('80.0%');
 	});
 });
 

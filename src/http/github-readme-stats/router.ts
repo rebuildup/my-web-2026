@@ -37,10 +37,10 @@ import {
 	renderError,
 } from '../../vendor/github-readme-stats-fast/common/utils.ts';
 import { fetchRepo } from '../../vendor/github-readme-stats-fast/fetchers/repo.ts';
-import { fetchStats } from '../../vendor/github-readme-stats-fast/fetchers/stats.ts';
 import { fetchStreak } from '../../vendor/github-readme-stats-fast/fetchers/streak-fetcher.ts';
 import { fetchTopLanguages } from '../../vendor/github-readme-stats-fast/fetchers/top-languages.ts';
 import { rateLimitRead } from '../middleware/rate-limit';
+import { loadStatsCardProjection } from './stats-card-source.ts';
 import { svgStoreMatch, svgStorePut } from './svg-store.ts';
 
 /** The only GitHub login this service renders cards for (Issue #1164). */
@@ -249,14 +249,19 @@ githubReadmeStatsRouter.get('/api', rateLimitRead, async (c) => {
 		freshSeconds: CONSTANTS.CARD_CACHE_SECONDS,
 		themeParams: {},
 		render: async () => {
-			const env = stringEnv(c.env);
-			// Data fetch goes through microCache + svgCache so concurrent
-			// requests share one upstream call and one render per isolate.
-			const stats = await microCache(`stats:${OWNER_LOGIN}`, () =>
-				fetchStats(OWNER_LOGIN, false, [], false, false, false, env),
-			);
+			// Issue #1262 / ADR-0027: the card reads the async stats
+			// snapshot (same source as `/api/v1/github-profile/vitals`)
+			// instead of calling GitHub at request time. An absent
+			// snapshot degrades to the 503 contract below.
+			const projection = await loadStatsCardProjection(c.env.DB);
+			if (!projection) {
+				throw new CustomError(
+					'GitHub stats snapshot unavailable',
+					CustomError.GITHUB_REST_API_ERROR,
+				);
+			}
 			return svgCacheGetOrSet(`stats-svg:${OWNER_LOGIN}`, async () =>
-				renderStatsCard(stats, { disable_animations: true }),
+				renderStatsCard(projection.stats, projection.options),
 			);
 		},
 	});

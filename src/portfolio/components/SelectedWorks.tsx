@@ -22,11 +22,14 @@ import { PortfolioMediaFigure } from './PortfolioMedia';
  *
  * Composition: an ordered list of feature rows on the 12-track
  * coordinate grid. Each row pairs a large cover (7 tracks) with a
- * copy cluster (5 tracks); the media side alternates left/right so
- * the band reads as an edited sequence rather than a uniform stack.
- * Rows without a published cover keep their slot as a labelled
- * frame — the selection is editorial, so a missing cover is a data
- * fact to show honestly, not a reason to drop the work silently.
+ * copy cluster (5 tracks); only the SIDE alternates — the media
+ * keeps the dominant span on every row so the band scans as one
+ * instrument, not a zigzag of two different row types. Rows without
+ * a published cover keep their slot as a labelled frame — the
+ * selection is editorial, so a missing cover is a data fact to show
+ * honestly, not a reason to drop the work silently. Summaries are
+ * clamped to three lines so the "case study" exit sits on a shared
+ * baseline regardless of copy length (agy review, PR #1299).
  *
  * `headingLevel` lets the same rows serve two placements: `h3`
  * under the portfolio index's section heading, `h2` under home's
@@ -70,7 +73,7 @@ export function SelectedWorks({ works, headingLevel = 'h3' }: SelectedWorksProps
 					>
 						<Grid template="12" gap="6" columnGap={{ base: '4', lg: '10' }}>
 							<GridItem
-								span={{ base: 12, lg: mediaLeft ? 7 : 5 }}
+								span={{ base: 12, lg: 7 }}
 								start={{ base: 1, lg: mediaLeft ? 1 : 8 }}
 								className={css({ minWidth: '0', order: { base: mediaLeft ? 2 : 1, lg: 0 } })}
 							>
@@ -85,7 +88,7 @@ export function SelectedWorks({ works, headingLevel = 'h3' }: SelectedWorksProps
 								)}
 							</GridItem>
 							<GridItem
-								span={{ base: 12, lg: mediaLeft ? 5 : 7 }}
+								span={{ base: 12, lg: 5 }}
 								start={{ base: 1, lg: mediaLeft ? 8 : 1 }}
 								className={css({
 									minWidth: '0',
@@ -125,6 +128,7 @@ export function SelectedWorks({ works, headingLevel = 'h3' }: SelectedWorksProps
 										lineHeight: '1.6',
 										color: 'text.muted',
 										textWrap: 'pretty',
+										lineClamp: '3',
 									})}
 								>
 									{project.summary}

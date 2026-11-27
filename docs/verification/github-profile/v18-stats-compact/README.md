@@ -15,26 +15,38 @@ v17 の ALL 主表示化で vitals+top-languages 合計高さが desktop
 
 | surface | v0.15.2 desk/mob | v17 desk/mob | v18 desk/mob |
 |---|---|---|---|
-| `/vitals` | 152/144 | 236/228 | **196/188** |
-| `/top-languages` | 92/112 | 152/232 | **144/204** |
-| **合計** | **244/256** | **388/460** | **340/392** |
+| `/vitals` | 152/144 | 236/228 | **196/240** |
+| `/top-languages` | 92/112 | 152/232 | **144/212** |
+| **合計** | **244/256** | **388/460** | **340/452** |
 
-v17 比で desktop −48px / mobile −68px。公開版比では情報量
-（参加スコープ + 3 バー構成）に見合う +39%/+53% に圧縮。
+v17 比で desktop −48px / mobile −8px（mobile vitals は agy v22 指摘の
+モバイル OUTPUT 混雑を 2×2 グリッドで解消するため +12px、
+top-languages はブロック間 air 再配分で −20px）。公開版比では
+情報量（参加スコープ + 3 バー構成）に見合う範囲に収まる。
 
 ## 構造変更
 
 - `/vitals`: 6 指標を意味で 2 グループ化 — consistency
-  （streak/contributions、広セル）→ output（commits/PRs/issues/
-  stars、4 セル 1 行）。PARTICIPATED スコープは独立 metric row を
-  廃止し `git-fork` アイコン + 1 行 muted テキスト
+  （streak/contributions、広セル）→ hairline → output
+  （commits/PRs/issues/stars、desktop 4 セル 1 行 / mobile 2×2）。
+  2 グループ間と participated footer 上に hairline を引き、
+  owned/participated の境界を明示。PARTICIPATED スコープは独立
+  metric row を廃止し `git-fork` アイコン + 1 行 muted テキスト
   （`28 contributed projects · 53,144 stars`）に — レーンの空白と
   stars 指標の混同を解消。未計測時は行ごと非表示。
 - `/top-languages`: hero（ALL REPOS 結合バー + 凡例）は維持、
   OWNED/PARTICIPATED 副バーの air を「ブロック間（凡例→次
   kicker）」へ再配分し kicker→bar を統一。mobile は積みのままだが
-  各ブロックを ~12px 圧縮（144→204 の内訳: hero ~80 + 副バー
-  2×~60）。
+  ブロック間を s4 に拡げ Gestalt の近接逆転（'Other' 凡例折返しと
+  次 kicker の衝突）を解消、kicker→bar は +4px に引き締め。
+- agy v22 レビュー（`.tmp/review-v22/`、Gemini）:
+  r1 REQUEST CHANGES（mobile vitals 4 列混雑・グループ非分離・
+  top-langs mobile の Gestalt 逆転）→ 修正 → r2 REQUEST CHANGES
+  （footer hairline が participated テキストに衝突、mid hairline
+  中央ずれ、cmp 証跡の陳腐化）→ 修正 → **r3 APPROVE**
+  （残件は optional minor のみ: mid hairline をさらに ~2px 上げる
+  余地、cmp-light-desktop の BEFORE 列が mobile 幅で撮影されていた
+  証跡上の瑕疵 — いずれも非ブロッキング）。
 - `metricStrip` に `perRow` オプション追加（従来 3 固定）。
   `/profile` 合成カードの METRICS 順は commits/PRs/issues/stars に
   並び替え（同一情報・グルーピング改善、3+3 グリッド維持）。

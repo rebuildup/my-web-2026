@@ -133,6 +133,22 @@ function degradedResponse(
 const refreshesInFlight = new Set<string>();
 
 /**
+ * Honest pre-sync card (Issue #1284): a valid SVG that says the
+ * snapshot pipeline has not delivered its first payload yet — a
+ * normal state, not an outage, so it answers 200 and is never
+ * persisted to the SVG store (the next request re-renders and picks
+ * up the snapshot the moment it lands). Detection of a stuck sync
+ * belongs to `/snapshot-health`, not to the image status code.
+ */
+function unobservedCardSvg(title: string, subtitle: string): string {
+	return `<svg xmlns="http://www.w3.org/2000/svg" width="495" height="120" viewBox="0 0 495 120">
+  <rect width="495" height="120" rx="4.5" fill="#fff" stroke="#d0d7de"/>
+  <text x="24" y="50" font-family="Segoe UI,Ubuntu,Sans-Serif" font-size="16" font-weight="600" fill="#2f363d">${title}</text>
+  <text x="24" y="72" font-family="Segoe UI,Ubuntu,Sans-Serif" font-size="12" fill="#57606a">${subtitle}</text>
+</svg>`;
+}
+
+/**
  * Stale-while-revalidate over the persistent SVG store (Issue #1164).
  *
  * - Stored card present: return it immediately. When it is older than
@@ -141,7 +157,9 @@ const refreshesInFlight = new Set<string>();
  *   available, e.g. unit tests) so the next request sees fresh bytes.
  * - No stored card: render live, persist, return. A render failure with
  *   no stored card falls through to the error mapping — there is
- *   nothing older to serve.
+ *   nothing older to serve. Snapshot-driven cards may pass
+ *   `unobservedSvg` to answer the snapshot-absent case with a valid
+ *   pre-sync card instead of the degraded 503.
  *
  * `Cache-Control` carries `public` + a positive lifetime, which is the
  * explicit shared-cache opt-in `sharedCacheIsolation` honours (same
@@ -155,9 +173,13 @@ async function serveCard(
 		freshSeconds: number;
 		render: () => string | Promise<string>;
 		themeParams: CardThemeParams;
+		/** Served (200, briefly cached, never stored) when the render
+		 * fails with the snapshot-absent error — snapshot-driven cards
+		 * only. Other degraded failures keep the 503 contract. */
+		unobservedSvg?: string;
 	},
 ): Promise<Response> {
-	const { storeName, freshSeconds, render, themeParams } = options;
+	const { storeName, freshSeconds, render, themeParams, unobservedSvg } = options;
 	c.header('Content-Type', 'image/svg+xml');
 
 	const cacheControl = `public, max-age=${freshSeconds}, s-maxage=${freshSeconds}, stale-while-revalidate=${CONSTANTS.ONE_DAY}`;
@@ -203,6 +225,14 @@ async function serveCard(
 		c.header('Cache-Control', cacheControl);
 		return c.body(svg);
 	} catch (err) {
+		if (
+			unobservedSvg &&
+			err instanceof CustomError &&
+			err.type === CustomError.GITHUB_REST_API_ERROR
+		) {
+			c.header('Cache-Control', 'public, max-age=60, s-maxage=60');
+			return c.body(unobservedSvg);
+		}
 		if (isServiceUnavailable(err)) {
 			return degradedResponse(c, themeParams);
 		}
@@ -232,11 +262,15 @@ githubReadmeStatsRouter.get('/api', rateLimitRead, async (c) => {
 		storeName: 'card:stats',
 		freshSeconds: CONSTANTS.CARD_CACHE_SECONDS,
 		themeParams: {},
+		unobservedSvg: unobservedCardSvg(
+			'Statistics not yet observed',
+			'The first snapshot sync has not completed',
+		),
 		render: async () => {
 			// Issue #1262 / ADR-0027: the card reads the async stats
 			// snapshot (same source as `/api/v1/github-profile/vitals`)
 			// instead of calling GitHub at request time. An absent
-			// snapshot degrades to the 503 contract below.
+			// snapshot answers the honest pre-sync card (Issue #1284).
 			const projection = await loadStatsCardProjection(c.env.DB);
 			if (!projection) {
 				throw new CustomError(
@@ -259,11 +293,15 @@ githubReadmeStatsRouter.get('/api/top-langs/', rateLimitRead, async (c) => {
 		storeName: 'card:top-langs',
 		freshSeconds: CONSTANTS.CARD_CACHE_SECONDS,
 		themeParams: {},
+		unobservedSvg: unobservedCardSvg(
+			'Language stats not yet observed',
+			'The first snapshot sync has not completed',
+		),
 		render: async () => {
 			// Issue #1268 / ADR-0027: languages come from the async stats
 			// snapshot (`languages.owned` — the same population the
 			// request-time fetcher queried). An absent snapshot or an
-			// unmeasured scope degrades to the 503 contract below.
+			// unmeasured scope answers the pre-sync card (Issue #1284).
 			const topLangs = await loadTopLangsCardData(c.env.DB);
 			if (!topLangs) {
 				throw new CustomError(
@@ -284,10 +322,14 @@ githubReadmeStatsRouter.get('/api/streak', rateLimitRead, async (c) => {
 		storeName: 'card:streak',
 		freshSeconds: 3600,
 		themeParams: {},
+		unobservedSvg: unobservedCardSvg(
+			'Streak not yet observed',
+			'The first snapshot sync has not completed',
+		),
 		render: async () => {
 			// Issue #1268 / ADR-0027: streak comes from the async stats
 			// snapshot — the same numbers `/api/v1/github-profile/vitals`
-			// renders. An absent snapshot degrades to the 503 contract.
+			// renders. An absent snapshot answers the pre-sync card.
 			const streak = await loadStreakCardData(c.env.DB);
 			if (!streak) {
 				throw new CustomError(

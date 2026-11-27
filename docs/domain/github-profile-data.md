@@ -233,7 +233,8 @@ sync 時に R2 または stats snapshot 内の data URI として永続化
 | Stack | `/stack` | 静的資産 |
 | 互換合成 | `/profile` | 全 snapshot（現行と同一 SVG） |
 | `/now` `/status` `/activity` `/current` `/card` | 既存 | 各 snapshot（request 時上流呼出なし） |
-| サイト GitHub STATUS カード `/api/v1/github-readme-stats/api{,/top-langs/,/streak}` | 既存 | **github_stats_snapshot**（stats: Issue #1262、top-langs/streak: Issue #1268 で request 時 upstream fetch から移行。top-langs は `languages.owned`（旧 fetchTopLanguages と同一の owned 母集団）、streak は `streak` ブロックをそのまま投影。未計測・snapshot 不在は 503 degraded + SWR stale 配信。`/api/pin/` は repo 単位の動的取得のため引き続き upstream fetch） |
+| サイト GitHub STATUS カード `/api/v1/github-readme-stats/api{,/top-langs/,/streak}` | 既存 | **github_stats_snapshot**（stats: Issue #1262、top-langs/streak: Issue #1268 で request 時 upstream fetch から移行。top-langs は `languages.owned`（旧 fetchTopLanguages と同一の owned 母集団）、streak は `streak` ブロックをそのまま投影。snapshot 不在・未計測は **200 の未観測 SVG**（Issue #1284 — 「first sync pending」を明示する有効な画像で、store 非永続・60s cache。検知は snapshot-health が担い画像 status code と分離）。その他の上流障害は 503 degraded + SWR stale 配信） |
+| サイト pin カード `/api/v1/github-readme-stats/api/pin/?repo=` | 既存 | **request 時 upstream fetch を許容**（Issue #1284 案B — repo 単位の動的データで snapshot 化には対象集合の固定が必要。障害分離: pin の失敗は他カードに波及しない独立 store/refresh。タイムアウト: `fetchRepo` は vendored retry/timeout を継承。キャッシュ: `microCache` 5s + `svgStore` SWR（freshSeconds=10日）で上流障害時も stale 配信） |
 
 `/identity` は person fragment（masthead + Discord presence）に
 再定義済み（Issue #1286）。vitals 数値と言語構成は `/vitals`・

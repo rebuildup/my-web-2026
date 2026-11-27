@@ -252,7 +252,7 @@ describe('GitHub Readme Stats Router (personal-fixed, Issue #1164)', () => {
 			expect(body).not.toContain('Lang6');
 		});
 
-		it('returns 503 when the snapshot is absent or languages unmeasured', async () => {
+		it('serves the honest pre-sync card when the snapshot is absent or languages unmeasured (Issue #1284)', async () => {
 			for (const payload of [
 				STATS_SNAPSHOT, // languages: null
 				snapshotWith({ languages: { owned: [], participated: [] } }),
@@ -261,15 +261,17 @@ describe('GitHub Readme Stats Router (personal-fixed, Issue #1164)', () => {
 					createMockRequest('/api/top-langs/'),
 					createMockEnv({ DB: fakeStatsDb(payload) }),
 				);
-				expect(res.status).toBe(503);
-				expect(await res.text()).toContain('Service unavailable');
+				expect(res.status).toBe(200);
+				expect(res.headers.get('Cache-Control')).toBe('public, max-age=60, s-maxage=60');
+				expect(await res.text()).toContain('not yet observed');
 			}
 			// And with no D1 at all.
 			const res = await githubReadmeStatsRouter.fetch(
 				createMockRequest('/api/top-langs/'),
 				createMockEnv(),
 			);
-			expect(res.status).toBe(503);
+			expect(res.status).toBe(200);
+			expect(await res.text()).toContain('not yet observed');
 		});
 	});
 
@@ -288,16 +290,16 @@ describe('GitHub Readme Stats Router (personal-fixed, Issue #1164)', () => {
 			expect(mockFetch).not.toHaveBeenCalled();
 		});
 
-		it('returns 503 degraded response when the snapshot is absent', async () => {
+		it('serves the honest pre-sync card when the snapshot is absent (Issue #1284)', async () => {
 			for (const env of [
 				createMockEnv(), // no D1
 				createMockEnvWithStats(), // streak: null in snapshot
 			]) {
 				const res = await githubReadmeStatsRouter.fetch(createMockRequest('/api/streak'), env);
-				expect(res.status).toBe(503);
+				expect(res.status).toBe(200);
 				expect(res.headers.get('Content-Type')).toBe('image/svg+xml');
-				expect(res.headers.get('Cache-Control')).toBe('max-age=60, s-maxage=60');
-				expect(await res.text()).toContain('Service unavailable');
+				expect(res.headers.get('Cache-Control')).toBe('public, max-age=60, s-maxage=60');
+				expect(await res.text()).toContain('not yet observed');
 			}
 		});
 	});
@@ -347,10 +349,7 @@ describe('GitHub Readme Stats Router (personal-fixed, Issue #1164)', () => {
 				GITHUB_README_STATS_PAT_2: undefined,
 			});
 
-		it.each([
-			['/api', {}],
-			['/api/pin/', { repo: 'my-web-2026' }],
-		])(
+		it.each([['/api/pin/', { repo: 'my-web-2026' }]])(
 			'returns 503 (not an error card) when the data source is unavailable: %s',
 			async (path, query) => {
 				const res = await githubReadmeStatsRouter.fetch(
@@ -517,9 +516,19 @@ describe('GitHub Readme Stats Router (personal-fixed, Issue #1164)', () => {
 			expect(nextBody).toContain('rebuildup');
 		});
 
-		it('still returns 503 when nothing was ever stored and the snapshot is absent', async () => {
+		it('serves the pre-sync card — never stored — when nothing was ever stored and the snapshot is absent (Issue #1284)', async () => {
 			const res = await githubReadmeStatsRouter.fetch(createMockRequest('/api'), createMockEnv());
-			expect(res.status).toBe(503);
+			expect(res.status).toBe(200);
+			const body = await res.text();
+			expect(body).toContain('not yet observed');
+			// The unobserved card is not persisted: once the snapshot
+			// lands, the very next request renders the real card.
+			const next = await githubReadmeStatsRouter.fetch(
+				createMockRequest('/api'),
+				createMockEnvWithStats(),
+			);
+			expect(next.status).toBe(200);
+			expect(await next.text()).toContain('Total Stars');
 		});
 	});
 });

@@ -855,6 +855,7 @@
 					"src/http/github-profile/profile.ts",
 					"src/http/github-profile/stack.ts",
 					"src/http/github-profile/status.ts",
+					"src/http/github-readme-stats/router.ts",
 					"src/tools/manifest.json",
 					"src/vendor/github-readme-stats-fast/cards/streak-card.ts",
 					"src/vendor/github-readme-stats-fast/common/Card.ts",

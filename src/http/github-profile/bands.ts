@@ -699,9 +699,14 @@ function presenceCluster(
  * top edge; `bottom` is the last content baseline region — callers
  * own inter-section spacing.
  */
-function drawIdentityDesktop(model: Band1Model, y0: number): { svg: string; bottom: number } {
+function drawIdentityDesktop(
+	model: Band1Model,
+	y0: number,
+	accountStats: boolean,
+): { svg: string; bottom: number } {
 	const spec = canvasSpec(false);
-	const { T, sem } = skinFor(model.theme);
+	const skin = skinFor(model.theme);
+	const { T } = skin;
 	const TT = typeTable(spec);
 	const m = spec.margin;
 	let s = '';
@@ -713,6 +718,10 @@ function drawIdentityDesktop(model: Band1Model, y0: number): { svg: string; bott
 	// are self-evident; the VITALS head was text the data didn't
 	// need). TOP LANGUAGES closes the zone full-width, also
 	// unlabeled — the bar and its legend explain themselves.
+	// `accountStats: false` (the standalone `/identity` surface,
+	// Issue #1286) drops both stats blocks — the public README serves
+	// them as independent `/vitals` + `/top-languages` assets, so the
+	// identity fragment keeps only the person.
 	const as = 72;
 	const ax = m;
 	const ay = y0;
@@ -747,12 +756,18 @@ function drawIdentityDesktop(model: Band1Model, y0: number): { svg: string; bott
 	// (Clyde mark + status word + sync stamp) reads as a single
 	// cluster instead of a cluster exiled to the far edge
 	const pY1 = snap(spec, nameY + 18 + TT.body.lh + SPACE.s2);
-	const railRight = gridX(spec, 6) - spec.gutter;
+	const railRight = accountStats ? gridX(spec, 6) - spec.gutter : m + contentWidth(spec);
 	s += presenceCluster(spec, nx, pY1, snap(spec, pY1 + 16), railRight - nx, model, T);
+
+	if (!accountStats) {
+		// person-only fragment: the presence cluster is the last
+		// content — no stats rail, no language bar
+		return { svg: s, bottom: snap(spec, pY1 + 16 + SPACE.s4) };
+	}
 
 	// VITALS — unlabeled state grid on the right rail (cols 6–11),
 	// top-aligned with the avatar so the two rails share one top edge
-	const vit = metricStrip(spec, y0 + SPACE.s2, 6, 6, model.stats, T, sem);
+	const vit = metricStrip(spec, y0 + SPACE.s2, 6, 6, model.stats, T, skin.sem);
 	s += vit.svg;
 
 	// TOP LANGUAGES — share bar + wrapped legend, full width below
@@ -772,9 +787,14 @@ function drawIdentityDesktop(model: Band1Model, y0: number): { svg: string; bott
 	return { svg: s, bottom: snap(spec, bottom + SPACE.s4) };
 }
 
-function drawIdentityMobile(model: Band1Model, y0: number): { svg: string; bottom: number } {
+function drawIdentityMobile(
+	model: Band1Model,
+	y0: number,
+	accountStats: boolean,
+): { svg: string; bottom: number } {
 	const spec = canvasSpec(true);
-	const { T, sem } = skinFor(model.theme);
+	const skin = skinFor(model.theme);
+	const { T } = skin;
 	const TT = typeTable(spec);
 	const m = spec.margin;
 	let s = '';
@@ -812,10 +832,16 @@ function drawIdentityMobile(model: Band1Model, y0: number): { svg: string; botto
 	const clusterY = snap(spec, ay + as + SPACE.s6 + SPACE.s1);
 	s += presenceCluster(spec, m, clusterY, clusterY + 16, contentWidth(spec), model, T);
 
+	if (!accountStats) {
+		// person-only fragment (Issue #1286): presence cluster closes
+		// the card — no vitals strip, no language bar
+		return { svg: s, bottom: snap(spec, clusterY + 16 + SPACE.s4) };
+	}
+
 	// state zone — unlabeled per contract §22: the 3+3 vitals grid and
 	// the language bar explain themselves through icons and shape
 	const y = snap(spec, clusterY + 16 + SPACE.s4);
-	const strip = metricStrip(spec, y, 0, spec.columns, model.stats, T, sem);
+	const strip = metricStrip(spec, y, 0, spec.columns, model.stats, T, skin.sem);
 	s += strip.svg;
 
 	// the vitals→bar air is tighter than desktop's s4+s10: the removed
@@ -836,18 +862,26 @@ function drawIdentityMobile(model: Band1Model, y0: number): { svg: string; botto
 	return { svg: s, bottom: snap(spec, bottom + SPACE.s4) };
 }
 
-/** Identity section — dispatches on the model's canvas. */
+/** Identity section — dispatches on the model's canvas.
+ * `accountStats` (default true) keeps the vitals grid + language bar
+ * for the compat `/profile` composition; the standalone `/identity`
+ * surface passes false so stats stay owned by `/vitals` +
+ * `/top-languages` alone (Issue #1286). */
 export function drawIdentitySection(
 	model: Band1Model,
 	y0: number,
+	opts: { accountStats?: boolean } = {},
 ): { svg: string; bottom: number } {
-	return model.mobile ? drawIdentityMobile(model, y0) : drawIdentityDesktop(model, y0);
+	const accountStats = opts.accountStats ?? true;
+	return model.mobile
+		? drawIdentityMobile(model, y0, accountStats)
+		: drawIdentityDesktop(model, y0, accountStats);
 }
 
 export function renderBand1Svg(model: Band1Model, opts: { grid?: boolean } = {}): string {
 	const spec = canvasSpec(model.mobile);
 	const { T } = skinFor(model.theme);
-	const sec = drawIdentitySection(model, SPACE.s6);
+	const sec = drawIdentitySection(model, SPACE.s6, { accountStats: false });
 	const H = snap(spec, sec.bottom + SPACE.s4) + (opts.grid && model.mobile ? 28 : 0);
 	let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${spec.width}" height="${H}" viewBox="0 0 ${spec.width} ${H}" font-family="${FONT}">`;
 	svg += `<rect width="${spec.width}" height="${H}" fill="${T.bg}"/>`;
@@ -1017,21 +1051,46 @@ export function renderTopLangsSvg(model: StatsSurfaceModel, opts: { grid?: boole
 
 // ---- Band 2 ----
 
-/** Feed verb → past-tense display word. */
+/** Feed verb → past-tense display word. Every GitHub event type the
+ * public-events feed can carry maps to a human word — the raw
+ * `*Event` name is an API internal and must never reach the SVG
+ * (Issue #1286 review: `IssuesEvent` was the most common real type
+ * and printed verbatim). */
 const EVENT_VERB: Record<string, string> = {
 	PushEvent: 'pushed',
 	PullRequestEvent: 'PR',
+	PullRequestReviewEvent: 'reviewed',
+	PullRequestReviewCommentEvent: 'reviewed',
+	IssuesEvent: 'issue',
+	IssueCommentEvent: 'commented',
+	CommitCommentEvent: 'commented',
 	CreateEvent: 'created',
 	DeleteEvent: 'deleted',
+	ReleaseEvent: 'released',
+	WatchEvent: 'starred',
+	ForkEvent: 'forked',
 };
 
 /** Feed verb → plural noun for collapsed runs ('2 pushes'). */
 const EVENT_NOUN: Record<string, string> = {
 	PushEvent: 'pushes',
 	PullRequestEvent: 'PRs',
+	PullRequestReviewEvent: 'reviews',
+	PullRequestReviewCommentEvent: 'reviews',
+	IssuesEvent: 'issues',
+	IssueCommentEvent: 'comments',
+	CommitCommentEvent: 'comments',
 	CreateEvent: 'creates',
 	DeleteEvent: 'deletes',
+	ReleaseEvent: 'releases',
+	WatchEvent: 'stars',
+	ForkEvent: 'forks',
 };
+
+/** Unknown event types degrade to a generic word, never the raw
+ * API type name. */
+const EVENT_FALLBACK_VERB = 'activity';
+const EVENT_FALLBACK_NOUN = 'activities';
 
 /** Absolute JST stamp for one event — a static SVG must never print
  * relative ages that silently rot after the observation instant. */
@@ -1103,7 +1162,9 @@ function renderRecentActivity(
 		const ry = firstBaseline + i * rowH;
 		s += eventGlyph(r.type, x + 6, iconCenterY(ry, TT.data.size), ICON.sm - 2, typeColor(r.type));
 		const verb =
-			r.count > 1 ? `${r.count} ${EVENT_NOUN[r.type] ?? r.type}` : (EVENT_VERB[r.type] ?? r.type);
+			r.count > 1
+				? `${r.count} ${EVENT_NOUN[r.type] ?? EVENT_FALLBACK_NOUN}`
+				: (EVENT_VERB[r.type] ?? EVENT_FALLBACK_VERB);
 		// repo owns the strong role — events are the band's readable
 		// payload, so nothing here sits below the legibility floor
 		const verbTxt = ` · ${verb}`;

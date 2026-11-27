@@ -183,7 +183,34 @@ const cardLinkArrowClassName = /*#__PURE__*/ css({
 
 function ExploreCard({ destination }: { readonly destination: ExploreDestination }) {
 	return (
-		<Panel variant={destination.variant} padding="6" radius="md" as="li">
+		<Panel
+			variant={destination.variant}
+			padding="6"
+			radius="md"
+			as="li"
+			// Issue #1279 — the section copy promises a dotted rule on
+			// external bases ("点線の別線はサイトの外へ出る拠点です").
+			// The rule lives on an inner overlay, not the Panel
+			// element: `Panel` re-binds `border.strong` to the
+			// inverse ink only INSIDE its tone scope, so a border
+			// declared on the card chrome would read the page ground
+			// and vanish on the ink plate.
+			className={destination.external ? css({ position: 'relative' }) : undefined}
+		>
+			{destination.external ? (
+				<span
+					aria-hidden="true"
+					className={css({
+						position: 'absolute',
+						inset: '0',
+						borderWidth: '1px',
+						borderStyle: 'dashed',
+						borderColor: 'border.strong',
+						borderRadius: 'md',
+						pointerEvents: 'none',
+					})}
+				/>
+			) : null}
 			<Stack gap="2">
 				<Cluster gap="2">
 					<span className={classLabelClassName}>{destination.classLabel}</span>

@@ -30,8 +30,11 @@ export function parseStatsSnapshot(payload: unknown): GitHubStatsSnapshotValue |
 	return parsed.success ? parsed.data : null;
 }
 
-function bandLangs(snapshot: GitHubStatsSnapshotValue | null): BandStats['topLangs'] {
-	const langs = snapshot?.languages?.owned;
+function bandLangs(
+	snapshot: GitHubStatsSnapshotValue | null,
+	scope: 'owned' | 'participated',
+): BandStats['topLangs'] {
+	const langs = snapshot?.languages?.[scope];
 	if (!langs || langs.length === 0) return null;
 	const total = langs.reduce((sum, entry) => sum + entry.size, 0);
 	if (total <= 0) return null;
@@ -56,7 +59,10 @@ export function bandStatsFromSnapshot(snapshot: GitHubStatsSnapshotValue | null)
 		contributedTo: snapshot?.metrics.contributedTo ?? null,
 		rankLevel: snapshot?.rank?.current.level ?? null,
 		rankPercentile: snapshot?.rank?.current.percentile ?? null,
-		topLangs: bandLangs(snapshot),
+		topLangs: bandLangs(snapshot, 'owned'),
+		participatedRepos: snapshot?.repos?.participated ?? null,
+		participatedStars: snapshot?.stars?.participated ?? null,
+		participatedLangs: bandLangs(snapshot, 'participated'),
 		totalStars: snapshot?.stars?.owned ?? null,
 		totalCommits: snapshot?.metrics.commitsAuthoredAllTime ?? null,
 		totalPRs: snapshot?.metrics.prsOpenedAllTime ?? null,

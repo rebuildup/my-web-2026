@@ -691,7 +691,10 @@ export function AdRect({ imageSrc, imageAlt, headline, sub, ctaLabel, href }: Ad
 					overflow: 'hidden',
 					borderRadius: 'xs',
 					minHeight: '64',
-					sm: { height: '80' },
+					// Issue #1279 — same defect class as AdLeaderboard:
+					// a locked height under `overflow: hidden` clips a
+					// taller creative. `minHeight` keeps the floor.
+					sm: { minHeight: '80' },
 					backgroundColor: AD.ink,
 					textDecoration: 'none',
 					_focusVisible: {

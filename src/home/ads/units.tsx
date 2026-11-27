@@ -311,7 +311,14 @@ export function AdLeaderboard({
 				className={css({
 					display: 'flex',
 					alignItems: 'stretch',
-					sm: { height: '44' },
+					// Issue #1279 — the banner locked its height at `44`
+					// (176px) on ≥sm while `overflow: hidden` stayed on,
+					// so a headline + sub + CTA combination taller than
+					// the box clipped the CTA's bottom edge and drove the
+					// headline flush against the top. `minHeight` keeps
+					// the intended banner measure as a floor but lets
+					// the creative grow instead of being cut.
+					sm: { minHeight: '44' },
 					marginBlockStart: '2',
 					overflow: 'hidden',
 					borderRadius: 'xs',

@@ -169,8 +169,6 @@ const LUCIDE_INNER: Record<string, string> = {
 	user: '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
 	'git-fork':
 		'<circle cx="12" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><path d="M18 9v2c0 .6-.4 1-1 1H7c-.6 0-1-.4-1-1V9"/><path d="M12 12v3"/>',
-	users:
-		'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
 };
 
 /** Lucide glyph centered on (cx, cy), `size` px square. */
@@ -238,6 +236,13 @@ export interface BandStats {
 	readonly participatedRepos: number | null;
 	readonly participatedStars: number | null;
 	readonly participatedLangs: readonly BandLang[] | null;
+	/**
+	 * Owned + participated merged by language name (disjoint scopes,
+	 * contract §2.1) — the "total development area" primary view for
+	 * `/top-languages` (Issue #1262 review). `null` when neither
+	 * scope was measured.
+	 */
+	readonly combinedLangs: readonly BandLang[] | null;
 }
 
 export interface Band1Model {
@@ -297,11 +302,12 @@ interface LangSegment {
 	readonly other: boolean;
 }
 
-/** Top-3 named languages plus a single neutral "Other" remainder —
+/** Top-N named languages plus a single neutral "Other" remainder —
  * every colored slice stays labelled, and the bar always sums to
- * ~100% without silently dropping languages. */
-function langSegments(langs: readonly BandLang[]): readonly LangSegment[] {
-	const shown = langs.slice(0, 3);
+ * ~100% without silently dropping languages. The legend must name
+ * exactly the same top-N the bar draws or an unnamed slice appears. */
+function langSegments(langs: readonly BandLang[], named = 3): readonly LangSegment[] {
+	const shown = langs.slice(0, named);
 	const shownPct = shown.reduce((a, l) => a + l.pct, 0);
 	const otherPct = Math.max(0, 100 - shownPct);
 	const segs: LangSegment[] = shown.map((l) => ({ pct: l.pct, swatch: l.color, other: false }));
@@ -425,10 +431,11 @@ const METRICS: readonly Metric[] = [
 
 /**
  * Participated scope (Issue #1262): repos contributed to but not
- * owned, the stars they carry, and the affiliation count. Kept as a
- * separate strip — these figures measure reach into OTHER people's
- * projects, so folding them into the owned figures would misstate
- * both (contract §2.1).
+ * owned, and the stars they carry. `repos.participated` (measured
+ * contribution evidence) and `metrics.contributedTo` (GraphQL
+ * affiliation count) count the same population — real data agrees
+ * (both 28) — so the lane shows the measured figure once, not two
+ * near-identical numbers.
  */
 const PARTICIPATED_METRICS: readonly Metric[] = [
 	{
@@ -438,7 +445,6 @@ const PARTICIPATED_METRICS: readonly Metric[] = [
 		unit: null,
 	},
 	{ icon: 'star', label: 'stars', value: (st) => st.participatedStars, unit: null },
-	{ icon: 'users', label: 'contrib', value: (st) => st.contributedTo, unit: null },
 ];
 
 /**
@@ -456,14 +462,19 @@ function metricStrip(
 	stats: BandStats,
 	T: Theme,
 	sem: (k: string) => string,
-	opts: { metrics?: readonly Metric[]; caption?: string; muted?: boolean } = {},
+	opts: {
+		metrics?: readonly Metric[];
+		caption?: string;
+		muted?: boolean;
+		captionDy?: number;
+	} = {},
 ): { svg: string; bottom: number } {
 	const TT = typeTable(spec);
 	const list = opts.metrics ?? METRICS;
 	// Row plans snap to the column grid: 3 cells per row inside the
 	// caller's column span (full width → 4-col spans, right rail →
 	// 2-col spans). Every cell edge lands on a column boundary.
-	const perRow = 3;
+	const perRow = Math.min(3, list.length);
 	const rowCount = Math.ceil(list.length / perRow);
 	const rowPlan: readonly (readonly number[])[] = Array.from(
 		{ length: rowCount },
@@ -476,7 +487,14 @@ function metricStrip(
 	const span = colCount / perRow;
 	let s = '';
 	if (opts.caption) {
-		s += bandText(spec, 'caption', gridX(spec, colStart), snap(spec, y - 8), T.faint, opts.caption);
+		s += bandText(
+			spec,
+			'caption',
+			gridX(spec, colStart),
+			snap(spec, y - (opts.captionDy ?? 8)),
+			T.faint,
+			opts.caption,
+		);
 	}
 	let cy = y;
 	for (const row of rowPlan) {
@@ -553,6 +571,21 @@ function flowWidth(text: string, fontSize: number): number {
 	return width;
 }
 
+/** Content-addressed id for a bar gradient — bars on one canvas can
+ * share an x (stacked mobile scopes, hero + owned pair) and inlined
+ * compositions can share a document, so `url(#…)` references need an
+ * id that is unique per DISTINCT gradient. Hashing the stop list keeps
+ * renders deterministic (unlike a counter) while identical bars may
+ * safely share one gradient. */
+function langBarGid(stops: string): string {
+	let h = 0x811c9dc5;
+	for (let i = 0; i < stops.length; i++) {
+		h ^= stops.charCodeAt(i);
+		h = Math.imul(h, 0x01000193) >>> 0;
+	}
+	return `langbar${h.toString(36)}`;
+}
+
 /** Language share bar: one pill track with hard-stop gradient
  * segments (crisp edges, rounded ends) + a legend that WRAPS inside
  * the bar's own width — every item keeps bar order, and a wrapped
@@ -565,13 +598,18 @@ function langBar(
 	w: number,
 	langs: readonly BandLang[],
 	T: Theme,
+	opts: { sub?: boolean } = {},
 ): { svg: string; bottom: number } {
 	const TT = typeTable(spec);
-	const segs = langSegments(langs);
-	const barY = y + 10;
-	const barH = 10;
+	// Subordinate bars (the owned/participated split under the hero)
+	// run thinner with tighter air so the hero keeps the hierarchy;
+	// their legend names fewer languages so it stays on one line.
+	const sub = opts.sub === true;
+	const named = sub ? 2 : 3;
+	const segs = langSegments(langs, named);
+	const barY = y + (sub ? 6 : 10);
+	const barH = sub ? 6 : 10;
 	const fs = TT.label.size;
-	const gid = `langbar${x | 0}`;
 	let stops = '';
 	let acc = 0;
 	for (const seg of segs) {
@@ -580,11 +618,12 @@ function langBar(
 		stops += `<stop offset="${c1}" stop-color="${seg.swatch}"/><stop offset="${c2}" stop-color="${seg.swatch}"/>`;
 		acc += seg.pct;
 	}
+	const gid = langBarGid(stops);
 	let s = `<defs><linearGradient id="${gid}" x1="0" y1="0" x2="1" y2="0">${stops}</linearGradient></defs>`;
 	s += `<rect x="${x}" y="${barY}" width="${w}" height="${barH}" rx="${barH / 2}" fill="url(#${gid})"/>`;
 	// leaders: every named language + the Other remainder, in bar order
 	const leaders: { name: string; pct: number; swatch: string }[] = langs
-		.slice(0, 3)
+		.slice(0, named)
 		.map((l) => ({ name: l.name, pct: l.pct, swatch: l.color }));
 	const namedPct = leaders.reduce((a, l) => a + l.pct, 0);
 	const otherPct = 100 - namedPct;
@@ -592,7 +631,7 @@ function langBar(
 		leaders.push({ name: 'Other', pct: otherPct, swatch: '#8b949e' });
 	}
 	let lx = x;
-	let ly2 = barY + barH + 15;
+	let ly2 = barY + barH + (sub ? 13 : 15);
 	for (const l of leaders) {
 		const txt = `${l.name} ${l.pct.toFixed(1)}%`;
 		const itemW = 10 + flowWidth(txt, fs) + 14;
@@ -872,14 +911,18 @@ export function renderVitalsSvg(model: StatsSurfaceModel, opts: { grid?: boolean
 	// participation". Muted numerals + the scope caption keep it
 	// visually subordinate to the account figures.
 	const st = model.stats;
-	const hasParticipated =
-		st.participatedRepos !== null || st.participatedStars !== null || st.contributedTo !== null;
+	const hasParticipated = st.participatedRepos !== null || st.participatedStars !== null;
 	if (hasParticipated) {
 		const laneY = bottom + SPACE.s4 + 14;
-		const lane = metricStrip(spec, laneY, 0, spec.columns, st, T, sem, {
+		// Two cells only: colCount narrows the span so the pair lands
+		// on the SAME column tracks as the account strip above (cols
+		// 0+4 desktop / 0+2 mobile) instead of straddling them, and
+		// captionDy lifts the kicker clear of the first numeral row.
+		const lane = metricStrip(spec, laneY, 0, spec.mobile ? 4 : 8, st, T, sem, {
 			metrics: PARTICIPATED_METRICS,
 			caption: 'PARTICIPATED — repos contributed to, not owned',
 			muted: true,
+			captionDy: 18,
 		});
 		body += lane.svg;
 		bottom = lane.bottom;
@@ -894,33 +937,69 @@ function scopeCaption(spec: CanvasSpec, x: number, y: number, T: Theme, label: s
 	return bandText(spec, 'caption', x, snap(spec, y), T.faint, label);
 }
 
-/** TOP LANGUAGES — the owned-scope share bar + legend alone
- * (github_stats_snapshot), plus the participated-scope bar when the
- * snapshot measured it (Issue #1262). Both bars show REPOSITORY
- * language composition (bytes), never the owner's personal change
- * volume — the captions keep that meaning explicit. */
+/** TOP LANGUAGES — repo language composition (bytes) per scope
+ * (github_stats_snapshot). When both scopes are measured the surface
+ * leads with the COMBINED mix (the total development area) and shows
+ * the owned/participated split as a subordinate pair — on desktop
+ * the pair sits side by side so the comparison reads at a glance;
+ * on mobile they stack. Never the owner's personal change volume —
+ * the captions keep that meaning explicit (contract §3.2). */
 export function renderTopLangsSvg(model: StatsSurfaceModel, opts: { grid?: boolean } = {}): string {
 	const spec = canvasSpec(model.mobile);
 	const { T } = skinFor(model.theme);
 	const m = spec.margin;
+	const w = contentWidth(spec);
 	const y = SPACE.s6;
 	const langs = model.stats.topLangs;
 	const participated = model.stats.participatedLangs;
+	const combined = model.stats.combinedLangs;
+	const bothScopes =
+		langs !== null && langs.length > 0 && participated !== null && participated.length > 0;
 	let s = '';
 	let bottom: number;
-	if (!langs || langs.length === 0) {
+	if ((!langs || langs.length === 0) && (!participated || participated.length === 0)) {
 		s += bandText(spec, 'body', m, snap(spec, y + 20), T.faint, 'language data unavailable');
 		bottom = snap(spec, y + 36);
+	} else if (bothScopes && combined && combined.length > 0) {
+		s += scopeCaption(spec, m, y, T, 'ALL REPOS — OWNED + PARTICIPATED');
+		// kicker→bar air matches the subordinate bars (16px) so all
+		// three blocks share one vertical rhythm
+		const hero = langBar(spec, m, y + 6, w, combined, T);
+		s += hero.svg;
+		bottom = hero.bottom;
+		// scope pair: side-by-side on desktop, stacked on mobile —
+		// subordinate bars (thinner, fewer legend items) keep the hero
+		// the visual weight
+		let pairY = bottom + SPACE.s4 + 6;
+		if (spec.mobile) {
+			for (const [label, scopeLangs] of [
+				['OWNED REPOS', langs],
+				['PARTICIPATED REPOS', participated],
+			] as const) {
+				s += scopeCaption(spec, m, pairY, T, label);
+				const bar = langBar(spec, m, pairY + 10, w, scopeLangs, T, { sub: true });
+				s += bar.svg;
+				bottom = bar.bottom;
+				pairY = bar.bottom + SPACE.s4;
+			}
+		} else {
+			const gap = spec.gutter;
+			const half = (w - gap) / 2;
+			s += scopeCaption(spec, m, pairY, T, 'OWNED REPOS');
+			s += scopeCaption(spec, m + half + gap, pairY, T, 'PARTICIPATED REPOS');
+			const ownedBar = langBar(spec, m, pairY + 10, half, langs, T, { sub: true });
+			const partBar = langBar(spec, m + half + gap, pairY + 10, half, participated, T, {
+				sub: true,
+			});
+			s += ownedBar.svg + partBar.svg;
+			bottom = Math.max(ownedBar.bottom, partBar.bottom);
+		}
 	} else {
-		s += scopeCaption(spec, m, y, T, 'OWNED REPOS');
-		const bar = langBar(spec, m, y + 14, contentWidth(spec), langs, T);
-		s += bar.svg;
-		bottom = bar.bottom;
-	}
-	if (participated && participated.length > 0) {
-		const laneY = bottom + SPACE.s4 + 6;
-		s += scopeCaption(spec, m, laneY, T, 'PARTICIPATED REPOS');
-		const bar = langBar(spec, m, laneY + 14, contentWidth(spec), participated, T);
+		const ownedOnly = langs !== null && langs.length > 0;
+		const only = ownedOnly ? langs : (participated ?? []);
+		const label = ownedOnly ? 'OWNED REPOS' : 'PARTICIPATED REPOS';
+		s += scopeCaption(spec, m, y, T, label);
+		const bar = langBar(spec, m, y + 6, w, only, T);
 		s += bar.svg;
 		bottom = bar.bottom;
 	}

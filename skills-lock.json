@@ -376,6 +376,69 @@
 			"sourceType": "github",
 			"skillPath": "skills/writing-discipline/SKILL.md",
 			"computedHash": "552cdb336da753e9fbffd12780b206ba740d5656720e567757d655f7b3665513"
+		},
+		"visual-hierarchy": {
+			"source": "rebuildup/design-skills",
+			"ref": "v0.7.1",
+			"sourceType": "github",
+			"skillPath": "skills/visual-hierarchy/SKILL.md",
+			"computedHash": "f134e6a2a34a72f643f972b7bf23e484eeffc34c90f09e1d9b590568a4630f70"
+		},
+		"visual-review": {
+			"source": "rebuildup/design-skills",
+			"ref": "v0.7.1",
+			"sourceType": "github",
+			"skillPath": "skills/visual-review/SKILL.md",
+			"computedHash": "e474613e930a6403139d5dff4ffa5d5e77cb0fd5f6239c35d8849f01e47a261b"
+		},
+		"information-density": {
+			"source": "rebuildup/design-skills",
+			"ref": "v0.7.1",
+			"sourceType": "github",
+			"skillPath": "skills/information-density/SKILL.md",
+			"computedHash": "148aec77ef9c83104adb8bd632cd94d49bcb76b1dde1f026a9919bf3ad448293"
+		},
+		"numeric-typography": {
+			"source": "rebuildup/design-skills",
+			"ref": "v0.7.1",
+			"sourceType": "github",
+			"skillPath": "skills/numeric-typography/SKILL.md",
+			"computedHash": "ea0892e96c100a588be6781faa41299cd4ea3d715ba113760c8d78cdf4ed6a3e"
+		},
+		"ui-primitive-architecture": {
+			"source": "rebuildup/design-skills",
+			"ref": "v0.7.1",
+			"sourceType": "github",
+			"skillPath": "skills/ui-primitive-architecture/SKILL.md",
+			"computedHash": "2d732b8de3cefbdf701f980f3237f5a20ed163106c990c16c7ddd8ecbd0d45e0"
+		},
+		"design-system-enforcement": {
+			"source": "rebuildup/design-skills",
+			"ref": "v0.7.1",
+			"sourceType": "github",
+			"skillPath": "skills/design-system-enforcement/SKILL.md",
+			"computedHash": "92136d76d8b27af826c79b690a58cf094708f4777c504d61ba78c56b44f8bd7c"
+		},
+		"design-review-routing": {
+			"source": "rebuildup/design-skills",
+			"ref": "v0.7.1",
+			"sourceType": "github",
+			"skillPath": "skills/design-review-routing/SKILL.md",
+			"computedHash": "793bbe64a100b2a75c8fced0f40e8466c1e4a740ec470ef3aa02f6c6acf3462a"
+		},
+		"design-discipline": {
+			"source": "rebuildup/design-skills",
+			"ref": "v0.7.1",
+			"sourceType": "github",
+			"skillPath": "skills/design-discipline/SKILL.md",
+			"computedHash": "22a19343ebed9a21421b454ed7956d0d1a3021aee6f8d936fe82d06db387bb68"
+		},
+		"reduced-motion-design": {
+			"source": "rebuildup/design-skills",
+			"ref": "v0.7.1",
+			"sourceType": "github",
+			"skillPath": "skills/reduced-motion-design/SKILL.md",
+			"computedHash": "4c49c9d8d8c5fc100cbbd7455060a58deeb13bae60889ac7e35ee944ad69ff46"
 		}
 	}
 }

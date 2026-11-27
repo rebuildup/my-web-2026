@@ -943,7 +943,7 @@ canonical link:
 | `parallel-orchestration`, `policy-evaluation` | Content sync deferred to a later release — see Issue #647. |
 | `agent-recovery`, `onboarding`, `sandbox-runtime` | Pinned to project-init `0.1.1`. Re-verified against `v0.14.1` (2026-11-27): the conflicts still stand — `agent-recovery` / `onboarding` grant autonomous Ready-ticket landing and Issue close during recovery, `sandbox-runtime` is written against project-init `constitution/` / upstream ADR-0020 vocabulary this repository does not have. Re-sync requires a local adaptation pass, not a blanket copy. |
 | `agent-delivery-estimation`, `correctness-assurance` | Held at project-init `v0.9.0`. The `v0.14.1` text is otherwise adoptable, but it adds references to siblings this repository does not vendor (`github-delivery/references/adaptive-release-batching.md`, `quality-gate/references/gate-honesty.md`) and to project-init's own `scripts/delivery-status/`; vendoring it verbatim would ship dangling pointers. Unblock together with the `github-delivery` / `quality-gate` fork decisions. |
-| `form-design`, `motion-system` | Edited in this repository to stop cross-referencing upstream's `interaction-state`: `form-design` drops the single line that points at it, `motion-system` drops its whole `### Interaction-state boundary` section. Both files are otherwise byte-identical to design-skills `v0.3.0`. |
+| `form-design`, `motion-system` | Edited in this repository to stop cross-referencing upstream's `interaction-state`: `form-design` drops the single line that points at it, `motion-system` drops its whole `### Interaction-state boundary` section. Re-verified at design-skills `v0.7.1` (2026-11-27, Issue #1275): the divergence is unchanged — upstream still ships those references and the local files drop exactly them. |
 | `interaction-states` | The local file is upstream design-skills' `interaction-states` **as it existed before upstream deleted it** in `6c2acf5` (2026-09-17, "remove duplicate interaction-states skill"); it was imported verbatim (commit `2a7460a6`) and is byte-identical to that revision. It is **not** a rename of upstream's current `interaction-state` — that is a different, later, "experimental" state-graph document (344 lines), while the local file is the 234-line component-state document (hover / focus / pressed / selected / disabled semantics) that `skills/touch-interface/SKILL.md:24`, `skills/dark-mode-design/SKILL.md:158` and `skills/keyboard-interface/SKILL.md:91,179` still point at. Copying upstream's current `interaction-state` over it would silently replace a different scope under the same name. **Owner decision: OPEN** — keep the deleted upstream variant, or re-import upstream's current `interaction-state` and re-point those references. |
 | `herdr-runtime` | Upstream has since merged PR #135 and renamed `project-init` → `aude-skills` (verified at `v0.14.1`), but the local file still diverges: it keeps the `## Local adaptation (my-web-2026)` section (canonical state = GitHub Issue / PR / branch, authority = §6 / §8, native-subagent default, no silent provider fallback) and replaces upstream's `../../organization/execution-placement.md` link with an inline rule, because the `organization/` tree is not vendored here. Re-sync requires re-applying the local adaptation, not a blanket copy. |
 
@@ -967,8 +967,14 @@ an agent actually retrieves, and a faithful vendored copy carries a
 Revisit if upstream ships a pinned/offline retrieval path.
 
 To take an upstream change, diff it first, land it as its own ticket,
-and re-check the §3 / §6 / §7 invariants it touches. The update command
-is `npx skills add rebuildup/project-init --skill <name> --copy` —
+and re-check the §3 / §6 / §7 invariants it touches. `rebuildup/
+project-init` was renamed to `rebuildup/aude-skills` on 2026-11-27
+(repository ID `1328121003`, upstream Issue #212); GitHub redirects
+the old slug, but new references use the canonical name, and
+`skills-lock.json` `source` fields keep the slug that was actually
+fetched, so older entries still read `rebuildup/project-init` — that
+is provenance, not a stale pointer. The update command is
+`npx skills add rebuildup/aude-skills --skill <name> --copy` —
 **not** `bunx` (§2 forbids Bun here) and **never without `--copy``
 (a symlinked install is not what §10 promises readers). The CLI installs
 into an **agent** skills directory (`.claude/skills/`, `.agents/skills/`,
@@ -1017,7 +1023,8 @@ copy and diff it into `skills/<name>/` by hand. Clone the upstream into
 
 Web fundamentals / design-layout / animation-interaction の汎用 Skills。
 Vendor-specific design system / media production 系は含まない
-(`design-skills` upstream から 25 件選抜、 release-0-3-0 時点;
+(`design-skills` upstream から選抜; release-0-3-0 時点で 25 件、
+Issue #1275 で v0.7.1 の候補を再評価し 9 件追加して 34 件;
 現在の pin は **v0.7.1**)。
 
 - `skills/design-intent/SKILL.md` — DESIGN-BRIEF 起点の design direction
@@ -1046,6 +1053,15 @@ Vendor-specific design system / media production 系は含まない
 - `skills/high-contrast-design/SKILL.md` — high-contrast / forced-colors
 - `skills/touch-interface/SKILL.md` — touch / coarse-pointer interaction
 - `skills/keyboard-interface/SKILL.md` — keyboard interaction model
+- `skills/visual-hierarchy/SKILL.md` — cross-channel priority system (position / type / contrast / grouping)
+- `skills/visual-review/SKILL.md` — rendered-UI review: screenshots, baselines, bounded rerender (Issue #1275)
+- `skills/design-review-routing/SKILL.md` — who reviews what: agent / deterministic / independent / human (Issue #1275)
+- `skills/information-density/SKILL.md` — task-appropriate density without shrinking everything (Issue #1275)
+- `skills/numeric-typography/SKILL.md` — numbers as a first-class reading/comparison surface (Issue #1275)
+- `skills/ui-primitive-architecture/SKILL.md` — which controls become shared primitives vs feature-local (Issue #1275)
+- `skills/design-system-enforcement/SKILL.md` — drift prevention via component/token contracts + focused checks (Issue #1275)
+- `skills/design-discipline/SKILL.md` — meaning-first redesign of 2D visual artifacts before generating (Issue #1275)
+- `skills/reduced-motion-design/SKILL.md` — preserve task meaning while reducing non-essential motion (Issue #1275)
 
 Architecture docs (`docs/architecture.md`), development docs
 (`docs/development.md`), and release docs (`docs/release.md`) are the

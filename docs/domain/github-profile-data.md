@@ -228,7 +228,7 @@ sync 時に R2 または stats snapshot 内の data URI として永続化
 | Stack | `/stack` | 静的資産 |
 | 互換合成 | `/profile` | 全 snapshot（現行と同一 SVG） |
 | `/now` `/status` `/activity` `/current` `/card` | 既存 | 各 snapshot（request 時上流呼出なし） |
-| サイト GitHub STATUS 統計カード `/api/v1/github-readme-stats/api` | 既存 | **github_stats_snapshot**（Issue #1262 で request 時 `fetchStats` から移行。未計測フィールドは `hide`、snapshot 不在は 503 degraded。top-langs/streak/pin カードは引き続き upstream fetch — 別指標で snapshot 未整備） |
+| サイト GitHub STATUS カード `/api/v1/github-readme-stats/api{,/top-langs/,/streak}` | 既存 | **github_stats_snapshot**（stats: Issue #1262、top-langs/streak: Issue #1268 で request 時 upstream fetch から移行。top-langs は `languages.owned`（旧 fetchTopLanguages と同一の owned 母集団）、streak は `streak` ブロックをそのまま投影。未計測・snapshot 不在は 503 degraded + SWR stale 配信。`/api/pin/` は repo 単位の動的取得のため引き続き upstream fetch） |
 
 `/identity` は README 未参照の legacy fragment で、分割 surface
 完成までは band1 全体を返す。README 切替時に masthead のみへ

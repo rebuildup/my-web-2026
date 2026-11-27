@@ -91,52 +91,37 @@ function createMockEnvWithStats(overrides: Record<string, unknown> = {}) {
 	return createMockEnv({ DB: fakeStatsDb(STATS_SNAPSHOT), ...overrides });
 }
 
+const STREAK_BLOCK = {
+	currentStreak: 207,
+	longestStreak: 365,
+	totalContributions: 36658,
+	firstContribution: '2019-01-01',
+	currentStreakStart: '2026-05-05',
+	currentStreakEnd: '2026-11-27',
+	longestStreakStart: '2025-01-01',
+	longestStreakEnd: '2026-01-01',
+};
+
+function snapshotWith(overrides: Record<string, unknown>) {
+	return { ...STATS_SNAPSHOT, ...overrides };
+}
+
+function langsSnapshot(langs: Array<{ name: string; size: number }>) {
+	return snapshotWith({
+		languages: {
+			owned: langs.map((l, i) => ({
+				name: l.name,
+				color: '#3178c6',
+				size: l.size,
+				count: langs.length - i,
+			})),
+			participated: [],
+		},
+	});
+}
+
 function createGraphQLMock(data: unknown, errors?: unknown[]) {
 	return { ok: true, json: async () => ({ data, errors }) };
-}
-
-function mockTopLangsGraphQL(edges?: unknown[]) {
-	mockFetch.mockResolvedValue(
-		createGraphQLMock({
-			user: {
-				repositories: {
-					nodes: [
-						{
-							name: 'repo1',
-							languages: {
-								edges: edges ?? [
-									{ size: 1000, node: { name: 'TypeScript', color: '#3178c6' } },
-									{ size: 500, node: { name: 'JavaScript', color: '#f1e05a' } },
-								],
-							},
-						},
-					],
-				},
-			},
-		}),
-	);
-}
-
-function mockStreakGraphQL() {
-	mockFetch
-		.mockResolvedValueOnce(
-			createGraphQLMock({ user: { contributionsCollection: { contributionYears: [2024] } } }),
-		)
-		.mockResolvedValueOnce(
-			createGraphQLMock({
-				user: {
-					y2024: {
-						contributionCalendar: {
-							weeks: [
-								{
-									contributionDays: [{ date: '2024-01-15', contributionCount: 5 }],
-								},
-							],
-						},
-					},
-				},
-			}),
-		);
 }
 
 function mockRepoGraphQL() {
@@ -226,29 +211,36 @@ describe('GitHub Readme Stats Router (personal-fixed, Issue #1164)', () => {
 	});
 
 	describe('Top languages card: /api/top-langs/', () => {
-		it('returns the compact card for rebuildup regardless of params', async () => {
-			mockTopLangsGraphQL();
+		it('returns the compact card for rebuildup regardless of params (Issue #1268)', async () => {
+			const env = createMockEnv({
+				DB: fakeStatsDb(
+					langsSnapshot([
+						{ name: 'TypeScript', size: 1000 },
+						{ name: 'JavaScript', size: 500 },
+					]),
+				),
+			});
 			const req = createMockRequest('/api/top-langs/', {
 				username: 'other',
 				layout: 'donut-vertical',
 			});
-			const res = await githubReadmeStatsRouter.fetch(req, createMockEnv());
+			const res = await githubReadmeStatsRouter.fetch(req, env);
 			expect(res.status).toBe(200);
 			const body = await res.text();
 			expect(body).toContain('<svg');
 			expect(body).toContain('TypeScript');
+			// No upstream call may happen on this route anymore.
+			expect(mockFetch).not.toHaveBeenCalled();
 		});
 
 		it('bounds the compact card to the upstream default language count', async () => {
-			const edges = Array.from({ length: 12 }, (_, i) => ({
+			const langs = Array.from({ length: 12 }, (_, i) => ({
+				name: `Lang${i}`,
 				size: 1000 - i * 10,
-				node: { name: `Lang${i}`, color: '#3178c6' },
 			}));
-			mockTopLangsGraphQL(edges);
-
 			const res = await githubReadmeStatsRouter.fetch(
 				createMockRequest('/api/top-langs/'),
-				createMockEnv(),
+				createMockEnv({ DB: fakeStatsDb(langsSnapshot(langs)) }),
 			);
 			expect(res.status).toBe(200);
 			const body = await res.text();
@@ -259,36 +251,54 @@ describe('GitHub Readme Stats Router (personal-fixed, Issue #1164)', () => {
 			expect(body).toContain('Lang5');
 			expect(body).not.toContain('Lang6');
 		});
+
+		it('returns 503 when the snapshot is absent or languages unmeasured', async () => {
+			for (const payload of [
+				STATS_SNAPSHOT, // languages: null
+				snapshotWith({ languages: { owned: [], participated: [] } }),
+			]) {
+				const res = await githubReadmeStatsRouter.fetch(
+					createMockRequest('/api/top-langs/'),
+					createMockEnv({ DB: fakeStatsDb(payload) }),
+				);
+				expect(res.status).toBe(503);
+				expect(await res.text()).toContain('Service unavailable');
+			}
+			// And with no D1 at all.
+			const res = await githubReadmeStatsRouter.fetch(
+				createMockRequest('/api/top-langs/'),
+				createMockEnv(),
+			);
+			expect(res.status).toBe(503);
+		});
 	});
 
 	describe('Streak card: /api/streak', () => {
-		it('returns SVG for the fixed owner', async () => {
-			mockStreakGraphQL();
+		it('returns the snapshot streak SVG without any upstream call (Issue #1268)', async () => {
 			const res = await githubReadmeStatsRouter.fetch(
 				createMockRequest('/api/streak'),
-				createMockEnv(),
+				createMockEnv({ DB: fakeStatsDb(snapshotWith({ streak: STREAK_BLOCK })) }),
 			);
 			expect(res.status).toBe(200);
 			expect(res.headers.get('Content-Type')).toBe('image/svg+xml');
 			const body = await res.text();
 			expect(body).toContain('<svg');
+			expect(body).toContain('Current Streak');
+			expect(body).toContain('207');
+			expect(mockFetch).not.toHaveBeenCalled();
 		});
 
-		it('returns 503 degraded response when no token configured', async () => {
-			const res = await githubReadmeStatsRouter.fetch(
-				createMockRequest('/api/streak'),
-				createMockEnv({
-					GITHUB_TOKEN: undefined,
-					GITHUB_README_STATS_PAT_1: undefined,
-					GITHUB_README_STATS_PAT_2: undefined,
-				}),
-			);
-			expect(res.status).toBe(503);
-			expect(res.headers.get('Content-Type')).toBe('image/svg+xml');
-			expect(res.headers.get('Cache-Control')).toBe('max-age=60, s-maxage=60');
-			const body = await res.text();
-			expect(body).toContain('Service unavailable');
-			expect(body).not.toContain('PAT_1');
+		it('returns 503 degraded response when the snapshot is absent', async () => {
+			for (const env of [
+				createMockEnv(), // no D1
+				createMockEnvWithStats(), // streak: null in snapshot
+			]) {
+				const res = await githubReadmeStatsRouter.fetch(createMockRequest('/api/streak'), env);
+				expect(res.status).toBe(503);
+				expect(res.headers.get('Content-Type')).toBe('image/svg+xml');
+				expect(res.headers.get('Cache-Control')).toBe('max-age=60, s-maxage=60');
+				expect(await res.text()).toContain('Service unavailable');
+			}
 		});
 	});
 
@@ -339,11 +349,9 @@ describe('GitHub Readme Stats Router (personal-fixed, Issue #1164)', () => {
 
 		it.each([
 			['/api', {}],
-			['/api/top-langs/', {}],
-			['/api/streak', {}],
 			['/api/pin/', { repo: 'my-web-2026' }],
 		])(
-			'returns 503 (not an error card) when no GitHub token is configured: %s',
+			'returns 503 (not an error card) when the data source is unavailable: %s',
 			async (path, query) => {
 				const res = await githubReadmeStatsRouter.fetch(
 					createMockRequest(path, query),
@@ -359,25 +367,26 @@ describe('GitHub Readme Stats Router (personal-fixed, Issue #1164)', () => {
 			},
 		);
 
-		it('returns 503 when the upstream GraphQL API fails', async () => {
-			mockFetch.mockResolvedValue({
-				ok: true,
-				status: 200,
-				statusText: 'OK',
-				json: async () => ({
-					data: null,
-					errors: [{ type: 'RATE_LIMITED', message: 'API rate limit exceeded' }],
-				}),
+		it('serves snapshot cards even when the network is down (Issue #1268)', async () => {
+			// top-langs and streak read D1 only — a total upstream outage
+			// must not degrade them.
+			mockFetch.mockRejectedValue(new Error('network down'));
+			const env = createMockEnv({
+				DB: fakeStatsDb(
+					snapshotWith({
+						streak: STREAK_BLOCK,
+						languages: {
+							owned: [{ name: 'TypeScript', color: '#3178c6', size: 1000, count: 1 }],
+							participated: [],
+						},
+					}),
+				),
 			});
-			const res = await githubReadmeStatsRouter.fetch(
-				createMockRequest('/api/top-langs/'),
-				createMockEnv(),
-			);
-			expect(res.status).toBe(503);
-			expect(res.headers.get('Content-Type')).toBe('image/svg+xml');
-			const body = await res.text();
-			expect(body).toContain('Service unavailable');
-			expect(body).not.toContain('rate limit exceeded');
+			for (const path of ['/api/top-langs/', '/api/streak']) {
+				const res = await githubReadmeStatsRouter.fetch(createMockRequest(path), env);
+				expect(res.status).toBe(200);
+				expect(await res.text()).toContain('<svg');
+			}
 		});
 
 		it('keeps 200 error SVG for per-repo failures (repo not found)', async () => {
@@ -396,7 +405,7 @@ describe('GitHub Readme Stats Router (personal-fixed, Issue #1164)', () => {
 		it('does not expose tokens in error responses', async () => {
 			mockFetch.mockRejectedValue(new Error('Network error'));
 			const res = await githubReadmeStatsRouter.fetch(
-				createMockRequest('/api/top-langs/'),
+				createMockRequest('/api/pin/', { repo: 'my-web-2026' }),
 				createMockEnv(),
 			);
 			const body = await res.text();
@@ -411,7 +420,7 @@ describe('GitHub Readme Stats Router (personal-fixed, Issue #1164)', () => {
 		it('does not expose internal URLs in error responses', async () => {
 			mockFetch.mockRejectedValue(new Error('Internal error'));
 			const res = await githubReadmeStatsRouter.fetch(
-				createMockRequest('/api/top-langs/'),
+				createMockRequest('/api/pin/', { repo: 'my-web-2026' }),
 				createMockEnv(),
 			);
 			const body = await res.text();
@@ -424,7 +433,7 @@ describe('GitHub Readme Stats Router (personal-fixed, Issue #1164)', () => {
 		it('does not expose stack traces in error responses', async () => {
 			mockFetch.mockRejectedValue(new Error('Test error with stack'));
 			const res = await githubReadmeStatsRouter.fetch(
-				createMockRequest('/api/streak'),
+				createMockRequest('/api/pin/', { repo: 'my-web-2026' }),
 				createMockEnv(),
 			);
 			const body = await res.text();
@@ -437,7 +446,7 @@ describe('GitHub Readme Stats Router (personal-fixed, Issue #1164)', () => {
 		it('collapses a non-authored error message to the fixed fallback (Issue #996)', async () => {
 			mockFetch.mockRejectedValue(new Error('ECONNRESET internal-worker-detail'));
 			const res = await githubReadmeStatsRouter.fetch(
-				createMockRequest('/api/top-langs/'),
+				createMockRequest('/api/pin/', { repo: 'my-web-2026' }),
 				createMockEnv(),
 			);
 			const body = await res.text();

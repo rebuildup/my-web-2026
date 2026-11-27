@@ -37,10 +37,12 @@ import {
 	renderError,
 } from '../../vendor/github-readme-stats-fast/common/utils.ts';
 import { fetchRepo } from '../../vendor/github-readme-stats-fast/fetchers/repo.ts';
-import { fetchStreak } from '../../vendor/github-readme-stats-fast/fetchers/streak-fetcher.ts';
-import { fetchTopLanguages } from '../../vendor/github-readme-stats-fast/fetchers/top-languages.ts';
 import { rateLimitRead } from '../middleware/rate-limit';
-import { loadStatsCardProjection } from './stats-card-source.ts';
+import {
+	loadStatsCardProjection,
+	loadStreakCardData,
+	loadTopLangsCardData,
+} from './stats-card-source.ts';
 import { svgStoreMatch, svgStorePut } from './svg-store.ts';
 
 /** The only GitHub login this service renders cards for (Issue #1164). */
@@ -51,24 +53,6 @@ const OWNER_LOGIN = 'rebuildup';
 const REPO_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
 
 type HonoContext = Context<{ Bindings: Env }>;
-
-// Module scope so token rotation survives across requests on a warm instance
-let tokenIndex = 0;
-
-export function getNextToken(env: Record<string, string | undefined>): string | undefined {
-	const tokens = Object.keys(env)
-		.filter((key) => key.startsWith('GITHUB_README_STATS_PAT_'))
-		.map((key) => env[key])
-		.filter(Boolean) as string[];
-
-	if (tokens.length === 0) {
-		return env.GITHUB_TOKEN;
-	}
-
-	const token = tokens[tokenIndex % tokens.length];
-	tokenIndex++;
-	return token;
-}
 
 /**
  * The vendored fetchers only read string env vars (`GITHUB_README_STATS_PAT_*`,
@@ -276,10 +260,17 @@ githubReadmeStatsRouter.get('/api/top-langs/', rateLimitRead, async (c) => {
 		freshSeconds: CONSTANTS.CARD_CACHE_SECONDS,
 		themeParams: {},
 		render: async () => {
-			const env = stringEnv(c.env);
-			const topLangs = await microCache(`toplangs:${OWNER_LOGIN}`, () =>
-				fetchTopLanguages(OWNER_LOGIN, [], 1, 0, env),
-			);
+			// Issue #1268 / ADR-0027: languages come from the async stats
+			// snapshot (`languages.owned` — the same population the
+			// request-time fetcher queried). An absent snapshot or an
+			// unmeasured scope degrades to the 503 contract below.
+			const topLangs = await loadTopLangsCardData(c.env.DB);
+			if (!topLangs) {
+				throw new CustomError(
+					'GitHub stats snapshot unavailable',
+					CustomError.GITHUB_REST_API_ERROR,
+				);
+			}
 			return svgCacheGetOrSet(`toplangs-svg:${OWNER_LOGIN}`, async () =>
 				renderTopLanguages(topLangs, { layout: 'compact', disable_animations: true }),
 			);
@@ -294,14 +285,16 @@ githubReadmeStatsRouter.get('/api/streak', rateLimitRead, async (c) => {
 		freshSeconds: 3600,
 		themeParams: {},
 		render: async () => {
-			const env = stringEnv(c.env);
-			const token = getNextToken(env);
-			if (!token) {
-				throw new CustomError('GitHub token not configured', CustomError.NO_TOKENS);
+			// Issue #1268 / ADR-0027: streak comes from the async stats
+			// snapshot — the same numbers `/api/v1/github-profile/vitals`
+			// renders. An absent snapshot degrades to the 503 contract.
+			const streak = await loadStreakCardData(c.env.DB);
+			if (!streak) {
+				throw new CustomError(
+					'GitHub stats snapshot unavailable',
+					CustomError.GITHUB_REST_API_ERROR,
+				);
 			}
-			const streak = await microCache(`streak:${OWNER_LOGIN}`, () =>
-				fetchStreak(OWNER_LOGIN, token, env),
-			);
 			return svgCacheGetOrSet(`streak-svg:${OWNER_LOGIN}`, async () =>
 				renderStreakCard(OWNER_LOGIN, streak, { disable_animations: true }),
 			);

@@ -8,7 +8,7 @@
 	"skills": {
 		"accessibility-audit": {
 			"source": "rebuildup/design-skills",
-			"ref": "v0.3.0",
+			"ref": "v0.7.1",
 			"sourceType": "github",
 			"skillPath": "skills/accessibility-audit/SKILL.md",
 			"computedHash": "e23653bdb68e3e867e4cd4159846df8683279393ddbff0f6f846e41e5966f8a7"
@@ -29,42 +29,42 @@
 		},
 		"cf-cli": {
 			"source": "cloudflare/skills",
-			"ref": "cbf893b954222276bf1af57e5f23379231e0efb9",
+			"ref": "ff191de7d903788eceaf516a514ae7d3b56b924a",
 			"sourceType": "github",
 			"skillPath": "skills/cf-cli/SKILL.md",
 			"computedHash": "439ebbec66d43c5bf28dea7468625c118c136cb810e09a8ef8dcc33184a990b3"
 		},
 		"code-naming": {
 			"source": "rebuildup/project-init",
-			"ref": "v0.9.0",
+			"ref": "v0.14.1",
 			"sourceType": "github",
 			"skillPath": "skills/code-naming/SKILL.md",
-			"computedHash": "c3710b56a5bb4c916457aeeef092ad6a648c7c395377889e97ccd8e545911615"
+			"computedHash": "6fb5ddde396c93953c82a44accdcec17e395f3cbdcc0fe62034261836f10f9d5"
 		},
 		"cognitive-accessibility": {
 			"source": "rebuildup/design-skills",
-			"ref": "v0.3.0",
+			"ref": "v0.7.1",
 			"sourceType": "github",
 			"skillPath": "skills/cognitive-accessibility/SKILL.md",
 			"computedHash": "3a4c5bfa64ae09694658ef526138cfc53dc2368e4e22cc7517914e043cd41a34"
 		},
 		"color-system": {
 			"source": "rebuildup/design-skills",
-			"ref": "v0.3.0",
+			"ref": "v0.7.1",
 			"sourceType": "github",
 			"skillPath": "skills/color-system/SKILL.md",
 			"computedHash": "e472816781a66c00c97da3c50673a2b47eb71fafb69093f7977453331a4d3bff"
 		},
 		"composition-review": {
 			"source": "rebuildup/design-skills",
-			"ref": "v0.6.0",
+			"ref": "v0.7.1",
 			"sourceType": "github",
 			"skillPath": "skills/composition-review/SKILL.md",
 			"computedHash": "5f3c437cdd99fdd653227896069024fc06b3c31ef0c52c43a065747ed2867c3f"
 		},
 		"content-design": {
 			"source": "rebuildup/design-skills",
-			"ref": "v0.3.0",
+			"ref": "v0.7.1",
 			"sourceType": "github",
 			"skillPath": "skills/content-design/SKILL.md",
 			"computedHash": "7e9bb6085607212074c142bc5cc247fbd8dc808d7ccf7497cf978a6f2f098382"
@@ -78,42 +78,42 @@
 		},
 		"dark-mode-design": {
 			"source": "rebuildup/design-skills",
-			"ref": "v0.3.0",
+			"ref": "v0.7.1",
 			"sourceType": "github",
 			"skillPath": "skills/dark-mode-design/SKILL.md",
 			"computedHash": "49659161593ec35a2976ec80a571d5ace59e38097420ab49cb3e503d74517989"
 		},
 		"design-intent": {
 			"source": "rebuildup/design-skills",
-			"ref": "v0.3.0",
+			"ref": "v0.7.1",
 			"sourceType": "github",
 			"skillPath": "skills/design-intent/SKILL.md",
-			"computedHash": "be320cf1e515d2b3701853439de09505228dde59854fda64b8497f308806cdc2"
+			"computedHash": "61a00f7bc2b3aa9563f64f7219339775f93cdfa546039e94102d3871dc495e11"
 		},
 		"design-refinement": {
 			"source": "rebuildup/project-init",
-			"ref": "v0.9.0",
+			"ref": "v0.14.1",
 			"sourceType": "github",
 			"skillPath": "skills/design-refinement/SKILL.md",
-			"computedHash": "cbcd546dd3665ebe70ec5f02cbb2f807cf06f8e1089406dedea530f07ac86914"
+			"computedHash": "80511596e5b0769b6df730604365926c6b402ab9b475e459592d41f27cc4bfe1"
 		},
 		"diagnosing-bugs": {
 			"source": "mattpocock/skills",
-			"ref": "5863806dd4e15c63174bee4e7515a4256792ecfa",
+			"ref": "6f7f7831a625f040a8e06a0e7954826b87ce775a",
 			"sourceType": "github",
 			"skillPath": "skills/engineering/diagnosing-bugs/SKILL.md",
 			"computedHash": "ede7254edbd22fcab97a0941511f7d440d8f9a249348fea97c50987ad5501674"
 		},
 		"diagram-design": {
 			"source": "rebuildup/design-skills",
-			"ref": "v0.3.0",
+			"ref": "v0.7.1",
 			"sourceType": "github",
 			"skillPath": "skills/diagram-design/SKILL.md",
 			"computedHash": "b3f332db6174dbb4c1722efb227e0f06b8516b45c08b17c4b8552b4c50916f92"
 		},
 		"document-design": {
 			"source": "rebuildup/design-skills",
-			"ref": "v0.3.0",
+			"ref": "v0.7.1",
 			"sourceType": "github",
 			"skillPath": "skills/document-design/SKILL.md",
 			"computedHash": "6a1090b839f91bfc8bddffe50c0accc81dfa0557361a1cdb71e488e779b1151d"
@@ -148,70 +148,70 @@
 		},
 		"high-contrast-design": {
 			"source": "rebuildup/design-skills",
-			"ref": "v0.3.0",
+			"ref": "v0.7.1",
 			"sourceType": "github",
 			"skillPath": "skills/high-contrast-design/SKILL.md",
 			"computedHash": "9800d70c8f7dfa10ecf2305f6213478534a90dc9862b3750f1cee3466e49fb2e"
 		},
 		"iconography-system": {
 			"source": "rebuildup/design-skills",
-			"ref": "v0.3.0",
+			"ref": "v0.7.1",
 			"sourceType": "github",
 			"skillPath": "skills/iconography-system/SKILL.md",
 			"computedHash": "6dfe6fb7bc1b71a8d60023885124db102e7daf4f26d7c50a0c2eadde729645c8"
 		},
 		"inclusive-design": {
 			"source": "rebuildup/design-skills",
-			"ref": "v0.3.0",
+			"ref": "v0.7.1",
 			"sourceType": "github",
 			"skillPath": "skills/inclusive-design/SKILL.md",
 			"computedHash": "76d04ea316605a7fc68ea891bffae04bd4e9e27301b58c25dcfd1f406d561562"
 		},
 		"interaction-discipline": {
 			"source": "rebuildup/project-init",
-			"ref": "v0.9.0",
+			"ref": "v0.14.1",
 			"sourceType": "github",
 			"skillPath": "skills/interaction-discipline/SKILL.md",
-			"computedHash": "437b1e19f03634ca6937b39283a74d4814a4ee70d911508fb7cbe6fe8f32e9d3"
+			"computedHash": "fec17787736fcc74042f5d566fdb9c09750dbb8f24b77a378ac374c69039867b"
 		},
 		"interaction-states": {
 			"source": "rebuildup/design-skills",
-			"ref": "v0.3.0",
+			"ref": "v0.7.1",
 			"sourceType": "github",
 			"skillPath": "skills/interaction-states/SKILL.md",
 			"computedHash": "bf6a14392e1f763c3d843d7ff079f7f259eca84ddb534600d144abab90fbaaf1"
 		},
 		"keyboard-interface": {
 			"source": "rebuildup/design-skills",
-			"ref": "v0.3.0",
+			"ref": "v0.7.1",
 			"sourceType": "github",
 			"skillPath": "skills/keyboard-interface/SKILL.md",
 			"computedHash": "bc9bc0f5e0ccd8c91b56deb77d87f24454c087dcd2dcdb9f8bb9ae947b9e82dd"
 		},
 		"layout-system": {
 			"source": "rebuildup/design-skills",
-			"ref": "v0.3.0",
+			"ref": "v0.7.1",
 			"sourceType": "github",
 			"skillPath": "skills/layout-system/SKILL.md",
 			"computedHash": "264bbddcc7c18dfc2be51de0ac62c11470b2633fc3c98f5120591b8a693a0c8a"
 		},
 		"motion-audit": {
 			"source": "rebuildup/design-skills",
-			"ref": "v0.3.0",
+			"ref": "v0.7.1",
 			"sourceType": "github",
 			"skillPath": "skills/motion-audit/SKILL.md",
 			"computedHash": "8dc07380244ada4b8f494badb5c3b86c57e83c0a5e385d37b34b8d78eacc2aac"
 		},
 		"motion-implement": {
 			"source": "rebuildup/design-skills",
-			"ref": "v0.3.0",
+			"ref": "v0.7.1",
 			"sourceType": "github",
 			"skillPath": "skills/motion-implement/SKILL.md",
 			"computedHash": "90aa8d74fe6829e20450a474b4d034092496f216a8b1881b4d3629e52ee3adae"
 		},
 		"motion-review": {
 			"source": "rebuildup/design-skills",
-			"ref": "v0.3.0",
+			"ref": "v0.7.1",
 			"sourceType": "github",
 			"skillPath": "skills/motion-review/SKILL.md",
 			"computedHash": "dc557636db0d02336aa11927bf35c0be3ff1b22d7aeddbf1222c6fb40470f905"
@@ -223,9 +223,16 @@
 			"skillPath": "skills/motion-system/SKILL.md",
 			"computedHash": "d07a971cd04248c5178526f66760085c35066b85076bf2c919153bc54f7a692d"
 		},
+		"natural-japanese": {
+			"source": "rebuildup/writing-skills",
+			"ref": "43fecf59e91c3d309b4d0be1bbd53137b6b58281",
+			"sourceType": "github",
+			"skillPath": "skills/natural-japanese/SKILL.md",
+			"computedHash": "402da899bced745bfd68200227562ecb75a9319a108e5a23c52686754f3f6934"
+		},
 		"navigation-design": {
 			"source": "rebuildup/design-skills",
-			"ref": "v0.3.0",
+			"ref": "v0.7.1",
 			"sourceType": "github",
 			"skillPath": "skills/navigation-design/SKILL.md",
 			"computedHash": "5dd1fbe335d32351a47ca1ff439a8023970049de57f3dfb93f44260c4a57f521"
@@ -260,7 +267,7 @@
 		},
 		"responsive-design": {
 			"source": "rebuildup/design-skills",
-			"ref": "v0.3.0",
+			"ref": "v0.7.1",
 			"sourceType": "github",
 			"skillPath": "skills/responsive-design/SKILL.md",
 			"computedHash": "8f3ec29b8d2a62c397e89b85ff01c046825e1345d1a651b27a1151e85247c4ab"
@@ -281,10 +288,10 @@
 		},
 		"security-audit": {
 			"source": "rebuildup/project-init",
-			"ref": "v0.9.0",
+			"ref": "v0.14.1",
 			"sourceType": "github",
 			"skillPath": "skills/security-audit/SKILL.md",
-			"computedHash": "cf392461db4a22248f7968de0801df5ffa5605f42f7f5ffe9bb12e001801d1b0"
+			"computedHash": "cf01f4d250eebc61162ea76d32bbb4a6b26d3b8d40c40138d52545b0245ed967"
 		},
 		"security-maintenance": {
 			"source": "rebuildup/project-init",
@@ -295,56 +302,63 @@
 		},
 		"skill-authoring": {
 			"source": "rebuildup/writing-skills",
-			"ref": "b0f1398a3d9288d04d8f18b55fa068851525bd49",
+			"ref": "43fecf59e91c3d309b4d0be1bbd53137b6b58281",
 			"sourceType": "github",
 			"skillPath": "skills/skill-authoring/SKILL.md",
 			"computedHash": "2c1e406f4e91d6348fd46b42c57f4bd3f5e7ff289de4549dd72bc5152c66e731"
 		},
 		"skill-selection": {
 			"source": "rebuildup/project-init",
-			"ref": "v0.9.0",
+			"ref": "v0.14.1",
 			"sourceType": "github",
 			"skillPath": "skills/skill-selection/SKILL.md",
-			"computedHash": "73a9d08b47c182c469f7115f08e7a6590e57e3401fa60ef26205eb8e66d223d4"
+			"computedHash": "4f77d9fa0aa29b0ed3c7ee33e8e27b5d98a84d073c0abb38f8df48fc0512f37b"
+		},
+		"system-quality": {
+			"source": "rebuildup/project-init",
+			"ref": "v0.14.1",
+			"sourceType": "github",
+			"skillPath": "skills/system-quality/SKILL.md",
+			"computedHash": "9a8e1f81b97c2a46586933c93ca346129dd78263e38e2e46b392ef37ac2559c2"
 		},
 		"table-design": {
 			"source": "rebuildup/design-skills",
-			"ref": "v0.3.0",
+			"ref": "v0.7.1",
 			"sourceType": "github",
 			"skillPath": "skills/table-design/SKILL.md",
 			"computedHash": "8a8641e0ff2193f6d1f61f4b770c732ce7a70fd4715851bbb2dbad71a79608b2"
 		},
 		"tdd": {
 			"source": "mattpocock/skills",
-			"ref": "5863806dd4e15c63174bee4e7515a4256792ecfa",
+			"ref": "6f7f7831a625f040a8e06a0e7954826b87ce775a",
 			"sourceType": "github",
 			"skillPath": "skills/engineering/tdd/SKILL.md",
 			"computedHash": "daf55026f456af104a72fa43247f7bcec89e5127316dc5b1b8d675d6a9d8ce94"
 		},
 		"token-audit": {
 			"source": "rebuildup/design-skills",
-			"ref": "v0.3.0",
+			"ref": "v0.7.1",
 			"sourceType": "github",
 			"skillPath": "skills/token-audit/SKILL.md",
 			"computedHash": "44ab2d06b44499d15a22fee61a4bf81dbc6cd24f7d76889a484889157d4889d2"
 		},
 		"touch-interface": {
 			"source": "rebuildup/design-skills",
-			"ref": "v0.3.0",
+			"ref": "v0.7.1",
 			"sourceType": "github",
 			"skillPath": "skills/touch-interface/SKILL.md",
 			"computedHash": "df19b00349682aed007ae8ba9a0d0026909c654f72506d87d7a325dc95e97db3"
 		},
 		"typesetting": {
 			"source": "rebuildup/design-skills",
-			"ref": "v0.3.0",
+			"ref": "v0.7.1",
 			"sourceType": "github",
 			"skillPath": "skills/typesetting/SKILL.md",
 			"computedHash": "fec513d57d87be47168cf5d738a4130bd4aeafc25c14cc24bce3ab7f6b55cd10"
 		},
 		"workers-best-practices": {
 			"source": "cloudflare/skills",
-			"ref": "cbf893b954222276bf1af57e5f23379231e0efb9",
+			"ref": "ff191de7d903788eceaf516a514ae7d3b56b924a",
 			"sourceType": "github",
 			"skillPath": "skills/workers-best-practices/SKILL.md",
 			"computedHash": "afc1b560659bcbbf043741e04a865b99e7d5b094bf62573d6188a8b26de235ab"
@@ -357,11 +371,11 @@
 			"computedHash": "e6508c428ea36505c090f439e4dd4c5198dedc22c153350ba941fd0684cadb69"
 		},
 		"writing-discipline": {
-			"source": "rebuildup/project-init",
-			"ref": "0.1.1",
+			"source": "rebuildup/writing-skills",
+			"ref": "43fecf59e91c3d309b4d0be1bbd53137b6b58281",
 			"sourceType": "github",
 			"skillPath": "skills/writing-discipline/SKILL.md",
-			"computedHash": "66d9caea0c3a9c17d40c7e3fe45c9c08fdf8dcc3ae51fb65f47a9dffa63fa08f"
+			"computedHash": "552cdb336da753e9fbffd12780b206ba740d5656720e567757d655f7b3665513"
 		}
 	}
 }

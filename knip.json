@@ -9,6 +9,7 @@
 		"scripts/fixtures/**/*.tsx",
 		"scripts/*.test.mjs",
 		"scripts/fixtures/a11y-image-alt/**/*.tsx",
+		"skills/system-quality/scripts/*.mts",
 		"test/fixtures/content/stale-review/src/fixture/page.tsx",
 		"src/cloudflare/workers-stub.ts"
 	],

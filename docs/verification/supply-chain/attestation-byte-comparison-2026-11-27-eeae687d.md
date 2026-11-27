@@ -10,7 +10,7 @@
 | --- | --- |
 | 対象 release | v0.15.1 |
 | tag | `v0.15.1` → `eeae687dfe03f2d2484b837d81515eb59df83d01`（release-0-15-1 → main の merge commit、PR #1253） |
-| 対象 manifest | `.tmp/release-bytes/eeae687d…/attestation/0.15.1/artifact-attestation.json`（run artifact `artifact-attestation-eeae687d…`） |
+| 対象 manifest | `.tmp/release-attestation/eeae687d…/0.15.1/artifact-attestation.json`（run artifact `artifact-attestation-eeae687d…`） |
 | 対象 bytes | `.tmp/release-bytes/eeae687d…/`（run artifact `cf-build-output-eeae687d…`） |
 | **照合した run** | [45927925550](https://github.com/rebuildup/my-web-2026/actions/runs/45927925550)（`event=push`、branch `main`、conclusion `success`） |
 
@@ -22,20 +22,22 @@ Phase A の成果物は流用せず、tag 対象 commit の `main` push run
 ```bash
 SHA=eeae687dfe03f2d2484b837d81515eb59df83d01
 RUN=45927925550
-gh run download $RUN -n artifact-attestation-$SHA -D .tmp/release-bytes/$SHA/attestation
+gh run download $RUN -n artifact-attestation-$SHA -D .tmp/release-attestation/$SHA
 gh run download $RUN -n cf-build-output-$SHA -D .tmp/release-bytes/$SHA
 git fetch --tags
 
 pnpm run artifact:attestation:check -- \
-  --manifest=<manifest> --artifact-dir=.tmp/release-bytes/$SHA --release-tag=v0.15.1
+  --manifest=.tmp/release-attestation/$SHA/0.15.1/artifact-attestation.json \
+  --artifact-dir=.tmp/release-bytes/$SHA --release-tag=v0.15.1
 
 node scripts/check-build-output-artifact.mjs \
-  --artifact-dir=.tmp/release-bytes/$SHA --manifest=<manifest>
+  --artifact-dir=.tmp/release-bytes/$SHA \
+  --manifest=.tmp/release-attestation/$SHA/0.15.1/artifact-attestation.json
 ```
 
-注: `--artifact-dir` には build output のみを置く。manifest を同じ
-ディレクトリへ展開すると file count が 1 件多く数えられ FAIL になる
-（実施時に一度発生、配置を分離して再実行し PASS）。
+注: manifest の展開先は `--artifact-dir` の**外**に置く。manifest を
+build output ディレクトリ配下へ展開すると file count が 1 件多く
+数えられ FAIL になる（実施時に一度発生、配置を分離して再実行し PASS）。
 
 ### 2.1 attestation check
 

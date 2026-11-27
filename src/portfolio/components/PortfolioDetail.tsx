@@ -2,7 +2,7 @@ import { css } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
 import { Container } from '../../editorial/primitives/Container';
 import { Cluster, Stack, listResetClassName } from '../../editorial/primitives/Flow';
-import { Grid } from '../../editorial/primitives/Grid';
+import { Grid, Split } from '../../editorial/primitives/Grid';
 import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import { SkipLink } from '../../editorial/primitives/SkipLink';
@@ -164,80 +164,164 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 									</span>
 								) : null}
 							</div>
-							<h1 id="portfolio-detail-heading" className={css(pageTitleFlush)}>
-								{project.title}
-							</h1>
-							<p
-								className={css({
-									margin: '0',
-									fontFamily: 'sans',
-									fontSize: 'lg',
-									color: 'text.muted',
-									lineHeight: '1.6',
-									maxWidth: '720px',
-								})}
-							>
-								{project.summary}
-							</p>
-							<dl
-								className={css({
-									margin: '0',
-									display: 'grid',
-									gridTemplateColumns: { base: '1fr', sm: 'auto auto auto auto' },
-									columnGap: '6',
-									rowGap: '2',
-									fontFamily: 'sans',
-									fontSize: 'sm',
-									color: 'text.muted',
-								})}
-							>
-								{hasRole ? (
-									<>
-										<dt className={css(tagMonoXsCaps)}>Role</dt>
-										<dd className={css({ margin: '0' })}>{project.role}</dd>
-									</>
-								) : null}
-								{hasPeriod ? (
-									<>
-										<dt className={css(tagMonoXsCaps)}>Period</dt>
-										<dd className={css({ margin: '0' })}>{project.periodLabel}</dd>
-									</>
-								) : null}
-							</dl>
-							<Cluster aria-label="facets" gap="2">
-								{project.facets.map((facet) => (
-									<Badge
-										key={facet}
-										tone={project.pinned && facet === project.facets[0] ? 'accent' : 'neutral'}
+							{/* Issue #1278 — the hero is media-led: the
+							    representative work takes the 8/12 column and
+							    the identity cluster (title, role/period,
+							    facets, primary link) sits in the 4/12
+							    beside it, so the first impression is the
+							    work itself instead of a text stack with
+							    the screenshot below the fold. `Split`
+							    stacks copy-then-media below `lg`, which
+							    also keeps the document order a screen
+							    reader hears (heading before image). A
+							    project with no media keeps the plain
+							    stack — an empty 8/12 column would be a
+							    dead region, not a composition. */}
+							{cover !== null || video !== null ? (
+								<Split gap="10" rowGap="8">
+									<div className={css(vStackGap6)}>
+										<h1 id="portfolio-detail-heading" className={css(pageTitleFlush)}>
+											{project.title}
+										</h1>
+										<p
+											className={css({
+												margin: '0',
+												fontFamily: 'sans',
+												fontSize: 'lg',
+												color: 'text.muted',
+												lineHeight: '1.6',
+											})}
+										>
+											{project.summary}
+										</p>
+										<dl
+											className={css({
+												margin: '0',
+												display: 'grid',
+												gridTemplateColumns: {
+													base: '1fr',
+													sm: 'auto auto auto auto',
+												},
+												columnGap: '6',
+												rowGap: '2',
+												fontFamily: 'sans',
+												fontSize: 'sm',
+												color: 'text.muted',
+											})}
+										>
+											{hasRole ? (
+												<>
+													<dt className={css(tagMonoXsCaps)}>Role</dt>
+													<dd className={css({ margin: '0' })}>{project.role}</dd>
+												</>
+											) : null}
+											{hasPeriod ? (
+												<>
+													<dt className={css(tagMonoXsCaps)}>Period</dt>
+													<dd className={css({ margin: '0' })}>{project.periodLabel}</dd>
+												</>
+											) : null}
+										</dl>
+										<Cluster aria-label="facets" gap="2">
+											{project.facets.map((facet) => (
+												<Badge
+													key={facet}
+													tone={
+														project.pinned && facet === project.facets[0] ? 'accent' : 'neutral'
+													}
+												>
+													{FACET_LABEL[facet] ?? facet}
+												</Badge>
+											))}
+										</Cluster>
+										{primaryLink ? (
+											<p
+												className={css({
+													margin: '0',
+													fontFamily: 'sans',
+													fontSize: 'md',
+												})}
+											>
+												<TextLink href={primaryLink.url} target="_blank" rel="noopener noreferrer">
+													{LINK_LABEL[primaryLink.kind]}
+													{primaryLink.label ? ` — ${primaryLink.label}` : ''}
+												</TextLink>
+											</p>
+										) : null}
+									</div>
+									<div className={css(vStackGap6)}>
+										{cover ? <PortfolioMediaFigure media={cover} loading="eager" /> : null}
+										{video ? <PortfolioVideoFacade video={video} /> : null}
+									</div>
+								</Split>
+							) : (
+								<>
+									<h1 id="portfolio-detail-heading" className={css(pageTitleFlush)}>
+										{project.title}
+									</h1>
+									<p
+										className={css({
+											margin: '0',
+											fontFamily: 'sans',
+											fontSize: 'lg',
+											color: 'text.muted',
+											lineHeight: '1.6',
+											maxWidth: '720px',
+										})}
 									>
-										{FACET_LABEL[facet] ?? facet}
-									</Badge>
-								))}
-							</Cluster>
-							{cover ? (
-								<div className={css({ maxWidth: '720px' })}>
-									<PortfolioMediaFigure media={cover} loading="eager" />
-								</div>
-							) : null}
-							{video ? (
-								<div className={css({ maxWidth: '720px' })}>
-									<PortfolioVideoFacade video={video} />
-								</div>
-							) : null}
-							{primaryLink ? (
-								<p
-									className={css({
-										margin: '0',
-										fontFamily: 'sans',
-										fontSize: 'md',
-									})}
-								>
-									<TextLink href={primaryLink.url} target="_blank" rel="noopener noreferrer">
-										{LINK_LABEL[primaryLink.kind]}
-										{primaryLink.label ? ` — ${primaryLink.label}` : ''}
-									</TextLink>
-								</p>
-							) : null}
+										{project.summary}
+									</p>
+									<dl
+										className={css({
+											margin: '0',
+											display: 'grid',
+											gridTemplateColumns: { base: '1fr', sm: 'auto auto auto auto' },
+											columnGap: '6',
+											rowGap: '2',
+											fontFamily: 'sans',
+											fontSize: 'sm',
+											color: 'text.muted',
+										})}
+									>
+										{hasRole ? (
+											<>
+												<dt className={css(tagMonoXsCaps)}>Role</dt>
+												<dd className={css({ margin: '0' })}>{project.role}</dd>
+											</>
+										) : null}
+										{hasPeriod ? (
+											<>
+												<dt className={css(tagMonoXsCaps)}>Period</dt>
+												<dd className={css({ margin: '0' })}>{project.periodLabel}</dd>
+											</>
+										) : null}
+									</dl>
+									<Cluster aria-label="facets" gap="2">
+										{project.facets.map((facet) => (
+											<Badge
+												key={facet}
+												tone={project.pinned && facet === project.facets[0] ? 'accent' : 'neutral'}
+											>
+												{FACET_LABEL[facet] ?? facet}
+											</Badge>
+										))}
+									</Cluster>
+									{primaryLink ? (
+										<p
+											className={css({
+												margin: '0',
+												fontFamily: 'sans',
+												fontSize: 'md',
+											})}
+										>
+											<TextLink href={primaryLink.url} target="_blank" rel="noopener noreferrer">
+												{LINK_LABEL[primaryLink.kind]}
+												{primaryLink.label ? ` — ${primaryLink.label}` : ''}
+											</TextLink>
+										</p>
+									) : null}
+								</>
+							)}
 						</div>
 						{/* ADR-0019 §2.5 — an asset published without a
 							    rights record says so, on the page that shows

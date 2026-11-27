@@ -49,6 +49,10 @@ const PublicRepo = z
 		summaryJa: z.string().max(500).optional(),
 		repoFullName: z.string().max(200).optional(),
 		htmlUrl: z.string().url().max(500).optional(),
+		// Attribution scope (data contract §2.1, Issue #1245): how the
+		// repo entered the directory. Public repos only — private
+		// entries never carry it (PrivateRepo stays scope-free).
+		scope: z.enum(['owned', 'org-member', 'collaborator', 'external-public']).optional(),
 		lastActiveAt: z.string().max(64).optional(),
 		weightLevel: z.enum(['primary', 'active', 'side', 'paused']).optional(),
 		activity: ActivityCounts.optional(),

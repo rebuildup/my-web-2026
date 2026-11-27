@@ -33,6 +33,7 @@ const REPO_ID = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const RFC3339 = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/;
 const WEIGHT_LEVELS = new Set(['primary', 'active', 'side', 'paused']);
+const SCOPES = new Set(['owned', 'org-member', 'collaborator', 'external-public']);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -62,6 +63,11 @@ function validRepo(value: unknown): value is ActivityRepoFacts {
 	if (value.summaryJa !== undefined && typeof value.summaryJa !== 'string') return false;
 	if (value.repoFullName !== undefined && typeof value.repoFullName !== 'string') return false;
 	if (value.htmlUrl !== undefined && typeof value.htmlUrl !== 'string') return false;
+	// scope is public-kind metadata only (data contract §2.1) — a
+	// private entry carrying it would leak an affiliation relation.
+	if (value.scope !== undefined) {
+		if (value.kind !== 'public' || !SCOPES.has(value.scope as string)) return false;
+	}
 	if (value.lastActiveAt !== undefined && typeof value.lastActiveAt !== 'string') return false;
 	if (value.weightLevel !== undefined && !WEIGHT_LEVELS.has(value.weightLevel as string))
 		return false;

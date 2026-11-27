@@ -2,11 +2,6 @@ import { Hono } from 'hono';
 import { currentProjectsLoader } from '../../home/current/loader';
 import { PROJECT_ROSTER } from '../../home/current/roster';
 import { notionProjects } from '../../portfolio/notion/reader';
-import { microCache } from '../../vendor/github-readme-stats-fast/common/microCache.ts';
-import { fetchStats } from '../../vendor/github-readme-stats-fast/fetchers/stats.ts';
-import { fetchStreak } from '../../vendor/github-readme-stats-fast/fetchers/streak-fetcher.ts';
-import { fetchTopLanguages } from '../../vendor/github-readme-stats-fast/fetchers/top-languages.ts';
-import { getNextToken, stringEnv } from '../github-readme-stats/router';
 import { rateLimitRead } from '../middleware/rate-limit';
 import { methodNotAllowed } from '../validation';
 import { renderActivityMobileSvg, renderActivitySvg } from './activity';
@@ -16,6 +11,8 @@ import {
 	composeBand2Model,
 	renderBand1Svg,
 	renderBand2Svg,
+	renderTopLangsSvg,
+	renderVitalsSvg,
 } from './bands';
 import { renderProfileCardSvg } from './card';
 import { renderCurrentSvg } from './current';
@@ -25,6 +22,12 @@ import { type NowStats, renderProfileNowMobileSvg, renderProfileNowSvg } from '.
 import { renderPresenceSvg } from './presence';
 import { renderProfileSvg } from './profile';
 import { renderStackSvg } from './stack';
+import {
+	avatarFromSnapshot,
+	bandStatsFromSnapshot,
+	nowStatsFromSnapshot,
+	parseStatsSnapshot,
+} from './stats-source';
 import { renderProfileStatusSvg } from './status';
 
 /**
@@ -45,10 +48,15 @@ import { renderProfileStatusSvg } from './status';
  *                                     Discord presence, no raster
  *                                     media, a few KB.
  *
- * Data sources (all already-public projections):
- *   - D1 `github_activity_snapshot` / `discord_presence_snapshot`
- *     payloads, re-validated by this boundary's own ingest schemas
- *     (`../activity/schema`, `../presence/schema`);
+ * Data sources (all already-public projections, ALL from D1 since
+ * Issue #1244 — no request-time GitHub API call remains on this
+ * router):
+ *   - D1 `github_activity_snapshot` / `discord_presence_snapshot` /
+ *     `github_stats_snapshot` payloads, re-validated by this
+ *     boundary's own ingest schemas (`../activity/schema`,
+ *     `../presence/schema`, `../stats/schema` via `./stats-source`);
+ *     the stats row is written by the async
+ *     `scripts/sync-github-stats.mjs --push` pipeline;
  *   - `home/current/roster.ts` — the committed current-projects
  *     roster — for the `/now` IN PROGRESS panel only (the single
  *     file-scoped `http -> home` exception, Issue #1205);
@@ -75,9 +83,10 @@ const CARD_CACHE_CONTROL = 'public, max-age=300, s-maxage=300';
 // The status strip is the README's only dynamic image: same freshness
 // window, smaller payload, same honest-state contract (ADR-0025 §2.3).
 const STATUS_CACHE_CONTROL = 'public, max-age=300, s-maxage=300';
-// The unified "now" strip mixes hourly GitHub stats with the live
-// activity/presence snapshots: the GitHub half is cached upstream for
-// an hour, this response revalidates every 5 minutes like `/status`.
+// The unified "now" strip mixes stats-snapshot figures with the live
+// activity/presence snapshots: every input is a D1 row (Issue #1244 —
+// no request-time upstream call remains), so this response revalidates
+// every 5 minutes like `/status`.
 const NOW_CACHE_CONTROL = 'public, max-age=300, s-maxage=300';
 // The redesign's split surfaces update on the same snapshot cadence
 // as `/status` but cache independently: activity data and presence
@@ -88,7 +97,6 @@ const PRESENCE_CACHE_CONTROL = 'public, max-age=300, s-maxage=300';
 // (roster + git facts + committed activity projection), so it only
 // revalidates on the same cadence as the other profile surfaces.
 const CURRENT_CACHE_CONTROL = 'public, max-age=300, s-maxage=300';
-const NOW_OWNER_LOGIN = 'rebuildup';
 
 interface ProfileSnapshotEnv {
 	DB?: D1Database;
@@ -156,141 +164,50 @@ githubProfileRouter.get('/card', rateLimitRead, async (c) => {
 	});
 });
 
-async function fetchStreakCached(env: Env) {
-	const stringEnvView = stringEnv(env);
-	return microCache(`now-streak:${NOW_OWNER_LOGIN}`, async () => {
-		const token = getNextToken(stringEnvView);
-		if (!token) return null;
-		try {
-			return await fetchStreak(NOW_OWNER_LOGIN, token, stringEnvView);
-		} catch {
-			return null;
-		}
-	});
-}
-
-async function fetchTopLangsCached(env: Env) {
-	const stringEnvView = stringEnv(env);
-	return microCache(`now-toplangs:${NOW_OWNER_LOGIN}`, async () => {
-		try {
-			return await fetchTopLanguages(NOW_OWNER_LOGIN, [], 1, 0, stringEnvView);
-		} catch {
-			return null;
-		}
-	});
-}
-
-async function fetchNowStats(env: Env): Promise<NowStats> {
-	const [streak, topLangs] = await Promise.all([fetchStreakCached(env), fetchTopLangsCached(env)]);
-
-	let topLanguage: NowStats['topLanguage'] = null;
-	if (topLangs) {
-		const entries = Object.values(topLangs);
-		const total = entries.reduce((sum, entry) => sum + entry.size, 0);
-		const top = entries.sort((a, b) => b.size - a.size)[0];
-		if (top && total > 0) {
-			topLanguage = { name: top.name, pct: Math.round((top.size / total) * 100) };
-		}
+async function readStatsPayload(db: D1Database | undefined): Promise<unknown> {
+	if (!db) return null;
+	try {
+		// Literal table names: the D1 binding gate refuses interpolated SQL.
+		const row = await db
+			.prepare('SELECT payload FROM github_stats_snapshot WHERE id = 1')
+			.first<{ payload: string }>();
+		return typeof row?.payload === 'string' ? JSON.parse(row.payload) : null;
+	} catch {
+		return null;
 	}
-
-	return {
-		totalContributions: streak?.totalContributions ?? null,
-		currentStreak: streak?.currentStreak ?? null,
-		longestStreak: streak?.longestStreak ?? null,
-		topLanguage,
-	};
 }
 
 /**
- * Band 1 vitals data (Issue #1216): streak + contributed-to + rank
- * from the vendored readme-stats fetchers, full language breakdown
- * for the ratio bar. Shares the `now-*` micro-cache keys with
- * `/now` so both surfaces hit GitHub once per window; a failed
- * upstream yields `null` fields that render the honest `—` variant.
+ * Band 1 vitals + avatar data (Issue #1244): the `github_stats_snapshot`
+ * row, written by the async `scripts/sync-github-stats.mjs --push`
+ * pipeline. NO request-time GitHub call remains on this router — an
+ * absent / invalid snapshot yields all-`null` fields that render the
+ * honest `—` variant.
  */
-async function fetchBandStats(env: Env): Promise<BandStats> {
-	const stringEnvView = stringEnv(env);
-	const [streak, stats, topLangs] = await Promise.all([
-		fetchStreakCached(env),
-		microCache(`band-stats:${NOW_OWNER_LOGIN}`, async () => {
-			try {
-				return await fetchStats(NOW_OWNER_LOGIN, false, [], false, false, false, stringEnvView);
-			} catch {
-				return null;
-			}
-		}),
-		fetchTopLangsCached(env),
-	]);
-
-	let langs: BandStats['topLangs'] = null;
-	if (topLangs) {
-		const entries = Object.values(topLangs);
-		const total = entries.reduce((sum, entry) => sum + entry.size, 0);
-		if (total > 0) {
-			langs = entries
-				.map((entry) => ({
-					name: entry.name,
-					pct: Math.round((entry.size / total) * 1000) / 10,
-					color: entry.color ?? '#8b949e',
-				}))
-				.sort((a, b) => b.pct - a.pct)
-				.slice(0, 10);
-		}
-	}
-
+async function readBandStats(
+	db: D1Database | undefined,
+): Promise<{ stats: BandStats; avatarDataUri: string | null }> {
+	const snapshot = parseStatsSnapshot(await readStatsPayload(db));
 	return {
-		currentStreak: streak?.currentStreak ?? null,
-		longestStreak: streak?.longestStreak ?? null,
-		totalContributions: streak?.totalContributions ?? null,
-		contributedTo: stats?.contributedTo ?? null,
-		rankLevel: stats?.rank.level ?? null,
-		rankPercentile: stats?.rank.percentile ?? null,
-		topLangs: langs,
-		totalStars: stats?.totalStars ?? null,
-		totalCommits: stats?.totalCommits ?? null,
-		totalPRs: stats?.totalPRs ?? null,
-		totalIssues: stats?.totalIssues ?? null,
+		stats: bandStatsFromSnapshot(snapshot),
+		avatarDataUri: avatarFromSnapshot(snapshot),
 	};
+}
+
+/** `/now` stats half — same snapshot, narrower projection. */
+async function readNowStats(db: D1Database | undefined): Promise<NowStats> {
+	return nowStatsFromSnapshot(parseStatsSnapshot(await readStatsPayload(db)));
 }
 
 // The band surfaces are the README's primary visual assets: same
 // freshness contract as `/now`, theme/layout selected by query.
 const BANDS_CACHE_CONTROL = 'public, max-age=300, s-maxage=300';
 
-/**
- * The owner's GitHub avatar, inlined as a `data:` URI for the Band 1
- * identity header and presence card. `github.com/<login>.png`
- * resolves to the current avatar (redirect to avatars.githubusercontent);
- * any failure yields `null` and the band renders without a portrait —
- * never a placeholder glyph.
- */
-async function fetchAvatarDataUri(env: Env): Promise<string | null> {
-	return microCache(`band-avatar:${NOW_OWNER_LOGIN}`, async () => {
-		try {
-			const res = await fetch(`https://github.com/${NOW_OWNER_LOGIN}.png`, {
-				signal: AbortSignal.timeout(5000),
-			});
-			const type = res.headers.get('content-type') ?? '';
-			if (!res.ok || !type.startsWith('image/')) return null;
-			const buf = await res.arrayBuffer();
-			if (buf.byteLength === 0 || buf.byteLength > 512 * 1024) return null;
-			const bytes = new Uint8Array(buf);
-			let bin = '';
-			for (let i = 0; i < bytes.length; i += 0x8000) {
-				bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-			}
-			return `data:${type.split(';')[0]};base64,${btoa(bin)}`;
-		} catch {
-			return null;
-		}
-	});
-}
-
 githubProfileRouter.get('/identity', rateLimitRead, async (c) => {
-	const env = c.env as unknown as ProfileSnapshotEnv & Env;
+	const env = c.env as unknown as ProfileSnapshotEnv;
 	const { activityPayload, presencePayload } = await readProfileSnapshots(env);
 	const now = Date.now();
-	const [model, stats, avatarDataUri] = await Promise.all([
+	const [model, band] = await Promise.all([
 		Promise.resolve(
 			composeProfileCardModel({
 				activityPayload,
@@ -300,8 +217,7 @@ githubProfileRouter.get('/identity', rateLimitRead, async (c) => {
 				projects: [],
 			}),
 		),
-		fetchBandStats(env),
-		fetchAvatarDataUri(env),
+		readBandStats(env.DB),
 	]);
 	const theme = c.req.query('theme') === 'light' ? 'light' : 'dark';
 	const mobile = c.req.query('layout') === 'mobile';
@@ -311,8 +227,8 @@ githubProfileRouter.get('/identity', rateLimitRead, async (c) => {
 			theme,
 			mobile,
 			model,
-			stats,
-			avatarDataUri,
+			stats: band.stats,
+			avatarDataUri: band.avatarDataUri,
 			now,
 		}),
 		{ grid },
@@ -331,10 +247,10 @@ githubProfileRouter.get('/identity', rateLimitRead, async (c) => {
  * `/stack` endpoints keep serving their standalone fragments.
  */
 githubProfileRouter.get('/profile', rateLimitRead, async (c) => {
-	const env = c.env as unknown as ProfileSnapshotEnv & Env;
+	const env = c.env as unknown as ProfileSnapshotEnv;
 	const { activityPayload, presencePayload } = await readProfileSnapshots(env);
 	const now = Date.now();
-	const [model, stats, avatarDataUri] = await Promise.all([
+	const [model, band] = await Promise.all([
 		Promise.resolve(
 			composeProfileCardModel({
 				activityPayload,
@@ -344,13 +260,19 @@ githubProfileRouter.get('/profile', rateLimitRead, async (c) => {
 				projects: [],
 			}),
 		),
-		fetchBandStats(env),
-		fetchAvatarDataUri(env),
+		readBandStats(env.DB),
 	]);
 	const theme = c.req.query('theme') === 'light' ? 'light' : 'dark';
 	const mobile = c.req.query('layout') === 'mobile';
 	const grid = c.req.query('grid') === '1';
-	const band1 = composeBand1Model({ theme, mobile, model, stats, avatarDataUri, now });
+	const band1 = composeBand1Model({
+		theme,
+		mobile,
+		model,
+		stats: band.stats,
+		avatarDataUri: band.avatarDataUri,
+		now,
+	});
 	const band2 = composeBand2Model({ theme, mobile, activityPayload, now });
 	const svg = renderProfileSvg({ theme, mobile, band1, band2, grid });
 	return c.body(svg, 200, {
@@ -389,8 +311,42 @@ githubProfileRouter.get('/stack', rateLimitRead, async (c) => {
 	});
 });
 
+/**
+ * Per-domain stats surfaces (Issue #1244, contract §7): VITALS and
+ * TOP LANGUAGES each render one slice of `github_stats_snapshot` on
+ * their own canvas — independent cache entries, independent honest
+ * degradation, and payloads small enough for a README to compose
+ * selectively. Both answer 200 in every data state like the other
+ * profile surfaces.
+ */
+githubProfileRouter.get('/vitals', rateLimitRead, async (c) => {
+	const env = c.env as unknown as ProfileSnapshotEnv;
+	const band = await readBandStats(env.DB);
+	const theme = c.req.query('theme') === 'light' ? 'light' : 'dark';
+	const mobile = c.req.query('layout') === 'mobile';
+	const grid = c.req.query('grid') === '1';
+	const svg = renderVitalsSvg({ theme, mobile, stats: band.stats }, { grid });
+	return c.body(svg, 200, {
+		'Content-Type': 'image/svg+xml; charset=utf-8',
+		'Cache-Control': BANDS_CACHE_CONTROL,
+	});
+});
+
+githubProfileRouter.get('/top-languages', rateLimitRead, async (c) => {
+	const env = c.env as unknown as ProfileSnapshotEnv;
+	const band = await readBandStats(env.DB);
+	const theme = c.req.query('theme') === 'light' ? 'light' : 'dark';
+	const mobile = c.req.query('layout') === 'mobile';
+	const grid = c.req.query('grid') === '1';
+	const svg = renderTopLangsSvg({ theme, mobile, stats: band.stats }, { grid });
+	return c.body(svg, 200, {
+		'Content-Type': 'image/svg+xml; charset=utf-8',
+		'Cache-Control': BANDS_CACHE_CONTROL,
+	});
+});
+
 githubProfileRouter.get('/now', rateLimitRead, async (c) => {
-	const env = c.env as unknown as ProfileSnapshotEnv & Env;
+	const env = c.env as unknown as ProfileSnapshotEnv;
 	const { activityPayload, presencePayload } = await readProfileSnapshots(env);
 	const [model, stats] = await Promise.all([
 		Promise.resolve(
@@ -402,7 +358,7 @@ githubProfileRouter.get('/now', rateLimitRead, async (c) => {
 				projects: [],
 			}),
 		),
-		fetchNowStats(env),
+		readNowStats(env.DB),
 	]);
 	const projects = PROJECT_ROSTER.map((project) => project.name);
 	// `?layout=mobile` serves the stacked variant used by the README's
@@ -490,4 +446,6 @@ githubProfileRouter.all('/current', methodNotAllowed(['GET']));
 githubProfileRouter.all('/identity', methodNotAllowed(['GET']));
 githubProfileRouter.all('/profile', methodNotAllowed(['GET']));
 githubProfileRouter.all('/activity-map', methodNotAllowed(['GET']));
+githubProfileRouter.all('/vitals', methodNotAllowed(['GET']));
+githubProfileRouter.all('/top-languages', methodNotAllowed(['GET']));
 githubProfileRouter.all('/stack', methodNotAllowed(['GET']));

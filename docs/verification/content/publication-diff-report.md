@@ -548,7 +548,7 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=vue-dark` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
 | `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=yeblu` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
 | `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&theme=dark&show_icons=true` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github.com` | `github.com` | external | `src/home/activity/snapshot.ts`, `src/http/github-profile/router.ts`, `src/keyboard/components/KeyboardPage.tsx` |
+| `https://github.com` | `github.com` | external | `src/home/activity/snapshot.ts`, `src/keyboard/components/KeyboardPage.tsx` |
 | `https://github.com/Pranesh-2005/github-readme-stats-fast` | `github.com` | external | `src/vendor/github-readme-stats-fast/PROVENANCE.md` |
 | `https://github.com/Pranesh-2005/github-readme-stats-fast.git` | `github.com` | external | `src/vendor/github-readme-stats-fast/PROVENANCE.md` |
 | `https://github.com/devswha/ovis` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |

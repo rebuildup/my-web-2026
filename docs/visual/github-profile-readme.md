@@ -899,3 +899,159 @@ v14（§20）の agy APPROVE は受入判定としない。コミット済み v1
 
 Stack の旧静的版は desktop 235px / mobile 365px — マーキー化で
 高さが増えており、これは定量的に不合格。
+
+## 22. v0.15.0 共通設計契約: プロフィール全体の構図（Issue #1240 / #1241、2026-11-26）
+
+v0.14.0 公開版を before 基準とし、#1240（`/profile` SVG）と #1241
+（README Selected Work）が**独立した画面設計を行わない**ための共通
+契約。個別資産の座標調整ではなく、ページ全体の構図・色面・情報階層・
+資産境界を先に固定する。実装はこの契約の各条項に対応する。
+
+### ページ構成（上から順）
+
+1. 導入 chrome（tagline + リンク）— GitHub markdown 側の余白は制御
+   不能なので、契約が決めるのは**資産の順序・画像幅・リスト構造**
+   のみ。
+2. `## Selected work` — `showcase.webp` をヒーロー媒体、サブ作品は
+   構造化インデックス（#1241）。
+3. `/profile` SVG — ページを閉じるデータプレート。内部順は
+   Identity masthead → ACTIVITY → STACK の 3 ゾーン固定。
+
+### 色面（surface）の三層
+
+- **PAGE**: GitHub の markdown 面。SVG/画像がその上に載る。
+- **PLATE**: `/profile` SVG が塗る全面背景 rect — ページ内で唯一の
+  全面色面であり、「プロフィールのプレート」として機能する。
+  内部モジュールに追加の面（panel）は敷かない — 面を増やすと
+  貼り合わせ感が戻る。
+- **MEDIA**: `showcase.webp` / works カバー — 内容を持つ画像。
+  `<picture>` でテーマ追従（#1242 で light バリアント）。
+
+### 情報階層（プレート内部）
+
+- **H0 display**: セクションヘッドのみ。Identity masthead は
+  ヘッドを持たない（それ自体が頭）。`GITHUB ACTIVITY` / `STACK`
+  の 2 つだけ。
+- **H1 title**: セクション内モジュールヘッド（`REPO OUTPUT` /
+  `LAST 72 HOURS` / `RECENT EVENTS`）。
+- **無ラベル state**: Identity ゾーンの VITALS / TOP LANGUAGES は
+  モジュールヘッドを**持たない**。アイコン + 数値 + 言語バーは
+  自己説明的であり、ラベルを外すことがテキスト依存の削減そのもの。
+  standalone `/identity` バンドも同一構成を描く（ unlabeled state
+  は単体でも自己説明的）。
+- **body/strong/data/label/caption**: 既存 TYPE ロールをそのまま使用。
+
+### 構図ルール
+
+- **2 カラム・マストヘッド**（desktop）: 左列（cols 0–5）に
+  アバター + 名前 + tagline + Discord presence を縦積み、右列
+  （cols 6–11）に VITALS 3列×2行グリッド。全幅の横積みストリップを
+  やめ、左右の図と地を作る。モバイルは 6 カラムの再グリッドで
+  縦積みを維持（縮小ではなく再配置）。
+- **縦予算（実測目標）**: `/profile` desktop ≤ 950px（現行 1092）、
+  mobile ≤ 1180px（現行 1368）。
+- **Stack レーン分類**: `Design & web` / `Languages & infra` は
+  実内容と不一致（nodejs/dotnet/vercel が design 側、vscode/
+  markdown/notion が languages 側）。実態に合わせ `Design & media`
+  / `Code & platform` に再編し、全 48 アイコンを維持する。
+- **モーション**: SMIL マーキー（STACK）と animated WebP
+  （showcase）の 2 系統のみ。新規アニメーションは追加しない。
+- **資産境界**: README は見出し・順序・リスト構造、SVG はプレート
+  内部、WebP は媒体 — いずれも共通の左スパイン思想（GitHub 本文
+  カラム内での左揃え）を共有し、SVG 内部は 12/6 カラム契約を継続。
+
+### 検証
+
+- 変更前後を同条件で実測（SVG 高さ・セクション占有）。
+- before 基準: v0.14.0 公開版 `.tmp/v16-baseline/`（8 枚の実画面
+  PNG + 4 SVG + showcase.webp）。証跡は `docs/verification/
+  github-profile/` へコミット。
+- レビューは最新全ページレンダリング + 実アニメーションを対象とし、
+  過去の APPROVE を品質保証として引き継がない。
+
+## 23. v0.15.0 設計方針更新: 単一 SVG 撤回と集計範囲拡張（2026-11-26、ユーザーレビュー反映）
+
+v0.14.0 公開版へのユーザーレビューを受け、§21/§22 の一部前提を更新
+する。**ビジュアルデザイン自体は改善済みであり、全面再設計は行わ
+ない**。維持するもの: 共通グリッド（12/6 カラム）・視覚的階層
+（display > title > state > body）・現在の構図（2 カラム
+マストヘッド、セクション順、プレートとしての SVG 面）。改善対象:
+モチーフアイコン、数値とラベルのグルーピング、余白、構造化。
+
+### 23.1 単一 `/profile` SVG 方針の撤回 → データ源単位の分割
+
+§21 で採用した「Identity・Activity・Stack を 1 キャンバスに統合」
+は**撤回**する。視覚的統一は維持しつつ、配信単位をデータ依存・
+更新周期・キャッシュ境界で分割する:
+
+| 単位 | データ源 | 想定鮮度 |
+|---|---|---|
+| Identity（masthead + presence） | D1 `discord_presence_snapshot` 等 | presence 周期 |
+| Vitals / Top Languages | D1 `github_activity_snapshot` 派生 | snapshot 周期 |
+| Activity（REPO OUTPUT / 72H / EVENTS） | 同上 | 同上 |
+| Stack | コミット済み静的資産 | 長期キャッシュ可 |
+
+- 画像リクエスト起点の同期実行をやめ、**非同期同期 → 永続
+  スナップショット（D1）→ 画像生成 → 配信**を分離する。既存の
+  D1 ingest（`/api/v1/activity/github`）・`sync-github-activity.mjs`
+  ・Infisical・Cache API を優先活用し、新規課金インフラは導入
+  しない。
+- データ源単位の鮮度管理・Last Known Good・障害分離（片方の stale
+  が他方を止めない）・重複同期防止・キャッシュ無効化・取得失敗時
+  の honest 表示を各単位で設計する。
+- `microCache` の実装不整合を修正: コメントは「TTL: 5 seconds」
+  だが `INTERNAL_TTL = 500_000`（= 500 秒 ≈ 8.3 分）。
+- `/profile` は公開 README 切替まで互換維持（同一モデルの合成
+  ラッパとして残す）。
+- 分割前後でレスポンスサイズ・応答時間・上流 API 呼び出し数・
+  キャッシュヒット・障害時表示を比較計測する。
+
+### 23.2 GitHub 統計の集計範囲拡張
+
+現行は**個人所有リポジトリ中心**の集計。監査対象:
+`src/vendor/github-readme-stats-fast/{cards,fetchers}/{stats,
+top-languages,streak-fetcher}.ts`、`calculateRank.ts`、
+`scripts/sync-github-activity.mjs` と関連 API/データ契約。
+
+- 所属 Organization・参加プロジェクト・外部コントリビュート先を
+  **動的発見**（org 名固定列挙に頼らない）し、少なくとも公開
+  リポジトリ上の本人活動を網羅集計する。発見経路・ページネー
+  ション・重複排除・権限差・レート制限・増分同期を設計する。
+- 指標を混同しない: 所有リポジトリの言語構成 / 参加リポジトリの
+  言語構成 / 本人のコード変更量 / 本人の活動数は別指標。
+  Stars 等のプロジェクト指標は所有と参加を区別する。
+- 非公開リポジトリ・Organization 識別情報の既存公開境界
+  （anonId/HMAC、fail-closed）は維持する。
+- 旧 Rank 算出方式と現行方式を調査し、同一入力比較 + 集計範囲
+  拡張による差分を検証する。Rank を恣意的に上げるのではなく、
+  実態に合った集計を成立させることが目的。
+- 「all-time」表記と実際の取得期間の不整合を是正する。
+
+### 23.3 継続する視覚改善（#1240 系）
+
+- モチーフアイコン（各指標・イベントの glyph 品質）
+- 数値とラベルのグルーピング（stat numeral + noun の視覚的結合）
+- 余白配分・構造化の改善
+- これらは分割後の各 surface に対して適用する。分割単位の
+  ビジュアル一貫性は §22 の契約を継承する。
+
+### 23.4 Issue 分解と依存
+
+- **データ層**: 集計範囲拡張（snapshot schema 拡張を含む）
+- **配信層**: `/profile` 分割 + キャッシュ/鮮度/LKG 設計 +
+  microCache 修正 + 計測比較
+- **視覚層**: #1240（モチーフ/グルーピング/余白）・#1241
+  （README Selected Work）・#1242（showcase light）
+- ticket PR は局所検証で `release-0-15-0` へ統合。包括的検証は
+  候補確定後。v0.14.0 公開維持、v0.15.0 リリースは明示承認制。
+
+### 23.5 共通データ契約（2026-11-26 追加）
+
+#1244（配信分離）と #1245（集計範囲）の共通データ契約の正本は
+`docs/domain/github-profile-data.md`。要点: 帰属スコープ
+`owned` / `org-member`（所属≠コントリビュート、実績計測で絞る）/
+`collaborator` / `external-public`（affiliation 外の公開 repo も
+search で回収）、全指標が `{scope, window}` を宣言、snapshot は
+`github_activity_snapshot`（拡張）+ `github_stats_snapshot`
+（新規・独立更新）+ `discord_presence_snapshot`（既存）に分離、
+画像リクエストは上流 API を呼ばない、公開境界（anonId/HMAC）維持。

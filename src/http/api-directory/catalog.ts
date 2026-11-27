@@ -333,6 +333,36 @@ export const publicApiCatalog: readonly ApiEndpoint[] = [
 			'Activity band for the rebuildup/rebuildup profile README (ADR-0026, Issue #1216): 30-day per-repository commit/PR output plus a 72-hour public-event pulse anchored to the snapshot observation time; private repositories aggregate anonymously. Query params: theme=dark|light, layout=mobile. Anonymous access. Returns SVG.',
 	},
 	{
+		path: '/api/v1/github-profile/vitals',
+		method: 'GET',
+		authentication: 'anonymous',
+		authForm: 'none',
+		rateLimitBinding: 'RATE_LIMIT_READ',
+		errorForm:
+			'405 method_not_allowed; the surface always answers 200 — a missing stats snapshot renders honest unavailable states inside the SVG',
+		responseExample: {
+			contentType: 'image/svg+xml',
+			cacheControl: 'public, max-age=300, s-maxage=300',
+		},
+		purpose:
+			'Vitals surface for the rebuildup/rebuildup profile README (Issue #1244): the account-figures strip (streak / contributions / stars / commits / PRs / issues) rendered from the github_stats_snapshot D1 row alone — no request-time upstream call. Query params: theme=dark|light, layout=mobile, grid=1 (review overlay). Anonymous access. Returns SVG.',
+	},
+	{
+		path: '/api/v1/github-profile/top-languages',
+		method: 'GET',
+		authentication: 'anonymous',
+		authForm: 'none',
+		rateLimitBinding: 'RATE_LIMIT_READ',
+		errorForm:
+			'405 method_not_allowed; the surface always answers 200 — a missing stats snapshot renders an honest unavailable state inside the SVG',
+		responseExample: {
+			contentType: 'image/svg+xml',
+			cacheControl: 'public, max-age=300, s-maxage=300',
+		},
+		purpose:
+			'Top-languages surface for the rebuildup/rebuildup profile README (Issue #1244): the owned-scope language share bar and legend rendered from the github_stats_snapshot D1 row alone — no request-time upstream call. Query params: theme=dark|light, layout=mobile, grid=1 (review overlay). Anonymous access. Returns SVG.',
+	},
+	{
 		path: '/api/v1/github-profile/profile',
 		method: 'GET',
 		authentication: 'anonymous',
@@ -435,6 +465,12 @@ export const publicApiScopeExclusions: readonly ApiScopeExclusion[] = [
 		path: '/api/v1/activity/github',
 		reason:
 			'Operator ingest endpoint (Issues #316 / #319 / #932): the operator-side sync script pushes the anonymised GitHub activity snapshot here. It is a write-only pipeline boundary with a dedicated github_activity:write key, not a public data contract — the public surface reads D1 at SSR time and never calls this route.',
+	},
+	{
+		method: 'PUT',
+		path: '/api/v1/stats/github',
+		reason:
+			'Operator ingest endpoint (Issues #1244 / #1245): the operator-side stats sync pushes the scope×window GitHub stats snapshot here. It is a write-only pipeline boundary with a dedicated github_stats:write key, not a public data contract — the public surface reads D1 at request time and never calls this route.',
 	},
 	{
 		method: 'PUT',

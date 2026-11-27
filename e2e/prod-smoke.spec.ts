@@ -897,19 +897,24 @@ test.describe('production camo delivery (Issue #1254)', () => {
 		expect(profilePage.status(), 'github.com profile page must answer 200').toBe(200);
 		const html = await profilePage.text();
 
+		// Camo URLs carry the proxied target HEX-encoded in the last
+		// path segment (`/digest/<hex>`), not percent-encoded — decode
+		// it to learn which origin URL each proxy entry serves.
+		const camoTarget = (url: string): string | null => {
+			const segment = url.split('/').pop() ?? '';
+			// Buffer.from(_, 'hex') silently truncates on bad input —
+			// gate on the hex grammar first so a non-hex segment reads
+			// as "not ours" instead of decoding to garbage.
+			if (!/^[0-9a-f]+$/i.test(segment) || segment.length % 2 !== 0) return null;
+			return Buffer.from(segment, 'hex').toString('utf8');
+		};
 		const camoUrls = [
 			...new Set(
 				[...html.matchAll(/https:\/\/camo\.githubusercontent\.com\/[^\s"'<>]+/g)].map(
 					(match) => match[0],
 				),
 			),
-		].filter((url) => {
-			try {
-				return decodeURIComponent(url).includes('rebuildup.dev/api/v1/github-profile');
-			} catch {
-				return false;
-			}
-		});
+		].filter((url) => camoTarget(url)?.startsWith('https://rebuildup.dev/'));
 		expect(
 			camoUrls.length,
 			'the public profile README no longer embeds any camo-proxied github-profile image — either the README lost its profile section or the URL shape changed and this check needs updating',

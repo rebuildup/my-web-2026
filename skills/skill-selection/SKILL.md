@@ -1,24 +1,28 @@
 ---
 name: skill-selection
-description: projectの初期化や再整備で、どのAgent Skillを導入するかを決める時に使用する。必要な能力を判定し、project-initの能力一覧と候補記録、さらに外部の探索から候補を評価して、能力ごとに担当を決め、project-localに導入してlockと採否を記録する。
+description: projectの初期化や再整備で、どのAgent Skillを導入するかを決める時に使用する。必要な能力を判定し、aude-skillsの能力一覧と候補記録、さらに外部の探索から候補を評価して、能力ごとに担当を決め、project-localに導入してlockと採否を記録する。
+metadata:
+  requires-skills: system-quality
 ---
 
 # Skill Selection
 
 Skillの導入を「良さそうなものを足す」作業にしない。目的は、projectに必要な能力ごとに、衝突しない担当を1つずつ決めることである。
 
-## Skillはガードレールである
+## Skillの誘導と実行上の強制を区別する
 
-Skillは、agentが的外れな方向へ失敗するのを防ぐガードレールとして導入する。「当てはまるかもしれないから使う」ものではない。
+Skillは判断と作業を支援する指示であり、遵守や品質を強制する境界ではない。実成果物の制約と受理経路は別に成立させる。「当てはまるかもしれないから使う」ものではない。
 
 - 発火する場面が明確で、その場面に**ちょうど当てはまる**Skillだけを採用する。少しでも関係しそうなら起動する、という広いtriggerのSkillは採らない。
 - 手順の量は、防ぐ失敗の大きさに比例させる。短い作業を長い儀式に変えるSkill（小さな修正にも毎回TDDや対話式のbrainstormingを強制するもの等）は採らないか、条件を絞った起動にする。
 - 良いSkillは、防ぐ失敗の型と、その場面でだけ効く判断基準を短く持つ。一般的な心得の網羅は、agentが既定でできることの繰り返しになりやすい。
 
-project-initには、選定の材料となる2つの表がある。
+aude-skillsには、選定の材料となる2つの表がある。
 
 - `catalog/capabilities.tsv` — 能力の一覧。`scope` が `single` の能力は担当を1つに絞り、`multi` は併用してよい。`needed_when` はその能力が必要になる条件。
 - `catalog/candidates.tsv` — 評価済みの候補記録。許可リストではない。前回までの評価結果をまとめたキャッシュであり、記録にないSkillも探索して評価してよい。
+
+全体品質の設計・維持には [system-quality](../system-quality/SKILL.md) を選定する。必要な参照とscriptsも配布物として確認し、Skillの名前が存在することを能力成立と扱わない。
 
 ## 1. 必要な能力を判定する
 
@@ -26,7 +30,9 @@ repositoryの実際の状態から、各能力の `needed_when` が成り立つ�
 
 一覧にない能力が必要なら、その能力を行として追加する候補にする（§6）。
 
-**Webの優先候補**: HTML/CSS・DOM・Web UI・client-side JSを扱うprojectは `web-platform` を初回判定し、`GoogleChrome/modern-web-guidance` を優先評価する。framework・デザイン・品質のSkillとは別担当。backend・infra・CLI専用には不要。
+**コード品質の基本能力**: コードがある、またはコードを生成・変更するprojectでは、リネーム依頼がなくても `code-naming` を選定し、`system-quality` と役割分担する（Skill導入だけで品質成立と扱わない）。
+
+**領域別の優先候補**: Web（`web-platform` / `modern-web-guidance`）、Lean 4（`lean4-proof` / `mathlib-build`）、視覚・UI設計およびレビュー（`visual-design-foundation`・`visual-design`・`visual-composition-audit`・`visual-review`・`functional-ui-review` は別能力として分離）の判定条件と昇格境界は [領域別候補とカタログ詳細](references/domain-candidates.md) を参照する。単にUIを変更しただけで毎ticketに全画面・実機レビューを追加せず、未release・未実測の候補（例: `functional-aesthetics-review`）を `default` や検証済みとして扱わない。
 
 ## 2. 候補を集める
 
@@ -54,34 +60,31 @@ repositoryの実際の状態から、各能力の `needed_when` が成り立つ�
 
 ## 4. 導入する
 
+frontmatterの `metadata.requires-skills`（空白区切りSkill名）を確認し、推移的な依存も同じ導入で解決する。Skill名だけが一致する未評価の別実装を依存充足とみなさない。aude-skillsの設計・判断・品質・評価・選定Skillにはsystem-qualityが必要。例: `bunx skills add rebuildup/aude-skills --skill engineering-decisions system-quality code-naming --copy`。導入後に実fileと相対参照が揃っていることを検証し、missing dependencyを完了にしない。
+
 - project-localに入れる。`--global` は使わない。
 - packを丸ごと入れず、`bunx skills add <source> --skill <name>` で個別に入れる。Web向け例: `bunx skills add GoogleChrome/modern-web-guidance --skill modern-web-guidance --copy`（revision・license・ブラウザ対応方針を確認）。
 - `--copy` で導入し、導入されたSkillのfileと `skills-lock.json` を両方commitする。`skills-lock.json` だけでは再現にならないためである。2026-10時点の `skills experimental_install` は、lockの `computedHash` と照合せずに配布元の現在の内容を取得し、導入先も `.agents/skills/` に固定される。
 - 更新は `bunx skills update` で行い、Skill fileのdiffをPRで確認してから取り込む。配布元の変更を、確認せずに取り込まないためである。
-- 導入した複製は直接編集しない。複製の内容は `computedHash`（各fileの相対pathと中身を、pathの大文字小文字を区別しない順に連結したsha256）と一致し続ける必要がある。project-initの `evals/policy-evaluation/vendored-skills-contract.sh` と同じ検査をprojectのquality gateに入れる。直したい点があれば、正本へPRを出す。
+- 導入した複製は直接編集せず、内容が `skills-lock.json` の `computedHash`（v1 / v2 の仕様は [domain-candidates.md](references/domain-candidates.md)）と一致し続ける状態を `vendored-skills-contract.mts` 同等のgateで検証する。修正は正本へPRを出す。
 - 配布元がtagを付けているなら、`https://github.com/<owner>/<repo>/tree/<tag>` で導入してlockの `ref` をtagに固定する。commit SHAは `ref` に使えない。
 - licenseが再配布を禁じるSkillはcommitしない。`skills-lock.json` にだけ記録し、必要な環境で導入する。
 - `disable-model-invocation: true` のSkill（`candidates.tsv` の `invocation` が `manual`）は、agentが自動では起動しない。採用する場合は、root contractの能力表に「この場面ではこのpathを読む」と明記する。
 
 ## 5. root contractへ反映する
 
-root contractのSkill一覧は、能力ごとの担当表として書く。採用したSkillの名前、使う場面、手動起動ならそのpathを並べる。外部Skillも自作Skillも同じ表に載せる。
+root contractのSkill一覧は、能力ごとの担当表として書く。コードがあるprojectでは、実装・追加・変更開始時に `code-naming` と `system-quality` へ辿れる短い導線を置く。詳細はrootへコピーしない。採用したSkillの名前、使う場面、手動起動ならそのpathを並べる。外部Skillも自作Skillも同じ表に載せる。
 
 見送った候補や除外したrouterは、root contractに書かない。理由はproject内の決定記録（ADR等）に残す。
 
 ## 6. 知見を還元する
 
-project固有でない評価結果は、project-initの `catalog/` へ戻す。
+project固有でない評価結果は、aude-skillsの `catalog/` へ戻す。
 
 - 新しく評価した候補や、採否を変えた候補は `candidates.tsv` を更新する。`reviewed_rev` と `reviewed_on` は、実際に読んだrevisionと日付にする。
 - 新しい能力が必要になったら `capabilities.tsv` に行を足す。
-- 変更はproject-initへのPRとして出す。採用中のprojectから直接書き換えない。
+- 変更はaude-skillsへのPRとして出す。採用中のprojectから直接書き換えない。
 
 ## 記録の値
 
-`candidates.tsv` の列の意味は次のとおりである。
-
-- `status`：`default`（その能力の標準の担当）、`alternative`（担当の代替。併用はしない）、`reference`（導入せず考え方だけを参照）、`watch`（評価や改善の途中）、`excluded`（導入しない）
-- `review_depth`：`listed`（存在と説明だけを確認）、`skimmed`（主要部分を読んだ）、`read`（全体を読んだ）、`evaluated`（比較評価まで行った）
-- `invocation`：`auto`（descriptionで自動起動）、`manual`（明示的に呼ぶかpathで読ませる必要がある）
-- skill列の `*` は、package全体や複数Skillをまとめた記録を表す。`default` には使えない。
+`candidates.tsv` の `status` / `review_depth` / `invocation` / `*` の定義は [領域別候補とカタログ詳細](references/domain-candidates.md) を参照する。

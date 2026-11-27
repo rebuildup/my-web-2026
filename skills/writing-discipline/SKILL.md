@@ -13,6 +13,8 @@ agentは作業中に大量のtext contextを保持する。そこに存在する
 
 > **Think in context. Select for purpose. Compose for the reader. Reread without the context.**
 
+persistent reader-facing proseの作成・更新を開始する前にこのSkillをloadして適用する。raw context由来のdraftを先に作り、後から不要箇所をcleanupする順序にしない。routingが遅れて既にcontext serializationを含むdraftがある場合は、部分削除ではなくSelectから再構成する。
+
 ## 1. Scope
 
 このSkillは、少なくとも次のtextを新規作成・更新するときに適用する。
@@ -80,6 +82,7 @@ Selectしたcommunicative contentだけからstandalone proseを組み立てる�
 - readerに不要な作業者視点を消す
 - raw noteの箇条書きを、そのまま完成文章とみなさない
 - 同じ事実を複数の表現で反復しない
+- 要約・見出し・比喩は元の事実に戻して説明できる形にする。根拠のない因果や語の結び付きを創作しない
 - internal taxonomyやagent都合のsection構造を、reader都合の構造へ変換する
 - rationaleを書く場合はdecision理解に必要な範囲へ限定する
 - chronological narrativeが不要なら、conceptual structureへ組み替える
@@ -101,9 +104,8 @@ draftを完成扱いする前に、元contextを知らないreaderとして全�
 - 箇条書きがcontext dumpになっていないか
 - 不要なstatus / history / implementation diaryが混ざっていないか
 - internal reasoning labelやtool terminologyが露出していないか
-- 一文ごとは正しくても、段落全体として不自然になっていないか
-- readerが必要としない説明をしていないか
-- 逆に、readerが必要とする理由・制約・前提が抜けていないか
+- 一文ごとは自然でも、抽象的な結論の主張・語の関係・根拠が成立しているか
+- 不要な説明を削っても、readerに必要な理由・制約・前提が残るか
 
 問題があれば、追記だけで直そうとせず、順序変更・統合・削除・書き直しを行う。
 

@@ -893,21 +893,24 @@ ship: design skills keep `references/`, and `cf-cli`,
 `security-audit` keep `references/` / `scripts/` / schema files.
 Upstreams:
 
-- `rebuildup/project-init` — delivery / quality / runtime / agent
-  environment skills. Current-generation skills are pinned to
-  **v0.9.0** (`bb017a7`); deliberately pinned or forked variants keep
-  their older `0.1.1` / PR-head provenance (see the fork table).
-  `writing-discipline` remains the project-init `0.1.1` vendored copy.
-- `rebuildup/design-skills` — design skills, pinned to **v0.3.0**
-  (`e1b64c4`). `composition-review` (Issue #1137) is the one exception:
-  it was released upstream in **v0.6.0** (`10b0d4a`) and is vendored
-  from there, because the L-C half of ADR-0023 is that Skill's
-  responsibility.
-- `rebuildup/writing-skills` — `skill-authoring`, pinned to
-  `release-0-4-0` (`b0f1398`).
+- `rebuildup/project-init` (aude-skills) — delivery / quality / runtime /
+  agent environment skills. Current-generation skills are pinned to
+  **v0.14.1** (`2ac7951`); `agent-delivery-estimation` and
+  `correctness-assurance` remain at **v0.9.0** (`bb017a7`) because the
+  v0.14.1 text adds references to siblings this repository does not
+  vendor (`github-delivery/references/*`, `quality-gate/references/
+  gate-honesty.md`, `scripts/delivery-status/`), and deliberately pinned
+  or forked variants keep their older `0.1.1` / PR-head provenance (see
+  the fork table).
+- `rebuildup/design-skills` — design skills, pinned to **v0.7.1**
+  (`5ca210a` upstream merge of `release-0-7-1`); every vendored copy is
+  byte-identical to that tag except the documented forks below.
+- `rebuildup/writing-skills` — `writing-discipline`, `skill-authoring`,
+  and `natural-japanese`, pinned to `43fecf5` (`release-0-5-0` merge
+  head; the repository has no tags).
 - `cloudflare/skills` — `cf-cli`, `workers-best-practices`, pinned to
-  `cbf893b`.
-- `mattpocock/skills` — `diagnosing-bugs`, `tdd`, pinned to `5863806`.
+  `ff191de`.
+- `mattpocock/skills` — `diagnosing-bugs`, `tdd`, pinned to `6f7f783`.
 
 This repository keeps `AGENTS.md` + `docs/adr/` as its agent contract
 and decision history. It does **not** copy project-init's
@@ -930,10 +933,11 @@ canonical link:
 | `engineering-decisions` | Encodes the same 6-level precedence list as §8 (the wording differs); upstream's 9-level variant introduces Constitution / Operating Model / Practice concepts this repository does not have, so §8 would have to change in the same commit. |
 | `quality-gate` | The local file is upstream project-init 0.1.1 **minus** `## 7.1 Delivery-estimation integration` and **plus** four local-only sections that exist in no upstream release or branch tip: `## 17. Dependency / static-analysis goals`, `## 18. UI information architecture gate`, `## 19. Rendered UI verification`, `## 20. Build / container / deliverable verification`. Those local sections are the rules this repository's own `quality/profile.yaml` fast gate implements (`knip:check` ↔ §17, rendered-UI verification ↔ §19, build / deliverable verification ↔ §20), so a blanket sync would delete live local gates and re-add a section this repository does not use. **Owner decision: OPEN** — keep the local variant, or re-sync to upstream. |
 | `parallel-orchestration`, `policy-evaluation` | Content sync deferred to a later release — see Issue #647. |
-| `agent-recovery`, `onboarding`, `sandbox-runtime`, `writing-discipline` | Pinned to project-init `0.1.1`. Current `v0.9.0` text assumes autonomous Ready-ticket landing and project-init `organization/` / upstream ADR-0019/0020 vocabulary; adopting it verbatim would conflict with §6 merge authorization and this repository's own ADR numbering. Re-sync requires a local adaptation pass, not a blanket copy. |
+| `agent-recovery`, `onboarding`, `sandbox-runtime` | Pinned to project-init `0.1.1`. Re-verified against `v0.14.1` (2026-11-27): the conflicts still stand — `agent-recovery` / `onboarding` grant autonomous Ready-ticket landing and Issue close during recovery, `sandbox-runtime` is written against project-init `constitution/` / upstream ADR-0020 vocabulary this repository does not have. Re-sync requires a local adaptation pass, not a blanket copy. |
+| `agent-delivery-estimation`, `correctness-assurance` | Held at project-init `v0.9.0`. The `v0.14.1` text is otherwise adoptable, but it adds references to siblings this repository does not vendor (`github-delivery/references/adaptive-release-batching.md`, `quality-gate/references/gate-honesty.md`) and to project-init's own `scripts/delivery-status/`; vendoring it verbatim would ship dangling pointers. Unblock together with the `github-delivery` / `quality-gate` fork decisions. |
 | `form-design`, `motion-system` | Edited in this repository to stop cross-referencing upstream's `interaction-state`: `form-design` drops the single line that points at it, `motion-system` drops its whole `### Interaction-state boundary` section. Both files are otherwise byte-identical to design-skills `v0.3.0`. |
 | `interaction-states` | The local file is upstream design-skills' `interaction-states` **as it existed before upstream deleted it** in `6c2acf5` (2026-09-17, "remove duplicate interaction-states skill"); it was imported verbatim (commit `2a7460a6`) and is byte-identical to that revision. It is **not** a rename of upstream's current `interaction-state` — that is a different, later, "experimental" state-graph document (344 lines), while the local file is the 234-line component-state document (hover / focus / pressed / selected / disabled semantics) that `skills/touch-interface/SKILL.md:24`, `skills/dark-mode-design/SKILL.md:158` and `skills/keyboard-interface/SKILL.md:91,179` still point at. Copying upstream's current `interaction-state` over it would silently replace a different scope under the same name. **Owner decision: OPEN** — keep the deleted upstream variant, or re-import upstream's current `interaction-state` and re-point those references. |
-| `herdr-runtime` | Vendored verbatim from upstream project-init **PR #135 head** (`48fb2f6`, 240 lines), which is **newer than upstream's merged `origin/main`** (`0be0fcb`, 234 lines). The merged release has **no** `## Provider-scoped launch and bounded layout` section, so a blanket sync would **delete** the rules that say `herdr agent start --kind` does not replace the dotfiles `agent <harness> <provider>` launcher, that an existing terminal must not be commandeered and that a layout grants no authority. The local file adds one `## Local adaptation (my-web-2026)` section (this repository's canonical state / authority reading) and is otherwise byte-identical to the upstream PR head. |
+| `herdr-runtime` | Upstream has since merged PR #135 and renamed `project-init` → `aude-skills` (verified at `v0.14.1`), but the local file still diverges: it keeps the `## Local adaptation (my-web-2026)` section (canonical state = GitHub Issue / PR / branch, authority = §6 / §8, native-subagent default, no silent provider fallback) and replaces upstream's `../../organization/execution-placement.md` link with an inline rule, because the `organization/` tree is not vendored here. Re-sync requires re-applying the local adaptation, not a blanket copy. |
 
 Upstream project-init skills this repository still does **not**
 vendor: `linear-release-control` (explicitly declined — it conflicts

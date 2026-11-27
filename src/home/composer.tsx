@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { css, cx } from '../../styled-system/css';
 import { PetCompanion, petSafeAreaStyle } from '../editorial/pet';
 import { Button } from '../editorial/primitives/Button';
@@ -114,6 +115,17 @@ export interface HomePageProps {
 	 * `'UTC'` — see `StatusTilesProps#timeZone`.
 	 */
 	timeZone?: string;
+	/**
+	 * Issue #1294 — the Selected Works band, composed by the ROUTE
+	 * from the portfolio obligation's committed selection
+	 * (`src/portfolio/selected.ts` → `components/SelectedWorks`).
+	 * The home surface owns only the section frame and the "see all"
+	 * exit; the band itself stays one component so the index and the
+	 * home page can never drift into two different selections. The
+	 * band is a node, not loader data: loader payloads stay
+	 * serializable and the route keeps the composition edge.
+	 */
+	selectedWorksBand?: ReactNode;
 }
 
 // Load-bearing annotation: a module-level css() in an entry-reachable module
@@ -195,7 +207,7 @@ const subsectionDescriptionClassName = /*#__PURE__*/ css({
  * keep their own content but no longer open their own top-level
  * section — they are `h3` sub-blocks of "サイトの状態".
  */
-export function HomePage({ data, locale, timeZone }: HomePageProps) {
+export function HomePage({ data, locale, timeZone, selectedWorksBand }: HomePageProps) {
 	// Issue #1110 — the two ambient-signal widgets (GitHub activity,
 	// Discord presence) collapse behind a disclosure on narrow
 	// viewports: they are secondary signals, and stacking all five
@@ -284,21 +296,41 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 			</header>
 			<Hero />
 			<main id="main">
-				{/* Issue #1108 — the page is a single editorial column again.
-				    The old xl sticky ad rail is gone: sponsored units are
-				    named inline slots between content sections, the way the
-				    contract's ad-independence clause requires. Issue #1110
-				    review: ad moments are consolidated to three (masthead
-				    leaderboard, one in-feed link card, one sponsored pair) —
-				    six interruptions made the page read as an ad inventory,
-				    not a composition. */}
-				{/* Site guide + capabilities — one merged destination grid
-				    (Epic #1104 second pass; the transit-map station list and
-				    the separate capabilities cards answered the same question).
-				    v11 review: the destination index now opens the page —
-				    "what exists here" precedes "what I am doing", so the
-				    classified grid is the first content claim after the hero. */}
-				<ExploreSection today={data.observedAt.slice(0, 10)} />
+				{/* Issue #1294 — the proof band leads the page: the works
+				    the site stands behind come before the site guide,
+				    the status dashboard and the ads. A visitor deciding
+				    "can this person build" meets the evidence first. */}
+				{selectedWorksBand ? (
+					<PageSection labelledBy="selected-works-heading" name="works" id="works">
+						<SectionHeading
+							id="selected-works-heading"
+							eyebrow="Works"
+							title="選んだ作品"
+							titleEn="Selected works"
+							description="このサイトが代表として選ぶ制作物です。"
+						/>
+						{selectedWorksBand}
+						<div className={css({ marginBlockStart: '6' })}>
+							<a
+								href="/portfolio#portfolio-selected"
+								className={css({
+									fontFamily: 'mono',
+									fontSize: 'sm',
+									color: 'text.default',
+									display: 'inline-flex',
+									alignItems: 'center',
+									gap: '1',
+									textDecoration: 'none',
+									_hover: { textDecoration: 'underline' },
+									_focusVisible: focusRing,
+								})}
+							>
+								すべての作品へ
+								<MaterialSymbol d={ARROW_FORWARD_PATH} size={16} />
+							</a>
+						</div>
+					</PageSection>
+				) : null}
 				{/* Now records — curated representative slice; the full ordered
 				    enumeration lives at /now (ADR-0022 C-8). */}
 				<CurrentProjects
@@ -307,6 +339,13 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 					limit={4}
 					seeAllHref="/now"
 				/>
+				{/* Site guide + capabilities — one merged destination grid
+				    (Epic #1104 second pass; the transit-map station list and
+				    the separate capabilities cards answered the same question).
+				    Issue #1294: it now follows the proof band and the Now
+				    records — "what exists here" is a wayfinding aid, not the
+				    page's opening claim. */}
+				<ExploreSection today={data.observedAt.slice(0, 10)} />
 				{/* ad slot: in-feed link card */}
 				<Container>
 					<div className={css({ marginBlock: '10' })}>

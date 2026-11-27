@@ -942,15 +942,21 @@ canonical link:
 Upstream project-init skills this repository still does **not**
 vendor: `linear-release-control` (explicitly declined — it conflicts
 with §7's GitHub-Projects SoT), `orca-frontend` (explicitly declined),
-`idea-discovery`, and `supervisor-boundary` (no dedicated non-authoring
-Supervisor profile is selected). `secrets-management`,
-`skill-selection`, `security-audit`, `agent-delivery-estimation`,
-`correctness-assurance`, `code-naming`, `cf-cli`,
-`workers-best-practices`, `diagnosing-bugs`, `tdd`, and
-`skill-authoring` were evaluated and adopted on 2026-11-16; the
-`interaction-discipline` YAML quoting fix and the
-`security-maintenance` → `security-audit` handoff were taken in the
-same pass.
+`idea-discovery` (situational capability, not a standing need), and
+`supervisor-boundary` (no dedicated non-authoring Supervisor profile is
+selected). `system-quality` was adopted on 2026-11-27 together with
+the `v0.14.1` sync (`code-naming`, `design-refinement`,
+`interaction-discipline`, `security-audit`, `skill-selection`), and
+`natural-japanese` / the `writing-skills` re-pin
+(`writing-discipline`, `skill-authoring`) landed in the same pass
+(Issue #1271 / PR #1272).
+
+`GoogleChrome/modern-web-guidance` was evaluated and **deferred**
+(2026-11-27): the skill's operative content is fetched at runtime via
+`npx modern-web-guidance@latest`, so `skills-lock.json` cannot pin what
+an agent actually retrieves, and a faithful vendored copy carries a
+2.4 MB / 212-file `guides/` corpus that `SKILL.md` never reads locally.
+Revisit if upstream ships a pinned/offline retrieval path.
 
 To take an upstream change, diff it first, land it as its own ticket,
 and re-check the §3 / §6 / §7 invariants it touches. The update command
@@ -971,6 +977,7 @@ copy and diff it into `skills/<name>/` by hand. Clone the upstream into
 
 ### Quality / evaluation
 - `skills/quality-gate/SKILL.md` — quality profile + change-risk
+- `skills/system-quality/SKILL.md` — requirement preservation + whole-system consistency
 - `skills/policy-evaluation/SKILL.md` — policy / Skill change evaluation
 - `skills/correctness-assurance/SKILL.md` — invariant → minimal guarantee mapping
 - `skills/security-maintenance/SKILL.md` — framework advisory workflow
@@ -994,6 +1001,7 @@ copy and diff it into `skills/<name>/` by hand. Clone the upstream into
 
 ### Communication
 - `skills/writing-discipline/SKILL.md` — reader-facing prose pipeline
+- `skills/natural-japanese/SKILL.md` — natural Japanese prose layer on writing-discipline
 - `skills/interaction-discipline/SKILL.md` — active-work interaction discipline
 - `skills/skill-authoring/SKILL.md` — creating / updating Agent Skills
 
@@ -1001,7 +1009,8 @@ copy and diff it into `skills/<name>/` by hand. Clone the upstream into
 
 Web fundamentals / design-layout / animation-interaction の汎用 Skills。
 Vendor-specific design system / media production 系は含まない
-(`design-skills` upstream 47 件から 25 件選抜、 release-0-3-0)。
+(`design-skills` upstream から 25 件選抜、 release-0-3-0 時点;
+現在の pin は **v0.7.1**)。
 
 - `skills/design-intent/SKILL.md` — DESIGN-BRIEF 起点の design direction
 - `skills/color-system/SKILL.md` — semantic color roles, light/dark

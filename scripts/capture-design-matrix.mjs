@@ -81,6 +81,32 @@ export function slugForRoute(route) {
 	return trimmed.replaceAll('/', '-').replaceAll('$', 'dollar-');
 }
 
+/**
+ * Scroll the document end-to-end so every `loading="lazy"` asset enters
+ * the load threshold, then wait until each `<img>` has decoded. Without
+ * this pass a full-page screenshot can be taken while below-fold media
+ * is still an empty box — the review then reports "missing image"
+ * defects that no visitor ever sees (Issue #1280: the #1266 agy run
+ * flagged the page-view counter digits and blank portfolio thumbnails,
+ * both lazy assets photographed before decode).
+ */
+async function settleLazyAssets(page) {
+	await page.evaluate(async () => {
+		const step = Math.max(window.innerHeight, 400);
+		const height = document.documentElement.scrollHeight;
+		for (let y = 0; y < height; y += step) {
+			window.scrollTo(0, y);
+			await new Promise((resolve) => setTimeout(resolve, 50));
+		}
+		window.scrollTo(0, 0);
+		await Promise.all(
+			[...document.images].map((img) =>
+				img.decode ? img.decode().catch(() => undefined) : Promise.resolve(),
+			),
+		);
+	});
+}
+
 async function captureCondition(browser, base, route, viewport, scheme, outDir) {
 	const context = await browser.newContext({
 		viewport: { width: viewport.width, height: viewport.height },
@@ -108,6 +134,7 @@ async function captureCondition(browser, base, route, viewport, scheme, outDir) 
 		if (status !== 200) {
 			return { route, viewport: viewport.name, scheme, status, error: `GET ${route} -> ${status}` };
 		}
+		await settleLazyAssets(page);
 		const png = await page.screenshot({ fullPage: true });
 		const meta = await sharp(png).metadata();
 		const height = meta.height ?? 0;

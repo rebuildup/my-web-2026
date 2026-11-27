@@ -17,12 +17,68 @@
  * never a silent pass (same rule as the viewport grid report).
  */
 
+import { execSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { aggregateVerdict, judgeRoute, loadContract } from './judge-composition.mjs';
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+
+/**
+ * HEAD of this checkout — compared against each model's
+ * `provenance.headSha` so a model collected before the last commit
+ * surfaces as a warning instead of judging silently (Issue #1280).
+ */
+function currentHeadSha() {
+	try {
+		return execSync('git rev-parse HEAD', { cwd: REPO_ROOT, stdio: ['ignore', 'pipe', 'ignore'] })
+			.toString()
+			.trim();
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * Provenance verdicts for one route's model set. A model without
+ * `provenance` predates Issue #1280 and cannot prove freshness — warn,
+ * never fail (re-collection clears it). A `headSha` that differs from
+ * HEAD means the page may have changed since collection — same warn.
+ * The verdict shape matches the judge's so it aggregates normally.
+ */
+function provenanceVerdicts(models, headSha) {
+	const verdicts = [];
+	const missing = [];
+	const stale = [];
+	for (const [stem, model] of Object.entries(models)) {
+		const prov = model?.provenance;
+		if (!prov || typeof prov !== 'object') {
+			missing.push(stem);
+			continue;
+		}
+		if (headSha && prov.headSha && prov.headSha !== headSha) {
+			stale.push(`${stem}@${String(prov.headSha).slice(0, 7)}`);
+		}
+	}
+	if (missing.length > 0) {
+		verdicts.push({
+			rule: 'PROV',
+			severity: 'warning',
+			verdict: 'warn',
+			detail: `model(s) lack provenance (pre-#1280 format): ${missing.join(', ')} — staleness undetectable, re-collect`,
+		});
+	}
+	if (stale.length > 0) {
+		verdicts.push({
+			rule: 'PROV',
+			severity: 'warning',
+			verdict: 'warn',
+			detail: `model(s) collected at a different HEAD: ${stale.join(', ')} (HEAD ${headSha.slice(0, 7)}) — re-collect before judging`,
+		});
+	}
+	return verdicts;
+}
 
 function parseArgs(argv) {
 	const out = {};
@@ -54,6 +110,7 @@ function main() {
 
 	const results = [];
 	let failures = 0;
+	const headSha = currentHeadSha();
 	for (const route of contract.routes) {
 		const cells = byRoute.get(route.slug) ?? {};
 		const expectedStems = contract.viewports.map((v) => v.stem);
@@ -68,6 +125,7 @@ function main() {
 			models[stem] = JSON.parse(readFileSync(cells[stem], 'utf8'));
 		}
 		const verdicts = judgeRoute(models, contract, route);
+		verdicts.push(...provenanceVerdicts(models, headSha));
 		const verdict = aggregateVerdict(verdicts);
 		if (verdict === 'fail') failures += 1;
 		results.push({

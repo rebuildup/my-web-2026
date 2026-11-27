@@ -69,11 +69,18 @@ answered.
 
 ## Scheduling
 
-Daily is enough — vitals move slowly. Example:
+Daily is enough — vitals move slowly. Production runs it via the
+operator-machine launchd job `dev.rebuildup.my-web-2026-github-stats`
+(daily 09:30 JST, after the 09:00 activity sync), mirroring the
+`dev.rebuildup.my-web-2026-github-activity` plist:
 
 ```sh
-infisical run --env=dev --path=/feeds/github-stats -- pnpm run stats:publish
+infisical run --env=dev --path=/feeds/github-stats -- \
+  node scripts/sync-github-stats.mjs --push
 ```
+
+Log: `/tmp/my-web-2026-stats-sync.log`. A missed day is safe — the
+snapshot keeps serving Last Known Good until the next successful push.
 
 ## Rank comparison (contract §3.1)
 

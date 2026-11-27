@@ -853,6 +853,14 @@ head + Draft PR. Release branches are the only exception, and only
 while they are zero-diff against `main`. See
 `skills/agent-recovery/SKILL.md`.
 
+The primary checkout (`~/work/my-web-2026`) is shared by concurrent
+agent sessions. Never switch its branch (or stash / reset / clean it)
+while another session may hold uncommitted work — a branch switch
+silently discards that state. Parallel work belongs in a dedicated
+`git worktree` (e.g. `~/work/my-web-2026-<ticket>`); treat the shared
+checkout's current branch as someone else's workspace. See
+`skills/worktree-workflow/SKILL.md`.
+
 ## 8. Decision precedence
 
 For any judgement call, follow:

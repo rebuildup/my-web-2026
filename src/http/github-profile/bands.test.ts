@@ -274,6 +274,33 @@ describe('composeBand2Model', () => {
 		expect(model.feed72.every((e) => e.repoId.startsWith('rebuildup/'))).toBe(true);
 	});
 
+	it('renders human verbs for every feed event type — never the raw API name (Issue #1286)', () => {
+		const payload = {
+			...ACTIVITY_SNAPSHOT,
+			feed: [
+				{
+					id: 'x1',
+					kind: 'public',
+					repoId: 'rebuildup/my-web-2026',
+					type: 'IssuesEvent',
+					at: '2026-11-24T12:00:00Z',
+				},
+				{
+					id: 'x2',
+					kind: 'public',
+					repoId: 'rebuildup/my-web-2026',
+					type: 'SomeFutureEvent',
+					at: '2026-11-24T11:00:00Z',
+				},
+			],
+		};
+		const svg = renderBand2Svg(band2({ activityPayload: payload }));
+		expect(svg).toContain('· issue');
+		expect(svg).toContain('· activity');
+		expect(svg).not.toContain('IssuesEvent');
+		expect(svg).not.toContain('SomeFutureEvent');
+	});
+
 	it('fails closed on an invalid snapshot', () => {
 		const model = band2({ activityPayload: { bogus: true } });
 		expect(model.snapshotAvailable).toBe(false);

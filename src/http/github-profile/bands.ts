@@ -1051,21 +1051,46 @@ export function renderTopLangsSvg(model: StatsSurfaceModel, opts: { grid?: boole
 
 // ---- Band 2 ----
 
-/** Feed verb → past-tense display word. */
+/** Feed verb → past-tense display word. Every GitHub event type the
+ * public-events feed can carry maps to a human word — the raw
+ * `*Event` name is an API internal and must never reach the SVG
+ * (Issue #1286 review: `IssuesEvent` was the most common real type
+ * and printed verbatim). */
 const EVENT_VERB: Record<string, string> = {
 	PushEvent: 'pushed',
 	PullRequestEvent: 'PR',
+	PullRequestReviewEvent: 'reviewed',
+	PullRequestReviewCommentEvent: 'reviewed',
+	IssuesEvent: 'issue',
+	IssueCommentEvent: 'commented',
+	CommitCommentEvent: 'commented',
 	CreateEvent: 'created',
 	DeleteEvent: 'deleted',
+	ReleaseEvent: 'released',
+	WatchEvent: 'starred',
+	ForkEvent: 'forked',
 };
 
 /** Feed verb → plural noun for collapsed runs ('2 pushes'). */
 const EVENT_NOUN: Record<string, string> = {
 	PushEvent: 'pushes',
 	PullRequestEvent: 'PRs',
+	PullRequestReviewEvent: 'reviews',
+	PullRequestReviewCommentEvent: 'reviews',
+	IssuesEvent: 'issues',
+	IssueCommentEvent: 'comments',
+	CommitCommentEvent: 'comments',
 	CreateEvent: 'creates',
 	DeleteEvent: 'deletes',
+	ReleaseEvent: 'releases',
+	WatchEvent: 'stars',
+	ForkEvent: 'forks',
 };
+
+/** Unknown event types degrade to a generic word, never the raw
+ * API type name. */
+const EVENT_FALLBACK_VERB = 'activity';
+const EVENT_FALLBACK_NOUN = 'activities';
 
 /** Absolute JST stamp for one event — a static SVG must never print
  * relative ages that silently rot after the observation instant. */
@@ -1137,7 +1162,9 @@ function renderRecentActivity(
 		const ry = firstBaseline + i * rowH;
 		s += eventGlyph(r.type, x + 6, iconCenterY(ry, TT.data.size), ICON.sm - 2, typeColor(r.type));
 		const verb =
-			r.count > 1 ? `${r.count} ${EVENT_NOUN[r.type] ?? r.type}` : (EVENT_VERB[r.type] ?? r.type);
+			r.count > 1
+				? `${r.count} ${EVENT_NOUN[r.type] ?? EVENT_FALLBACK_NOUN}`
+				: (EVENT_VERB[r.type] ?? EVENT_FALLBACK_VERB);
 		// repo owns the strong role — events are the band's readable
 		// payload, so nothing here sits below the legibility floor
 		const verbTxt = ` · ${verb}`;

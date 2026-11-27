@@ -18,6 +18,7 @@
  * block-kind classification.
  */
 
+import { execSync } from 'node:child_process';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -25,6 +26,23 @@ import { MODEL_VERSION, loadContract } from './judge-composition.mjs';
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const DEFAULT_BASE_URL = 'http://127.0.0.1:3000';
+
+/**
+ * The commit the models describe. `composition:lint` compares it
+ * against the checkout's HEAD so a model collected before the last
+ * commit cannot pass silently as fresh (Issue #1280 — a stale model
+ * once produced a wrong CL-6/CL-11 FAIL that a recollection cleared).
+ * Returns null outside a git checkout; the field is then omitted.
+ */
+function headSha() {
+	try {
+		return execSync('git rev-parse HEAD', { cwd: REPO_ROOT, stdio: ['ignore', 'pipe', 'ignore'] })
+			.toString()
+			.trim();
+	} catch {
+		return null;
+	}
+}
 
 function parseArgs(argv) {
 	const out = {};
@@ -434,6 +452,8 @@ async function main() {
 	const browser = await chromium.launch();
 	const written = [];
 	const failed = [];
+	const sha = headSha();
+	const collectedAt = new Date().toISOString();
 	try {
 		for (const route of routes) {
 			for (const vp of viewports) {
@@ -486,6 +506,11 @@ async function main() {
 					const model = await page.evaluate(COLLECTOR);
 					model.route = route.slug;
 					model.viewport = { width: vp.width, height: vp.height, stem: vp.stem };
+					model.provenance = {
+						collectedAt,
+						baseUrl,
+						headSha: sha,
+					};
 					mkdirSync(dirname(abs), { recursive: true });
 					writeFileSync(abs, `${JSON.stringify(model, null, 2)}\n`);
 					written.push(file);

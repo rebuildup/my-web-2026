@@ -70,6 +70,7 @@ import { createHmac } from 'node:crypto';
 import { realpathSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { acquireSyncLock, pushWithRetry } from './_sync-ops.mjs';
 import { checkActivitySnapshot } from './check-github-activity.mjs';
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -424,25 +425,37 @@ async function push(snapshot) {
 			'MY_WEB_2026_API_KEY is required for --push (the github_activity:write ingest key — see docs/runbook/github-activity-sync.md)',
 		);
 	}
-	const res = await fetch(INGEST_URL, {
-		method: 'PUT',
-		headers: {
-			'content-type': 'application/json',
-			authorization: `Bearer ${apiKey}`,
-			// The boundary CSRF guard fails closed on a write with no
-			// origin evidence; this is a first-party server-to-server
-			// caller, so it declares its own origin.
-			origin: new URL(INGEST_URL).origin,
+	const res = await pushWithRetry(
+		INGEST_URL,
+		{
+			method: 'PUT',
+			headers: {
+				'content-type': 'application/json',
+				authorization: `Bearer ${apiKey}`,
+				// The boundary CSRF guard fails closed on a write with no
+				// origin evidence; this is a first-party server-to-server
+				// caller, so it declares its own origin.
+				origin: new URL(INGEST_URL).origin,
+			},
+			body: JSON.stringify(snapshot),
+			signal: AbortSignal.timeout(15_000),
 		},
-		body: JSON.stringify(snapshot),
-		signal: AbortSignal.timeout(15_000),
-	});
+		{ label: 'sync-github-activity' },
+	);
 	if (!res.ok) {
 		throw new Error(`ingest ${INGEST_URL} -> ${res.status}`);
 	}
 }
 
 async function main() {
+	const lock = acquireSyncLock(join(REPO_ROOT, '.tmp/sync-github-activity.lock'), {
+		label: 'sync-github-activity',
+	});
+	if (!lock) {
+		console.log('sync-github-activity: another run holds the sync lock — skipping');
+		return;
+	}
+	process.on('exit', () => lock.release());
 	const token = process.env.GITHUB_TOKEN || '';
 	const salt = process.env.GITHUB_ACTIVITY_SALT || '';
 	const dryRun = process.argv.includes('--dry-run');

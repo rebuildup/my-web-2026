@@ -31,7 +31,12 @@ function fakeDb(payloads: Record<string, unknown>): D1Database {
 								? 'github_stats_snapshot'
 								: null;
 					const payload = table ? payloads[table] : undefined;
-					return payload === undefined ? null : { payload: JSON.stringify(payload) };
+					return payload === undefined
+						? null
+						: {
+								payload: JSON.stringify(payload),
+								received_at: new Date().toISOString(),
+							};
 				},
 			};
 		},
@@ -315,5 +320,51 @@ describe('GET /profile stats wiring', () => {
 		expect(body).toContain('data:image/png;base64');
 		expect(body).toContain('4,211');
 		expect(body).toContain('TypeScript');
+	});
+});
+
+describe('GET /snapshot-health (Issue #1254)', () => {
+	it('reports every source fresh when all snapshot rows exist', async () => {
+		const res = await githubProfileRouter.request('/snapshot-health', { method: 'GET' }, {
+			...ENV_BASE,
+			DB: fakeDb({
+				github_activity_snapshot: ACTIVITY,
+				discord_presence_snapshot: PRESENCE,
+				github_stats_snapshot: STATS,
+			}),
+		} as never);
+		expect(res.status).toBe(200);
+		expect(res.headers.get('cache-control')).toBe('no-store');
+		const body = (await res.json()) as {
+			sources: Array<Record<string, unknown>>;
+		};
+		expect(body.sources).toHaveLength(3);
+		for (const source of body.sources) {
+			expect(source.state).toBe('fresh');
+			expect(source.receivedAt).toBeTruthy();
+		}
+	});
+
+	it('reports absent — not stale — when no snapshot rows exist', async () => {
+		const res = await githubProfileRouter.request('/snapshot-health', { method: 'GET' }, {
+			...ENV_BASE,
+			DB: fakeDb({}),
+		} as never);
+		expect(res.status).toBe(200);
+		const body = (await res.json()) as {
+			sources: Array<Record<string, unknown>>;
+		};
+		for (const source of body.sources) {
+			expect(source.state).toBe('absent');
+			expect(source.receivedAt).toBeNull();
+			expect(source.ageSeconds).toBeNull();
+		}
+	});
+
+	it('rejects non-GET methods', async () => {
+		const res = await githubProfileRouter.request('/snapshot-health', { method: 'POST' }, {
+			...ENV_BASE,
+		} as never);
+		expect(res.status).toBe(405);
 	});
 });

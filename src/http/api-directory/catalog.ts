@@ -377,6 +377,20 @@ export const publicApiCatalog: readonly ApiEndpoint[] = [
 		purpose:
 			'Composed profile for the rebuildup/rebuildup profile README (Issue #1235): identity, GitHub activity and technology stack as ONE SVG canvas on the shared layout contract — section heads, common spine, module hierarchy. Query params: theme=dark|light, layout=mobile, grid=1 (review overlay). Anonymous access. Returns SVG.',
 	},
+	{
+		path: '/api/v1/github-profile/snapshot-health',
+		method: 'GET',
+		authentication: 'anonymous',
+		authForm: 'none',
+		rateLimitBinding: 'RATE_LIMIT_READ',
+		errorForm: '405 method_not_allowed',
+		responseExample: {
+			contentType: 'application/json',
+			cacheControl: 'no-store',
+		},
+		purpose:
+			'Snapshot freshness probe for the rebuildup/rebuildup profile pipeline (Issue #1254): per-source received_at / age / fresh|stale|absent state for the github_activity, github_stats and discord_presence D1 snapshots, so the production smoke can observe staleness without D1 credentials. Timestamps only — no payload content. Anonymous access. Returns JSON, never cached.',
+	},
 ];
 
 /**

@@ -46,7 +46,10 @@ export interface PortfolioEvidenceNoticeProps {
 
 const noticeClassName = css({
 	marginBlockStart: '4',
-	maxWidth: '720px',
+	// Issue #1278 — the 720px cap matched the old text-stack hero's
+	// media width; under the Split hero it left the notice stopping
+	// mid-grid, aligned with neither column. The notice describes the
+	// whole hero, so it takes the section's full measure.
 	fontFamily: 'sans',
 	fontSize: 'sm',
 	color: 'text.muted',

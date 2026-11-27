@@ -179,8 +179,16 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 							    dead region, not a composition. */}
 							{cover !== null || video !== null ? (
 								<Split gap="10" rowGap="8">
-									<div className={css(vStackGap6)}>
-										<h1 id="portfolio-detail-heading" className={css(pageTitleFlush)}>
+									{/* agy re-review (#1278): a tall portrait cover left
+									    the whole lower third of the split empty beside
+									    the short copy block. `alignSelf: center` shares
+									    that void above and below the identity cluster
+									    instead of parking it under the copy. */}
+									<div className={css({ ...vStackGap6, alignSelf: 'center' })}>
+										<h1
+											id="portfolio-detail-heading"
+											className={css({ ...pageTitleFlush, textWrap: 'balance' })}
+										>
 											{project.title}
 										</h1>
 										<p

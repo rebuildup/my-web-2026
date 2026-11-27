@@ -64,6 +64,11 @@ const FULL_STATS: BandStats = {
 		{ name: 'TypeScript', pct: 21.4, color: '#3178c6' },
 		{ name: 'Go', pct: 12.1, color: '#00add8' },
 	],
+	combinedLangs: [
+		{ name: 'TypeScript', pct: 40.1, color: '#3178c6' },
+		{ name: 'Rust', pct: 33.4, color: '#dea584' },
+		{ name: 'C#', pct: 15.2, color: '#178600' },
+	],
 };
 
 const EMPTY_STATS: BandStats = {
@@ -81,6 +86,7 @@ const EMPTY_STATS: BandStats = {
 	participatedRepos: null,
 	participatedStars: null,
 	participatedLangs: null,
+	combinedLangs: null,
 };
 
 const band1 = (over: Partial<Parameters<typeof composeBand1Model>[0]> = {}) =>

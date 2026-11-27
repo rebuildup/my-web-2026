@@ -101,15 +101,16 @@ snapshot は同一入力で `rank.current`（vendored calculateRank）と
 データとして残す。いずれかの入力が未計測（null）の場合 rank 全体を
 `null` とし、欠損を 0 として計算しない。
 
-**表示採用（2026-11-27 決定、Issue #1262）**: surface が表示するのは
-`rank.current` のみ。根拠: (1) 入力が all-time authored commits
-（`all_commits=true` の weight-10 経路）で、legacy 式は repos 入力を
-使わず median 中心の古い重み付けのため同じ入力でも系統的に上位
-（実測: current B+ 40.1% vs legacy A+ 10.2%）を返し、比較対象とし
-ては残すが表示には採用しない。(2) vendored `calculateRank` は
-upstream が維持する現行式で、owned スコープ入力との整合が契約で
-固定済み。`rank.legacy` は snapshot に残し、乖離の監視用データと
-して扱う（表示面には出さない）。
+**表示採用（2026-11-27 決定、Issue #1262、2026-11-27 精査で再確認）**:
+surface が表示するのは `rank.current` のみ。採用基準は新旧ではなく
+**評価指標としての妥当性と実態への適合性**: (1) 入力が all-time
+authored commits（`all_commits=true` の weight-10 経路）で、legacy 式は
+repos 入力を使わず median 中心の旧重み付けのため、同じ実態を測っても
+系統的に上位（実測: current B+ 40.1% vs legacy A+ 10.2%）を返す —
+percentile の意味が実態から乖離する。(2) vendored `calculateRank` は
+upstream が維持する現行式で、owned スコープ入力・all-time 窓との
+整合が契約で固定済み。`rank.legacy` は snapshot に残し、乖離の
+監視用データとして扱う（表示面には出さない）。
 
 - 検証証跡: `scripts/sync-github-stats.test.mjs` が同一入力での
   両式出力と null 伝播を固定。実データでの新旧差分は初回 sync 後の
@@ -121,17 +122,41 @@ upstream が維持する現行式で、owned スコープ入力との整合が�
 であり、本人のコード変更量ではない。表示面はこの区別を保つ:
 
 - `/vitals`: account/owned 指標の strip に続けて PARTICIPATED レーン
-  （参加プロジェクト数・参加 repo の stars・contributedTo affiliation
-  数）を muted 数値 + scope キャプションで従属表示する。参加指標を
+  （参加プロジェクト数 `repos.participated`・参加 repo の stars）を
+  muted 数値 + scope キャプションで従属表示する。参加指標を
   owned 指標へ合算・混在させない。
-- `/top-languages`: OWNED REPOS / PARTICIPATED REPOS の 2 系統バー。
+  - **冗長排除（2026-11-27 精査）**: `repos.participated`（実績計測）
+    と `metrics.contributedTo`（GraphQL `repositoriesContributedTo`
+    affiliation 数）は同一母集団を数える — 実データで両方 28 と一致。
+    レーンには計測値 `repos.participated` のみを出し、affiliation 値は
+    snapshot に残すが表示しない。
+- `/top-languages`: BOTH scope が計測済みなら **ALL — OWNED +
+  PARTICIPATED** の結合バーを主表示とし、OWNED REPOS /
+  PARTICIPATED REPOS を従属ペア（desktop 横並び・mobile 縦積み）で
+  比較表示する。片 scope のみ計測ならその scope の単独バー。
   各バーは「その scope の repo が持つ言語構成（bytes）」であり、
-  本人がその言語で書いた量ではない — キャプションで scope を明示
-  し、混合バーは作らない。
+  本人がその言語で書いた量ではない — キャプションで scope を明示する。
+- **本人のコード変更量の言語別計測（調査結果・2026-11-27）**:
+  現行データ源では**計測不能**。languages API・commits/issues
+  search は repo 単位の集計か件数のみで、作者別 diff bytes を
+  返さない。実現には repo clone + `git log --numstat` 相当の
+  言語別 attribution が必要で、(a) owned repo のみ clone 可能、
+  (b) participated の private repo は不可、(c) co-author 行の
+  帰属が曖昧、(d) 新規パイプラインと増分集計基盤が必要 — のため
+  現時点では見送り、repo 言語構成の scope 別表示を正とする。
+  将来 owned scope 限定の tokei/cloc 系バッチを検討する余地は
+  あるが、別 Issue で設計する。
 - `/profile`（互換合成）は凍結済みの旧構成を維持し、参加指標を
   追加しない（モバイル高さ予算・README 未参照の legacy 面）。
 - participated 集計が未計測（null）の場合、レーン/バー自体を出さ
   ない — 「参加なし」と「未計測」を区別する。
+- **stats card の 503 と配信継続**: `/api/v1/github-readme-stats/api`
+  は snapshot 不在時に 503 を返すが、`serveCard` の SWR store が
+  先に評価されるため、一度でも描画済みのカードは snapshot 障害中も
+  stale 配信を継続する（LKG 相当）。503 が出るのは store 未保持の
+  初回のみで、upstream 障害時と同じ degraded 契約 — 「HTTP 200 のみを
+  もって配信継続とみなさない」運用検証は docs/release.md の
+  post-deploy acceptance に従う。
 
 ## 4. 公開範囲
 

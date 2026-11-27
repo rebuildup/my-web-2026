@@ -169,8 +169,6 @@ const LUCIDE_INNER: Record<string, string> = {
 	user: '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
 	'git-fork':
 		'<circle cx="12" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><path d="M18 9v2c0 .6-.4 1-1 1H7c-.6 0-1-.4-1-1V9"/><path d="M12 12v3"/>',
-	users:
-		'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
 };
 
 /** Lucide glyph centered on (cx, cy), `size` px square. */
@@ -238,6 +236,13 @@ export interface BandStats {
 	readonly participatedRepos: number | null;
 	readonly participatedStars: number | null;
 	readonly participatedLangs: readonly BandLang[] | null;
+	/**
+	 * Owned + participated merged by language name (disjoint scopes,
+	 * contract §2.1) — the "total development area" primary view for
+	 * `/top-languages` (Issue #1262 review). `null` when neither
+	 * scope was measured.
+	 */
+	readonly combinedLangs: readonly BandLang[] | null;
 }
 
 export interface Band1Model {
@@ -425,10 +430,11 @@ const METRICS: readonly Metric[] = [
 
 /**
  * Participated scope (Issue #1262): repos contributed to but not
- * owned, the stars they carry, and the affiliation count. Kept as a
- * separate strip — these figures measure reach into OTHER people's
- * projects, so folding them into the owned figures would misstate
- * both (contract §2.1).
+ * owned, and the stars they carry. `repos.participated` (measured
+ * contribution evidence) and `metrics.contributedTo` (GraphQL
+ * affiliation count) count the same population — real data agrees
+ * (both 28) — so the lane shows the measured figure once, not two
+ * near-identical numbers.
  */
 const PARTICIPATED_METRICS: readonly Metric[] = [
 	{
@@ -438,7 +444,6 @@ const PARTICIPATED_METRICS: readonly Metric[] = [
 		unit: null,
 	},
 	{ icon: 'star', label: 'stars', value: (st) => st.participatedStars, unit: null },
-	{ icon: 'users', label: 'contrib', value: (st) => st.contributedTo, unit: null },
 ];
 
 /**
@@ -463,7 +468,7 @@ function metricStrip(
 	// Row plans snap to the column grid: 3 cells per row inside the
 	// caller's column span (full width → 4-col spans, right rail →
 	// 2-col spans). Every cell edge lands on a column boundary.
-	const perRow = 3;
+	const perRow = Math.min(3, list.length);
 	const rowCount = Math.ceil(list.length / perRow);
 	const rowPlan: readonly (readonly number[])[] = Array.from(
 		{ length: rowCount },
@@ -872,8 +877,7 @@ export function renderVitalsSvg(model: StatsSurfaceModel, opts: { grid?: boolean
 	// participation". Muted numerals + the scope caption keep it
 	// visually subordinate to the account figures.
 	const st = model.stats;
-	const hasParticipated =
-		st.participatedRepos !== null || st.participatedStars !== null || st.contributedTo !== null;
+	const hasParticipated = st.participatedRepos !== null || st.participatedStars !== null;
 	if (hasParticipated) {
 		const laneY = bottom + SPACE.s4 + 14;
 		const lane = metricStrip(spec, laneY, 0, spec.columns, st, T, sem, {
@@ -894,33 +898,63 @@ function scopeCaption(spec: CanvasSpec, x: number, y: number, T: Theme, label: s
 	return bandText(spec, 'caption', x, snap(spec, y), T.faint, label);
 }
 
-/** TOP LANGUAGES — the owned-scope share bar + legend alone
- * (github_stats_snapshot), plus the participated-scope bar when the
- * snapshot measured it (Issue #1262). Both bars show REPOSITORY
- * language composition (bytes), never the owner's personal change
- * volume — the captions keep that meaning explicit. */
+/** TOP LANGUAGES — repo language composition (bytes) per scope
+ * (github_stats_snapshot). When both scopes are measured the surface
+ * leads with the COMBINED mix (the total development area) and shows
+ * the owned/participated split as a subordinate pair — on desktop
+ * the pair sits side by side so the comparison reads at a glance;
+ * on mobile they stack. Never the owner's personal change volume —
+ * the captions keep that meaning explicit (contract §3.2). */
 export function renderTopLangsSvg(model: StatsSurfaceModel, opts: { grid?: boolean } = {}): string {
 	const spec = canvasSpec(model.mobile);
 	const { T } = skinFor(model.theme);
 	const m = spec.margin;
+	const w = contentWidth(spec);
 	const y = SPACE.s6;
 	const langs = model.stats.topLangs;
 	const participated = model.stats.participatedLangs;
+	const combined = model.stats.combinedLangs;
+	const bothScopes =
+		langs !== null && langs.length > 0 && participated !== null && participated.length > 0;
 	let s = '';
 	let bottom: number;
-	if (!langs || langs.length === 0) {
+	if ((!langs || langs.length === 0) && (!participated || participated.length === 0)) {
 		s += bandText(spec, 'body', m, snap(spec, y + 20), T.faint, 'language data unavailable');
 		bottom = snap(spec, y + 36);
+	} else if (bothScopes && combined && combined.length > 0) {
+		s += scopeCaption(spec, m, y, T, 'ALL — OWNED + PARTICIPATED');
+		const hero = langBar(spec, m, y + 14, w, combined, T);
+		s += hero.svg;
+		bottom = hero.bottom;
+		// scope pair: side-by-side on desktop, stacked on mobile
+		let pairY = bottom + SPACE.s4 + 6;
+		if (spec.mobile) {
+			for (const [label, scopeLangs] of [
+				['OWNED REPOS', langs],
+				['PARTICIPATED REPOS', participated],
+			] as const) {
+				s += scopeCaption(spec, m, pairY, T, label);
+				const bar = langBar(spec, m, pairY + 14, w, scopeLangs, T);
+				s += bar.svg;
+				bottom = bar.bottom;
+				pairY = bar.bottom + SPACE.s4 + 6;
+			}
+		} else {
+			const gap = spec.gutter;
+			const half = (w - gap) / 2;
+			s += scopeCaption(spec, m, pairY, T, 'OWNED REPOS');
+			s += scopeCaption(spec, m + half + gap, pairY, T, 'PARTICIPATED REPOS');
+			const ownedBar = langBar(spec, m, pairY + 14, half, langs, T);
+			const partBar = langBar(spec, m + half + gap, pairY + 14, half, participated, T);
+			s += ownedBar.svg + partBar.svg;
+			bottom = Math.max(ownedBar.bottom, partBar.bottom);
+		}
 	} else {
-		s += scopeCaption(spec, m, y, T, 'OWNED REPOS');
-		const bar = langBar(spec, m, y + 14, contentWidth(spec), langs, T);
-		s += bar.svg;
-		bottom = bar.bottom;
-	}
-	if (participated && participated.length > 0) {
-		const laneY = bottom + SPACE.s4 + 6;
-		s += scopeCaption(spec, m, laneY, T, 'PARTICIPATED REPOS');
-		const bar = langBar(spec, m, laneY + 14, contentWidth(spec), participated, T);
+		const ownedOnly = langs !== null && langs.length > 0;
+		const only = ownedOnly ? langs : (participated ?? []);
+		const label = ownedOnly ? 'OWNED REPOS' : 'PARTICIPATED REPOS';
+		s += scopeCaption(spec, m, y, T, label);
+		const bar = langBar(spec, m, y + 14, w, only, T);
 		s += bar.svg;
 		bottom = bar.bottom;
 	}

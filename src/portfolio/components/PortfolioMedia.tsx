@@ -203,4 +203,10 @@ const captionStyle = css({
 	fontSize: 'sm',
 	color: 'text.muted',
 	lineHeight: '1.5',
+	// Issue #1277 — the caption sits under a full-bleed bitmap, so
+	// without an inset it printed flush against the card's left and
+	// right edges while the copy below it is padded. `6` is the same
+	// inset the project card's body column uses, so the caption and
+	// the copy share one text axis.
+	paddingInline: '6',
 });

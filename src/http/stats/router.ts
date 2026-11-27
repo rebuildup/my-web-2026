@@ -27,6 +27,15 @@ import { upsertGitHubStatsSnapshot } from './store';
  * document on the next request.
  */
 
+// The stats snapshot carries `avatarDataUri` (schema ceiling 800 KiB)
+// plus aggregates, so the shared 16 KiB JSON cap cannot hold a
+// schema-valid document — the first production push measured ~21.7 KB
+// and was refused with 413 (Issue #1251). The cap here is sized to the
+// schema's own worst case (800 KiB avatar + document overhead) so a
+// valid payload can never be rejected on size alone; the global
+// default stays untouched for every other ingest route.
+const STATS_SNAPSHOT_MAX_BODY_BYTES = 1024 * 1024;
+
 export const statsRouter = new Hono<{
 	Bindings: Env;
 	Variables: { apiKey: ApiKeyContext };
@@ -36,7 +45,7 @@ statsRouter.put(
 	'/github',
 	requireApiKey,
 	rateLimitWrite,
-	jsonBody(GitHubStatsSnapshotBody),
+	jsonBody(GitHubStatsSnapshotBody, { maxBytes: STATS_SNAPSHOT_MAX_BODY_BYTES }),
 	async (c) => {
 		requireResourceAction(c, 'github_stats', 'write');
 		const snapshot = c.get('boundaryBody') as GitHubStatsSnapshotValue;

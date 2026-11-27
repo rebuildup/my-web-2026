@@ -169,6 +169,15 @@ describe('PUT /api/v1/stats/github', () => {
 		// the 5s default under loaded machines.
 	}, 30_000);
 
+	it('accepts a snapshot larger than the shared 16 KiB JSON cap (Issue #1251)', async () => {
+		await clearRows();
+		// ~48 KiB of base64 payload — over MAX_JSON_BODY_BYTES, under the
+		// route's own cap and the schema's 800 KiB avatar ceiling.
+		const bigAvatar = `data:image/png;base64,${'A'.repeat(48 * 1024)}`;
+		const res = await put({ ...VALID_SNAPSHOT, avatarDataUri: bigAvatar }, writeKey);
+		expect(res.status).toBe(200);
+	}, 30_000);
+
 	it('rejects a key without github_stats:write (403)', async () => {
 		await clearRows();
 		const res = await put(VALID_SNAPSHOT, readOnlyKey);

@@ -904,22 +904,15 @@ export function renderVitalsSvg(model: StatsSurfaceModel, opts: { grid?: boolean
 	});
 	let s = headline.svg;
 	let bottom = headline.bottom;
-	const groupGap = spec.mobile ? SPACE.s2 : SPACE.s4;
-	// hairline between the two meaning groups — consistency vs output
-	// must read as separate sections, not one uneven text grid
-	const divY = snap(spec, bottom + (spec.mobile ? 1 : 4));
-	s += `<line x1="${m}" y1="${divY}" x2="${m + contentWidth(spec)}" y2="${divY}" stroke="${T.line}"/>`;
 	const output = metricStrip(
 		spec,
-		bottom + groupGap,
+		bottom + (spec.mobile ? SPACE.s2 : SPACE.s4),
 		0,
 		spec.columns,
 		model.stats,
 		T,
 		sem,
-		// mobile drops to 2×2: four columns crowded 5-digit values
-		// against the next cell's icon
-		{ metrics: OUTPUT_METRICS, perRow: spec.mobile ? 2 : 4 },
+		{ metrics: OUTPUT_METRICS, perRow: 4 },
 	);
 	s += output.svg;
 	bottom = output.bottom;
@@ -934,10 +927,6 @@ export function renderVitalsSvg(model: StatsSurfaceModel, opts: { grid?: boolean
 		if (proj !== null) parts.push(`${proj.toLocaleString('en-US')} contributed projects`);
 		if (pst !== null) parts.push(`${pst.toLocaleString('en-US')} stars`);
 		const ly = snap(spec, bottom + SPACE.s4 + 12);
-		// hairline anchors the scope note to the card — the owned vs
-		// participated boundary stays explicit without a lane
-		const ruleY = snap(spec, ly - SPACE.s4);
-		s += `<line x1="${m}" y1="${ruleY}" x2="${m + contentWidth(spec)}" y2="${ruleY}" stroke="${T.line}"/>`;
 		s += lucide('git-fork', m + ICON.sm / 2, iconCenterY(ly, TT.label.size), ICON.sm, T.faint);
 		s += bandText(spec, 'label', m + ICON.sm + SPACE.s2, ly, T.muted, parts.join(' · '));
 		bottom = snap(spec, ly + SPACE.s2);
@@ -986,21 +975,17 @@ export function renderTopLangsSvg(model: StatsSurfaceModel, opts: { grid?: boole
 		// subordinate bars (thinner, fewer legend items) keep the hero
 		// the visual weight. Air is concentrated BETWEEN blocks
 		// (legend→next kicker) rather than inside them (kicker→bar).
-		// stacked mobile blocks need MORE air between legend and the
-		// next kicker than inside a block (kicker→bar) — otherwise
-		// Gestalt proximity attaches each kicker to the block above
-		const blockGap = SPACE.s4;
-		let pairY = bottom + blockGap;
+		let pairY = bottom + (spec.mobile ? SPACE.s2 : SPACE.s4);
 		if (spec.mobile) {
 			for (const [label, scopeLangs] of [
 				['OWNED REPOS', langs],
 				['PARTICIPATED REPOS', participated],
 			] as const) {
 				s += scopeCaption(spec, m, pairY, T, label);
-				const bar = langBar(spec, m, pairY + 4, w, scopeLangs, T, { sub: true });
+				const bar = langBar(spec, m, pairY + 8, w, scopeLangs, T, { sub: true });
 				s += bar.svg;
 				bottom = bar.bottom;
-				pairY = bar.bottom + blockGap;
+				pairY = bar.bottom + SPACE.s2;
 			}
 		} else {
 			const gap = spec.gutter;

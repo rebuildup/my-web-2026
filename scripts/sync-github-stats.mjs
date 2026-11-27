@@ -355,7 +355,8 @@ async function graphql(query, variables, token) {
 			return body.data;
 		} catch (err) {
 			lastErr = err;
-			const transient = err?.transient === true || err?.name === 'TimeoutError' || err instanceof SyntaxError;
+			const transient =
+				err?.transient === true || err?.name === 'TimeoutError' || err instanceof SyntaxError;
 			if (!transient || attempt === 2) throw err;
 			await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
 		}

@@ -4,6 +4,11 @@ import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
 import type { APIRequestContext, Page } from '@playwright/test';
 import {
+	GITHUB_PROFILE_SURFACES,
+	auditProfileImageSurface,
+	auditSnapshotHealth,
+} from '../scripts/prod-smoke-github-profile.mjs';
+import {
 	CANONICAL_PRODUCTION_ORIGIN,
 	CHROME_NAV_ROUTES,
 	EXPECTED_SECTION_COUNTS,
@@ -797,5 +802,132 @@ test.describe('transport security (Issue #446)', () => {
 				`implausible max-age in "${value}"`,
 			).toBe(true);
 		}
+	});
+});
+
+/**
+ * GitHub-profile surface smoke (Issue #1254).
+ *
+ * The public README embeds independent `/api/v1/github-profile/*`
+ * SVG surfaces (ADR-0027) and the daily launchd syncs keep their D1
+ * snapshots fresh. This block verifies, read-only:
+ *
+ *   - every README surface + compat surface answers 200 with a real
+ *     SVG in every theme/layout variant the README's <picture> swap
+ *     requests;
+ *   - `/api/v1/github-profile/snapshot-health` reports every
+ *     smoke-critical source `fresh` — the external freshness
+ *     observation the issue asks for, with no D1 credentials.
+ *
+ * Skipped in `transition` for the same reason as the Issue #500
+ * registry: `/snapshot-health` does not exist on the previous `main`
+ * build, so asserting it pre-deploy would red a smoke for a route
+ * nobody shipped yet.
+ */
+test.describe('production github-profile surfaces (Issue #1254)', () => {
+	test.skip(
+		PROD_SMOKE_PHASE === 'transition',
+		'Smoke #1 runs PRE merge/deploy; /api/v1/github-profile/snapshot-health ships with this branch, so the freshness contract is a post-deploy (versioned) assertion.',
+	);
+
+	for (const surface of GITHUB_PROFILE_SURFACES) {
+		const variants = [undefined, ...surface.variants];
+		for (const variant of variants) {
+			const suffix = variant ?? '';
+			test(`${surface.label} — ${surface.path}${suffix} serves an SVG`, async ({
+				baseURL,
+				request,
+			}) => {
+				const origin = smokeOrigin(baseURL);
+				const url = `${origin}${surface.path}${suffix}`;
+				const response = await request.get(url);
+				const observation = {
+					status: response.status(),
+					contentType: response.headers()['content-type'] ?? '',
+					bodyText: await response.text(),
+				};
+				const problems = auditProfileImageSurface(
+					surface.label,
+					`${surface.path}${suffix}`,
+					observation,
+				);
+				expect(problems, problems.join('\n')).toEqual([]);
+			});
+		}
+	}
+
+	test('snapshot-health reports every smoke-critical source fresh', async ({
+		baseURL,
+		request,
+	}) => {
+		const origin = smokeOrigin(baseURL);
+		const response = await request.get(`${origin}/api/v1/github-profile/snapshot-health`);
+		expect(response.status(), 'snapshot-health must answer 200').toBe(200);
+		const problems = auditSnapshotHealth({ json: await response.json() });
+		expect(problems, problems.join('\n')).toEqual([]);
+	});
+});
+
+/**
+ * Camo delivery check (Issue #1254).
+ *
+ * GitHub README viewers never fetch our origin directly — Camo does.
+ * A surface can be perfectly healthy at `rebuildup.dev` while Camo
+ * still serves a cached failure or times out upstream. This block
+ * reads the rendered profile page, extracts the camo URLs that proxy
+ * OUR surfaces, and requests each one: a 200 here is the end-to-end
+ * proof a README viewer gets.
+ *
+ * Deliberate boundary exception: unlike the representative-route
+ * contract, this check MUST leave the pointed origin — `github.com`
+ * (the README HTML) and `camo.githubusercontent.com` (the proxy) are
+ * the two hops being verified. It therefore only runs on the
+ * canonical production run; an offline rehearsal has no camo path to
+ * exercise and is skipped rather than allowed to fail.
+ */
+test.describe('production camo delivery (Issue #1254)', () => {
+	test.skip(
+		!IS_CANONICAL_RUN,
+		'Camo is only observable through the canonical github.com profile page; local rehearsals have no camo path.',
+	);
+	test('every camo-proxied profile surface answers 200', async ({ request }) => {
+		const profilePage = await request.get('https://github.com/rebuildup', {
+			headers: { 'user-agent': 'my-web-2026-prod-smoke' },
+		});
+		expect(profilePage.status(), 'github.com profile page must answer 200').toBe(200);
+		const html = await profilePage.text();
+
+		// Camo URLs carry the proxied target HEX-encoded in the last
+		// path segment (`/digest/<hex>`), not percent-encoded — decode
+		// it to learn which origin URL each proxy entry serves.
+		const camoTarget = (url: string): string | null => {
+			const segment = url.split('/').pop() ?? '';
+			// Buffer.from(_, 'hex') silently truncates on bad input —
+			// gate on the hex grammar first so a non-hex segment reads
+			// as "not ours" instead of decoding to garbage.
+			if (!/^[0-9a-f]+$/i.test(segment) || segment.length % 2 !== 0) return null;
+			return Buffer.from(segment, 'hex').toString('utf8');
+		};
+		const camoUrls = [
+			...new Set(
+				[...html.matchAll(/https:\/\/camo\.githubusercontent\.com\/[^\s"'<>]+/g)].map(
+					(match) => match[0],
+				),
+			),
+		].filter((url) => camoTarget(url)?.startsWith('https://rebuildup.dev/'));
+		expect(
+			camoUrls.length,
+			'the public profile README no longer embeds any camo-proxied github-profile image — either the README lost its profile section or the URL shape changed and this check needs updating',
+		).toBeGreaterThan(0);
+
+		const failures: string[] = [];
+		for (const camoUrl of camoUrls) {
+			const response = await request.get(camoUrl);
+			const contentType = response.headers()['content-type'] ?? '';
+			if (response.status() !== 200 || !contentType.startsWith('image/')) {
+				failures.push(`${camoUrl}: status ${response.status()}, content-type "${contentType}"`);
+			}
+		}
+		expect(failures, failures.join('\n')).toEqual([]);
 	});
 });

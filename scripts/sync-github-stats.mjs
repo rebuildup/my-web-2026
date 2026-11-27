@@ -75,6 +75,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { calculateRank } from '../src/vendor/github-readme-stats-fast/calculateRank.ts';
+import { acquireSyncLock, pushWithRetry } from './_sync-ops.mjs';
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(REPO_ROOT, '.tmp/github-stats-snapshot.json');
@@ -662,16 +663,20 @@ async function push(snapshot) {
 			'MY_WEB_2026_API_KEY is required for --push (needs the github_stats:write scope — see docs/runbook/github-activity-sync.md)',
 		);
 	}
-	const res = await fetch(INGEST_URL, {
-		method: 'PUT',
-		headers: {
-			'content-type': 'application/json',
-			authorization: `Bearer ${apiKey}`,
-			origin: new URL(INGEST_URL).origin,
+	const res = await pushWithRetry(
+		INGEST_URL,
+		{
+			method: 'PUT',
+			headers: {
+				'content-type': 'application/json',
+				authorization: `Bearer ${apiKey}`,
+				origin: new URL(INGEST_URL).origin,
+			},
+			body: JSON.stringify(snapshot),
+			signal: AbortSignal.timeout(15_000),
 		},
-		body: JSON.stringify(snapshot),
-		signal: AbortSignal.timeout(15_000),
-	});
+		{ label: 'sync-github-stats' },
+	);
 	if (!res.ok) throw new Error(`ingest ${INGEST_URL} -> ${res.status}`);
 }
 
@@ -689,6 +694,14 @@ function validateSnapshot(snapshot) {
 }
 
 async function main() {
+	const lock = acquireSyncLock(join(REPO_ROOT, '.tmp/sync-github-stats.lock'), {
+		label: 'sync-github-stats',
+	});
+	if (!lock) {
+		console.log('sync-github-stats: another run holds the sync lock — skipping');
+		return;
+	}
+	process.on('exit', () => lock.release());
 	const token = process.env.GITHUB_TOKEN || '';
 	const dryRun = process.argv.includes('--dry-run');
 	const pushMode = process.argv.includes('--push');

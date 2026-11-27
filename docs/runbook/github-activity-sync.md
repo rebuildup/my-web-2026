@@ -101,7 +101,11 @@ without the anonymisation secret.
 
 A daily run is enough — the snapshot carries its own
 `generatedOn`/`observedAt`, and the public surface shows whichever
-document observed most recently. Example launchd/cron entry:
+document observed most recently. Production runs it via the
+operator-machine launchd job
+`dev.rebuildup.my-web-2026-github-activity` at 09:00 and 21:00 JST
+(the evening slot is the same-day catch-up for a failed or missed
+morning run):
 
 ```sh
 infisical run --env=dev --path=/feeds/github-activity -- pnpm run activity:publish
@@ -109,6 +113,14 @@ infisical run --env=dev --path=/feeds/github-activity -- pnpm run activity:publi
 
 The push is idempotent: an unchanged snapshot simply overwrites the
 single D1 row; there is no PR noise because there is no PR.
+
+Resilience (Issue #1254): the script takes
+`.tmp/sync-github-activity.lock` before any network call (a second
+concurrent run exits cleanly; dead-pid or >2h locks are reclaimed),
+and the ingest PUT retries transient 429/5xx/network failures with
+bounded backoff via `scripts/_sync-ops.mjs`. Freshness is observable
+at `GET /api/v1/github-profile/snapshot-health`, which the daily
+prod-smoke asserts stays `fresh` for the smoke-critical sources.
 
 ## Privacy contract
 

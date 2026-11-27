@@ -302,11 +302,12 @@ interface LangSegment {
 	readonly other: boolean;
 }
 
-/** Top-3 named languages plus a single neutral "Other" remainder —
+/** Top-N named languages plus a single neutral "Other" remainder —
  * every colored slice stays labelled, and the bar always sums to
- * ~100% without silently dropping languages. */
-function langSegments(langs: readonly BandLang[]): readonly LangSegment[] {
-	const shown = langs.slice(0, 3);
+ * ~100% without silently dropping languages. The legend must name
+ * exactly the same top-N the bar draws or an unnamed slice appears. */
+function langSegments(langs: readonly BandLang[], named = 3): readonly LangSegment[] {
+	const shown = langs.slice(0, named);
 	const shownPct = shown.reduce((a, l) => a + l.pct, 0);
 	const otherPct = Math.max(0, 100 - shownPct);
 	const segs: LangSegment[] = shown.map((l) => ({ pct: l.pct, swatch: l.color, other: false }));
@@ -600,12 +601,13 @@ function langBar(
 	opts: { sub?: boolean } = {},
 ): { svg: string; bottom: number } {
 	const TT = typeTable(spec);
-	const segs = langSegments(langs);
 	// Subordinate bars (the owned/participated split under the hero)
 	// run thinner with tighter air so the hero keeps the hierarchy;
 	// their legend names fewer languages so it stays on one line.
 	const sub = opts.sub === true;
-	const barY = y + (sub ? 8 : 10);
+	const named = sub ? 2 : 3;
+	const segs = langSegments(langs, named);
+	const barY = y + (sub ? 6 : 10);
 	const barH = sub ? 6 : 10;
 	const fs = TT.label.size;
 	let stops = '';
@@ -621,7 +623,7 @@ function langBar(
 	s += `<rect x="${x}" y="${barY}" width="${w}" height="${barH}" rx="${barH / 2}" fill="url(#${gid})"/>`;
 	// leaders: every named language + the Other remainder, in bar order
 	const leaders: { name: string; pct: number; swatch: string }[] = langs
-		.slice(0, sub ? 2 : 3)
+		.slice(0, named)
 		.map((l) => ({ name: l.name, pct: l.pct, swatch: l.color }));
 	const namedPct = leaders.reduce((a, l) => a + l.pct, 0);
 	const otherPct = 100 - namedPct;
@@ -629,7 +631,7 @@ function langBar(
 		leaders.push({ name: 'Other', pct: otherPct, swatch: '#8b949e' });
 	}
 	let lx = x;
-	let ly2 = barY + barH + (sub ? 11 : 15);
+	let ly2 = barY + barH + (sub ? 13 : 15);
 	for (const l of leaders) {
 		const txt = `${l.name} ${l.pct.toFixed(1)}%`;
 		const itemW = 10 + flowWidth(txt, fs) + 14;
@@ -644,7 +646,7 @@ function langBar(
 		s += bandText(spec, 'label', lx + 11, ly2, T.muted, txt);
 		lx += itemW;
 	}
-	return { svg: s, bottom: snap(spec, ly2 + (sub ? 6 : 8)) };
+	return { svg: s, bottom: snap(spec, ly2 + 8) };
 }
 
 /**
@@ -920,7 +922,7 @@ export function renderVitalsSvg(model: StatsSurfaceModel, opts: { grid?: boolean
 			metrics: PARTICIPATED_METRICS,
 			caption: 'PARTICIPATED — repos contributed to, not owned',
 			muted: true,
-			captionDy: 14,
+			captionDy: 18,
 		});
 		body += lane.svg;
 		bottom = lane.bottom;
@@ -960,7 +962,9 @@ export function renderTopLangsSvg(model: StatsSurfaceModel, opts: { grid?: boole
 		bottom = snap(spec, y + 36);
 	} else if (bothScopes && combined && combined.length > 0) {
 		s += scopeCaption(spec, m, y, T, 'ALL REPOS — OWNED + PARTICIPATED');
-		const hero = langBar(spec, m, y + 14, w, combined, T);
+		// kicker→bar air matches the subordinate bars (16px) so all
+		// three blocks share one vertical rhythm
+		const hero = langBar(spec, m, y + 6, w, combined, T);
 		s += hero.svg;
 		bottom = hero.bottom;
 		// scope pair: side-by-side on desktop, stacked on mobile —
@@ -973,18 +977,18 @@ export function renderTopLangsSvg(model: StatsSurfaceModel, opts: { grid?: boole
 				['PARTICIPATED REPOS', participated],
 			] as const) {
 				s += scopeCaption(spec, m, pairY, T, label);
-				const bar = langBar(spec, m, pairY + 12, w, scopeLangs, T, { sub: true });
+				const bar = langBar(spec, m, pairY + 10, w, scopeLangs, T, { sub: true });
 				s += bar.svg;
 				bottom = bar.bottom;
-				pairY = bar.bottom + SPACE.s2 + 4;
+				pairY = bar.bottom + SPACE.s4;
 			}
 		} else {
 			const gap = spec.gutter;
 			const half = (w - gap) / 2;
 			s += scopeCaption(spec, m, pairY, T, 'OWNED REPOS');
 			s += scopeCaption(spec, m + half + gap, pairY, T, 'PARTICIPATED REPOS');
-			const ownedBar = langBar(spec, m, pairY + 12, half, langs, T, { sub: true });
-			const partBar = langBar(spec, m + half + gap, pairY + 12, half, participated, T, {
+			const ownedBar = langBar(spec, m, pairY + 10, half, langs, T, { sub: true });
+			const partBar = langBar(spec, m + half + gap, pairY + 10, half, participated, T, {
 				sub: true,
 			});
 			s += ownedBar.svg + partBar.svg;
@@ -995,7 +999,7 @@ export function renderTopLangsSvg(model: StatsSurfaceModel, opts: { grid?: boole
 		const only = ownedOnly ? langs : (participated ?? []);
 		const label = ownedOnly ? 'OWNED REPOS' : 'PARTICIPATED REPOS';
 		s += scopeCaption(spec, m, y, T, label);
-		const bar = langBar(spec, m, y + 14, w, only, T);
+		const bar = langBar(spec, m, y + 6, w, only, T);
 		s += bar.svg;
 		bottom = bar.bottom;
 	}

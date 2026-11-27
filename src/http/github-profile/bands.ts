@@ -423,29 +423,19 @@ const METRICS: readonly Metric[] = [
 		value: (st) => st.totalContributions,
 		unit: null,
 	},
-	{ icon: 'star', label: 'stars', value: (st) => st.totalStars, unit: null },
 	{ icon: 'commit', label: 'commits', value: (st) => st.totalCommits, unit: null },
 	{ icon: 'pr', label: 'PRs', value: (st) => st.totalPRs, unit: null },
 	{ icon: 'issues', label: 'issues', value: (st) => st.totalIssues, unit: null },
+	{ icon: 'star', label: 'stars', value: (st) => st.totalStars, unit: null },
 ];
 
-/**
- * Participated scope (Issue #1262): repos contributed to but not
- * owned, and the stars they carry. `repos.participated` (measured
- * contribution evidence) and `metrics.contributedTo` (GraphQL
- * affiliation count) count the same population — real data agrees
- * (both 28) — so the lane shows the measured figure once, not two
- * near-identical numbers.
- */
-const PARTICIPATED_METRICS: readonly Metric[] = [
-	{
-		icon: 'git-fork',
-		label: 'projects',
-		value: (st) => st.participatedRepos,
-		unit: null,
-	},
-	{ icon: 'star', label: 'stars', value: (st) => st.participatedStars, unit: null },
-];
+/** Vitals grouping (Issue #1264 r3): the strip splits by meaning —
+ * CONSISTENCY (streak + contributions, the figures a profile is
+ * remembered by) gets the wide cells, OUTPUT (authored work + owned
+ * reach) fills the second row. Two rows of four keeps every metric
+ * on one baseline pair instead of the old 3+3+lane stack. */
+const HEADLINE_METRICS: readonly Metric[] = METRICS.slice(0, 2);
+const OUTPUT_METRICS: readonly Metric[] = METRICS.slice(2);
 
 /**
  * The metrics strip: equal cells on the column grid — icon +
@@ -464,6 +454,7 @@ function metricStrip(
 	sem: (k: string) => string,
 	opts: {
 		metrics?: readonly Metric[];
+		perRow?: number;
 		caption?: string;
 		muted?: boolean;
 		captionDy?: number;
@@ -471,14 +462,14 @@ function metricStrip(
 ): { svg: string; bottom: number } {
 	const TT = typeTable(spec);
 	const list = opts.metrics ?? METRICS;
-	// Row plans snap to the column grid: 3 cells per row inside the
+	// Row plans snap to the column grid: cells per row inside the
 	// caller's column span (full width → 4-col spans, right rail →
 	// 2-col spans). Every cell edge lands on a column boundary.
-	const perRow = Math.min(3, list.length);
+	const perRow = Math.min(opts.perRow ?? 3, list.length);
 	const rowCount = Math.ceil(list.length / perRow);
 	const rowPlan: readonly (readonly number[])[] = Array.from(
 		{ length: rowCount },
-		(_, r) => [r * perRow, r * perRow + 1, r * perRow + 2] as const,
+		(_, r) => Array.from({ length: perRow }, (_, i) => r * perRow + i) as readonly number[],
 	);
 	// cell anatomy: stat baseline → label ~6px below the numeral's
 	// foot, then a full s4 air gap before the next row's stat — the
@@ -631,7 +622,7 @@ function langBar(
 		leaders.push({ name: 'Other', pct: otherPct, swatch: '#8b949e' });
 	}
 	let lx = x;
-	let ly2 = barY + barH + (sub ? 13 : 15);
+	let ly2 = barY + barH + (sub ? 11 : 15);
 	for (const l of leaders) {
 		const txt = `${l.name} ${l.pct.toFixed(1)}%`;
 		const itemW = 10 + flowWidth(txt, fs) + 14;
@@ -898,36 +889,49 @@ function statsSurfaceShell(
 	return svg;
 }
 
-/** VITALS — the account-figures strip alone (github_stats_snapshot). */
+/** VITALS — the account-figures strip alone (github_stats_snapshot).
+ * Two meaning-groups (consistency headline, then output) plus the
+ * participated scope as ONE muted line — a scope note, not a second
+ * metric row (Issue #1264 r3 height regression fix). */
 export function renderVitalsSvg(model: StatsSurfaceModel, opts: { grid?: boolean } = {}): string {
 	const spec = canvasSpec(model.mobile);
 	const { T, sem } = skinFor(model.theme);
-	const strip = metricStrip(spec, SPACE.s6, 0, spec.columns, model.stats, T, sem);
-	let body = strip.svg;
-	let bottom = strip.bottom;
-	// Participated lane (Issue #1262): shown only when the snapshot
-	// measured the scope — an absent aggregation hides the lane
-	// instead of printing a row of dashes that reads as "no
-	// participation". Muted numerals + the scope caption keep it
-	// visually subordinate to the account figures.
+	const TT = typeTable(spec);
+	const m = spec.margin;
+	const headline = metricStrip(spec, SPACE.s6, 0, spec.columns, model.stats, T, sem, {
+		metrics: HEADLINE_METRICS,
+		perRow: 2,
+	});
+	let s = headline.svg;
+	let bottom = headline.bottom;
+	const output = metricStrip(
+		spec,
+		bottom + (spec.mobile ? SPACE.s2 : SPACE.s4),
+		0,
+		spec.columns,
+		model.stats,
+		T,
+		sem,
+		{ metrics: OUTPUT_METRICS, perRow: 4 },
+	);
+	s += output.svg;
+	bottom = output.bottom;
+	// Participated scope (Issue #1262): a single muted line — shown
+	// only when the snapshot measured it, so an absent aggregation
+	// never prints a fake zero. The short form keeps mobile width.
 	const st = model.stats;
-	const hasParticipated = st.participatedRepos !== null || st.participatedStars !== null;
-	if (hasParticipated) {
-		const laneY = bottom + SPACE.s4 + 14;
-		// Two cells only: colCount narrows the span so the pair lands
-		// on the SAME column tracks as the account strip above (cols
-		// 0+4 desktop / 0+2 mobile) instead of straddling them, and
-		// captionDy lifts the kicker clear of the first numeral row.
-		const lane = metricStrip(spec, laneY, 0, spec.mobile ? 4 : 8, st, T, sem, {
-			metrics: PARTICIPATED_METRICS,
-			caption: 'PARTICIPATED — repos contributed to, not owned',
-			muted: true,
-			captionDy: 18,
-		});
-		body += lane.svg;
-		bottom = lane.bottom;
+	const proj = st.participatedRepos;
+	const pst = st.participatedStars;
+	if (proj !== null || pst !== null) {
+		const parts: string[] = [];
+		if (proj !== null) parts.push(`${proj.toLocaleString('en-US')} contributed projects`);
+		if (pst !== null) parts.push(`${pst.toLocaleString('en-US')} stars`);
+		const ly = snap(spec, bottom + SPACE.s4 + 12);
+		s += lucide('git-fork', m + ICON.sm / 2, iconCenterY(ly, TT.label.size), ICON.sm, T.faint);
+		s += bandText(spec, 'label', m + ICON.sm + SPACE.s2, ly, T.muted, parts.join(' · '));
+		bottom = snap(spec, ly + SPACE.s2);
 	}
-	return statsSurfaceShell(model, body, bottom, opts);
+	return statsSurfaceShell(model, s, bottom, opts);
 }
 
 /** Scope caption above one language bar — the two scopes measure
@@ -969,26 +973,27 @@ export function renderTopLangsSvg(model: StatsSurfaceModel, opts: { grid?: boole
 		bottom = hero.bottom;
 		// scope pair: side-by-side on desktop, stacked on mobile —
 		// subordinate bars (thinner, fewer legend items) keep the hero
-		// the visual weight
-		let pairY = bottom + SPACE.s4 + 6;
+		// the visual weight. Air is concentrated BETWEEN blocks
+		// (legend→next kicker) rather than inside them (kicker→bar).
+		let pairY = bottom + (spec.mobile ? SPACE.s2 : SPACE.s4);
 		if (spec.mobile) {
 			for (const [label, scopeLangs] of [
 				['OWNED REPOS', langs],
 				['PARTICIPATED REPOS', participated],
 			] as const) {
 				s += scopeCaption(spec, m, pairY, T, label);
-				const bar = langBar(spec, m, pairY + 10, w, scopeLangs, T, { sub: true });
+				const bar = langBar(spec, m, pairY + 8, w, scopeLangs, T, { sub: true });
 				s += bar.svg;
 				bottom = bar.bottom;
-				pairY = bar.bottom + SPACE.s4;
+				pairY = bar.bottom + SPACE.s2;
 			}
 		} else {
 			const gap = spec.gutter;
 			const half = (w - gap) / 2;
 			s += scopeCaption(spec, m, pairY, T, 'OWNED REPOS');
 			s += scopeCaption(spec, m + half + gap, pairY, T, 'PARTICIPATED REPOS');
-			const ownedBar = langBar(spec, m, pairY + 10, half, langs, T, { sub: true });
-			const partBar = langBar(spec, m + half + gap, pairY + 10, half, participated, T, {
+			const ownedBar = langBar(spec, m, pairY + 8, half, langs, T, { sub: true });
+			const partBar = langBar(spec, m + half + gap, pairY + 8, half, participated, T, {
 				sub: true,
 			});
 			s += ownedBar.svg + partBar.svg;

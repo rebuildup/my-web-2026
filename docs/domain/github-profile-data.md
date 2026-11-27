@@ -121,19 +121,24 @@ upstream が維持する現行式で、owned スコープ入力・all-time 窓�
 `languages.*` / `stars.*` / `repos.*` は **リポジトリ単位の集計**
 であり、本人のコード変更量ではない。表示面はこの区別を保つ:
 
-- `/vitals`: account/owned 指標の strip に続けて PARTICIPATED レーン
-  （参加プロジェクト数 `repos.participated`・参加 repo の stars）を
-  muted 数値 + scope キャプションで従属表示する。参加指標を
-  owned 指標へ合算・混在させない。
-  - **冗長排除（2026-11-27 精査）**: `repos.participated`（実績計測）
-    と `metrics.contributedTo`（GraphQL `repositoriesContributedTo`
-    affiliation 数）は同一母集団を数える — 実データで両方 28 と一致。
-    レーンには計測値 `repos.participated` のみを出し、affiliation 値は
+- `/vitals`: account/owned 指標を意味グループ（consistency:
+  streak/contributions → output: commits/PRs/issues/stars）に分けた
+  2 行 strip とし、PARTICIPATED スコープ（参加プロジェクト数
+  `repos.participated`・参加 repo の stars）はその下に 1 行の
+  muted テキストとして従属表示する。参加指標を owned 指標へ
+  合算・混在させず、別 metric row も立てない（高さ抑制）。
+  - **冗長排除（2026-11-27 精査）**: `repos.participated`（実績計測:
+    直近窓の commit/PR 実績が確認できた repo）と
+    `metrics.contributedTo`（GraphQL `repositoriesContributedTo`
+    affiliation 数）は**定義の異なる別集計**であり、実データで
+    件数が一致（ともに 28）しても母集団の同一性は証明されない
+    — affiliation は貢献実績ゼロの repo も含み得る。表示には
+    実績計測値 `repos.participated` のみを使い、affiliation 値は
     snapshot に残すが表示しない。
-- `/top-languages`: BOTH scope が計測済みなら **ALL — OWNED +
+- `/top-languages`: BOTH scope が計測済みなら **ALL REPOS — OWNED +
   PARTICIPATED** の結合バーを主表示とし、OWNED REPOS /
-  PARTICIPATED REPOS を従属ペア（desktop 横並び・mobile 縦積み）で
-  比較表示する。片 scope のみ計測ならその scope の単独バー。
+  PARTICIPATED REPOS を従属ペア（desktop 横並び・mobile 縦積み、
+  6px 細バー + top-2 言語凡例）で比較表示する。片 scope のみ計測ならその scope の単独バー。
   各バーは「その scope の repo が持つ言語構成（bytes）」であり、
   本人がその言語で書いた量ではない — キャプションで scope を明示する。
 - **本人のコード変更量の言語別計測（調査結果・2026-11-27）**:

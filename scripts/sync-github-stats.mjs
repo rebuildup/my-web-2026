@@ -326,23 +326,41 @@ export function buildStatsSnapshot({
 // ---------------------------------------------------------------------------
 
 async function graphql(query, variables, token) {
-	const res = await fetch(`${API}/graphql`, {
-		method: 'POST',
-		headers: {
-			'content-type': 'application/json',
-			accept: 'application/vnd.github+json',
-			'user-agent': UA,
-			authorization: `Bearer ${token}`,
-		},
-		body: JSON.stringify({ query, variables }),
-		signal: AbortSignal.timeout(20_000),
-	});
-	if (!res.ok) throw new Error(`github graphql -> ${res.status}`);
-	const body = await res.json();
-	if (body.errors?.length) {
-		throw new Error(`github graphql errors: ${body.errors[0]?.message ?? 'unknown'}`);
+	// Transient upstream failures (5xx, gateway timeouts, empty bodies)
+	// get two retries with a short backoff; schema errors and GraphQL
+	// `errors` payloads are deterministic and fail immediately.
+	let lastErr;
+	for (let attempt = 0; attempt < 3; attempt++) {
+		try {
+			const res = await fetch(`${API}/graphql`, {
+				method: 'POST',
+				headers: {
+					'content-type': 'application/json',
+					accept: 'application/vnd.github+json',
+					'user-agent': UA,
+					authorization: `Bearer ${token}`,
+				},
+				body: JSON.stringify({ query, variables }),
+				signal: AbortSignal.timeout(20_000),
+			});
+			if (!res.ok) {
+				const err = new Error(`github graphql -> ${res.status}`);
+				if (res.status < 500) throw err;
+				throw Object.assign(err, { transient: true });
+			}
+			const body = await res.json();
+			if (body.errors?.length) {
+				throw new Error(`github graphql errors: ${body.errors[0]?.message ?? 'unknown'}`);
+			}
+			return body.data;
+		} catch (err) {
+			lastErr = err;
+			const transient = err?.transient === true || err?.name === 'TimeoutError' || err instanceof SyntaxError;
+			if (!transient || attempt === 2) throw err;
+			await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
+		}
 	}
-	return body.data;
+	throw lastErr;
 }
 
 async function fetchStreakAllTime(token) {
@@ -530,7 +548,7 @@ query($login:String!){
   user(login:$login){
     contributedRepos: repositoriesContributedTo(first:100,contributionTypes:[COMMIT,ISSUE,PULL_REQUEST,REPOSITORY]){
       totalCount pageInfo{hasNextPage}
-      nodes{name isPrivate isFork stargazerCount owner{login type} languages(first:10,orderBy:{field:SIZE,direction:DESC}){edges{size node{color name}}}}
+      nodes{name isPrivate isFork stargazerCount owner{login} languages(first:10,orderBy:{field:SIZE,direction:DESC}){edges{size node{color name}}}}
     }
   }
 }`;
@@ -601,7 +619,7 @@ async function fetchExternalRepoNodes(names, token) {
 				const [owner, name] = fullName.split('/');
 				return `r${i}: repository(owner:${JSON.stringify(owner)},name:${JSON.stringify(name)}){
 					name isPrivate isFork stargazerCount
-					owner{login type}
+					owner{login}
 					languages(first:10,orderBy:{field:SIZE,direction:DESC}){edges{size node{color name}}}
 				}`;
 			})

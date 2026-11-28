@@ -133,6 +133,36 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 	// `Period` label claims a recorded period while showing nothing, so
 	// the pair is dropped exactly as `Role` is.
 	const hasPeriod = project.periodLabel !== null && project.periodLabel.trim() !== '';
+	// Issue #1278 — the hero split and the no-media fallback render the
+	// same role/period `<dl>`; one element keeps the two branches from
+	// drifting (and from doubling the C-4 grid signature).
+	const rolePeriodList = (
+		<dl
+			className={css({
+				margin: '0',
+				display: 'grid',
+				gridTemplateColumns: { base: '1fr', sm: 'auto auto auto auto' },
+				columnGap: '6',
+				rowGap: '2',
+				fontFamily: 'sans',
+				fontSize: 'sm',
+				color: 'text.muted',
+			})}
+		>
+			{hasRole ? (
+				<>
+					<dt className={css(tagMonoXsCaps)}>Role</dt>
+					<dd className={css({ margin: '0' })}>{project.role}</dd>
+				</>
+			) : null}
+			{hasPeriod ? (
+				<>
+					<dt className={css(tagMonoXsCaps)}>Period</dt>
+					<dd className={css({ margin: '0' })}>{project.periodLabel}</dd>
+				</>
+			) : null}
+		</dl>
+	);
 	return (
 		<>
 			<SkipLink href="#portfolio-detail" />
@@ -202,34 +232,7 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 										>
 											{project.summary}
 										</p>
-										<dl
-											className={css({
-												margin: '0',
-												display: 'grid',
-												gridTemplateColumns: {
-													base: '1fr',
-													sm: 'auto auto auto auto',
-												},
-												columnGap: '6',
-												rowGap: '2',
-												fontFamily: 'sans',
-												fontSize: 'sm',
-												color: 'text.muted',
-											})}
-										>
-											{hasRole ? (
-												<>
-													<dt className={css(tagMonoXsCaps)}>Role</dt>
-													<dd className={css({ margin: '0' })}>{project.role}</dd>
-												</>
-											) : null}
-											{hasPeriod ? (
-												<>
-													<dt className={css(tagMonoXsCaps)}>Period</dt>
-													<dd className={css({ margin: '0' })}>{project.periodLabel}</dd>
-												</>
-											) : null}
-										</dl>
+										{rolePeriodList}
 										<Cluster aria-label="facets" gap="2">
 											{project.facets.map((facet) => (
 												<Badge
@@ -279,31 +282,7 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 									>
 										{project.summary}
 									</p>
-									<dl
-										className={css({
-											margin: '0',
-											display: 'grid',
-											gridTemplateColumns: { base: '1fr', sm: 'auto auto auto auto' },
-											columnGap: '6',
-											rowGap: '2',
-											fontFamily: 'sans',
-											fontSize: 'sm',
-											color: 'text.muted',
-										})}
-									>
-										{hasRole ? (
-											<>
-												<dt className={css(tagMonoXsCaps)}>Role</dt>
-												<dd className={css({ margin: '0' })}>{project.role}</dd>
-											</>
-										) : null}
-										{hasPeriod ? (
-											<>
-												<dt className={css(tagMonoXsCaps)}>Period</dt>
-												<dd className={css({ margin: '0' })}>{project.periodLabel}</dd>
-											</>
-										) : null}
-									</dl>
+									{rolePeriodList}
 									<Cluster aria-label="facets" gap="2">
 										{project.facets.map((facet) => (
 											<Badge

@@ -103,16 +103,24 @@ export function StackPage({ data }: { data: StackPageData }) {
 								<span lang="ja">Contact を見る</span>
 								<MaterialSymbol d={ARROW_FORWARD_PATH} size={18} />
 							</Button>
-							<Button
-								as="a"
+							{/* Issue #1323 — `Button variant="secondary"` is not
+							    inverse-safe: on an inverse tone `bg.surface`
+							    steps to `mono.surface.control` while
+							    `text.default` steps to `mono.ink.inverse`,
+							    which axe measures below AA in both
+							    appearances. The tone contract only promises
+							    Button/TextLink correctness for the primary
+							    operation fill, so the reference link takes
+							    the chip affordance instead. */}
+							<TextLink
 								href="https://github.com/rebuildup/my-web-2026"
 								target="_blank"
 								rel="noopener noreferrer"
-								variant="secondary"
+								variant="chip"
 							>
 								<span>GitHub repository</span>
 								<MaterialSymbol d={ARROW_FORWARD_PATH} size={18} />
-							</Button>
+							</TextLink>
 						</Cluster>
 					</SectionHeading>
 				</PageSection>

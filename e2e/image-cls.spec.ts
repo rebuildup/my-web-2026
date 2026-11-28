@@ -270,7 +270,17 @@ test.describe('image layout contract (/design-system 07 — Image)', () => {
 
 		// The broken rendering collapses the box while the image is in
 		// flight and then grows it back to the same height.
-		expect(boxes.before.height).toBeLessThan(BOX_EPSILON_PX);
+		//
+		// Issue #1323 — #1295 gave every cover a 1px hairline border,
+		// so the stripped box collapses to its border box (2px), not
+		// to 0. The guard's claim is unchanged: no RESERVED height
+		// remains — the floor is the frame, not space the image will
+		// need, so it is measured rather than hard-coded.
+		const collapsedFloorPx = await page.locator(LAZY_SCOPE_IMG_SELECTOR).evaluate((node) => {
+			const style = getComputedStyle(node);
+			return Number.parseFloat(style.borderTopWidth) + Number.parseFloat(style.borderBottomWidth);
+		});
+		expect(boxes.before.height).toBeLessThanOrEqual(collapsedFloorPx + BOX_EPSILON_PX);
 		expect(boxes.after.height).toBeGreaterThan(boxes.before.height + 1);
 
 		// And the sentinel below it was pushed down by that growth.

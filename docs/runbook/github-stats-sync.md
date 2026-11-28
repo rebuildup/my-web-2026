@@ -71,7 +71,8 @@ answered.
 
 Daily is enough — vitals move slowly. Production runs it via the
 operator-machine launchd job `dev.rebuildup.my-web-2026-github-stats`
-(daily 09:30 JST, after the 09:00 activity sync), mirroring the
+(09:30 and 21:30 JST — the evening slot is the same-day catch-up for
+a failed or missed morning run), mirroring the
 `dev.rebuildup.my-web-2026-github-activity` plist:
 
 ```sh
@@ -81,6 +82,21 @@ infisical run --env=dev --path=/feeds/github-stats -- \
 
 Log: `/tmp/my-web-2026-stats-sync.log`. A missed day is safe — the
 snapshot keeps serving Last Known Good until the next successful push.
+
+Resilience (Issue #1254):
+
+- **Multi-run prevention** — the script takes `.tmp/sync-github-stats.lock`
+  (pid + start time) before any network call; a second concurrent run
+  logs and exits 0. A lock whose pid is dead or older than 2h is
+  reclaimed automatically.
+- **Transient retry** — the ingest PUT retries 429/5xx/network errors
+  up to 3 times with exponential backoff (`scripts/_sync-ops.mjs`).
+  4xx rejections still fail fast.
+- **Sleep/wake** — launchd fires a missed `StartCalendarInterval` once
+  on wake; the second daily slot covers a run that failed outright.
+- **Freshness observation** — `GET /api/v1/github-profile/snapshot-health`
+  reports `received_at`/age/state per snapshot source; the daily
+  prod-smoke fails when a smoke-critical source is not `fresh`.
 
 ## Rank comparison (contract §3.1)
 

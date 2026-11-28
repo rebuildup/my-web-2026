@@ -30,8 +30,11 @@ export function parseStatsSnapshot(payload: unknown): GitHubStatsSnapshotValue |
 	return parsed.success ? parsed.data : null;
 }
 
-function bandLangs(snapshot: GitHubStatsSnapshotValue | null): BandStats['topLangs'] {
-	const langs = snapshot?.languages?.owned;
+function bandLangs(
+	snapshot: GitHubStatsSnapshotValue | null,
+	scope: 'owned' | 'participated',
+): BandStats['topLangs'] {
+	const langs = snapshot?.languages?.[scope];
 	if (!langs || langs.length === 0) return null;
 	const total = langs.reduce((sum, entry) => sum + entry.size, 0);
 	if (total <= 0) return null;
@@ -47,6 +50,49 @@ function bandLangs(snapshot: GitHubStatsSnapshotValue | null): BandStats['topLan
 		.slice(0, 10);
 }
 
+/**
+ * Owned + participated merged into one language mix (Issue #1262
+ * review): the scopes are disjoint repo sets (contract §2.1), so
+ * summing bytes per language name yields the "total development
+ * area" composition — still repo bytes, never the owner's personal
+ * change volume. `null` unless BOTH scopes were measured, so the
+ * combined bar never silently impersonates a single scope.
+ */
+function combinedBandLangs(snapshot: GitHubStatsSnapshotValue | null): BandStats['combinedLangs'] {
+	const owned = snapshot?.languages?.owned;
+	const participated = snapshot?.languages?.participated;
+	if (!owned?.length || !participated?.length) return null;
+	const byName = new Map<string, { size: number; count: number; color: string | null }>();
+	for (const scope of [owned, participated]) {
+		for (const entry of scope) {
+			const prev = byName.get(entry.name);
+			if (prev) {
+				prev.size += entry.size;
+				prev.count += entry.count;
+				prev.color ??= entry.color;
+			} else {
+				byName.set(entry.name, {
+					size: entry.size,
+					count: entry.count,
+					color: entry.color,
+				});
+			}
+		}
+	}
+	const total = [...byName.values()].reduce((sum, e) => sum + e.size, 0);
+	if (total <= 0) return null;
+	return [...byName.entries()]
+		.map(
+			([name, e]): BandLang => ({
+				name,
+				pct: Math.round((e.size / total) * 1000) / 10,
+				color: e.color ?? '#8b949e',
+			}),
+		)
+		.sort((a, b) => b.pct - a.pct)
+		.slice(0, 10);
+}
+
 /** `null` snapshot → every field `null` (the `—` honest variant). */
 export function bandStatsFromSnapshot(snapshot: GitHubStatsSnapshotValue | null): BandStats {
 	return {
@@ -56,7 +102,11 @@ export function bandStatsFromSnapshot(snapshot: GitHubStatsSnapshotValue | null)
 		contributedTo: snapshot?.metrics.contributedTo ?? null,
 		rankLevel: snapshot?.rank?.current.level ?? null,
 		rankPercentile: snapshot?.rank?.current.percentile ?? null,
-		topLangs: bandLangs(snapshot),
+		topLangs: bandLangs(snapshot, 'owned'),
+		participatedRepos: snapshot?.repos?.participated ?? null,
+		participatedStars: snapshot?.stars?.participated ?? null,
+		participatedLangs: bandLangs(snapshot, 'participated'),
+		combinedLangs: combinedBandLangs(snapshot),
 		totalStars: snapshot?.stars?.owned ?? null,
 		totalCommits: snapshot?.metrics.commitsAuthoredAllTime ?? null,
 		totalPRs: snapshot?.metrics.prsOpenedAllTime ?? null,

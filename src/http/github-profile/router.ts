@@ -21,6 +21,7 @@ import { composeProfileCardModel } from './model';
 import { type NowStats, renderProfileNowMobileSvg, renderProfileNowSvg } from './now';
 import { renderPresenceSvg } from './presence';
 import { renderProfileSvg } from './profile';
+import { type SnapshotRow, buildSnapshotHealth } from './snapshot-health';
 import { renderStackSvg } from './stack';
 import {
 	avatarFromSnapshot,
@@ -172,6 +173,62 @@ async function readStatsPayload(db: D1Database | undefined): Promise<unknown> {
 			.prepare('SELECT payload FROM github_stats_snapshot WHERE id = 1')
 			.first<{ payload: string }>();
 		return typeof row?.payload === 'string' ? JSON.parse(row.payload) : null;
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * Per-source snapshot freshness rows for `/snapshot-health`
+ * (Issue #1254). Literal table names — the D1 binding gate refuses
+ * interpolated SQL, so each spec's table is queried by name here.
+ */
+async function readSnapshotHealthRows(db: D1Database | undefined): Promise<SnapshotRow[]> {
+	if (!db) return [];
+	interface SnapshotDbRow {
+		payload: string;
+		received_at: string;
+	}
+	const read = async (
+		source: string,
+		statement: Promise<SnapshotDbRow | null>,
+	): Promise<SnapshotRow> => {
+		try {
+			const row = await statement;
+			return {
+				source,
+				receivedAt: typeof row?.received_at === 'string' ? row.received_at : null,
+				payload: typeof row?.payload === 'string' ? safeJsonParse(row.payload) : null,
+			};
+		} catch {
+			return { source, receivedAt: null, payload: null };
+		}
+	};
+	return Promise.all([
+		read(
+			'github-activity',
+			db
+				.prepare('SELECT payload, received_at FROM github_activity_snapshot WHERE id = 1')
+				.first<SnapshotDbRow>(),
+		),
+		read(
+			'github-stats',
+			db
+				.prepare('SELECT payload, received_at FROM github_stats_snapshot WHERE id = 1')
+				.first<SnapshotDbRow>(),
+		),
+		read(
+			'discord-presence',
+			db
+				.prepare('SELECT payload, received_at FROM discord_presence_snapshot WHERE id = 1')
+				.first<SnapshotDbRow>(),
+		),
+	]);
+}
+
+function safeJsonParse(text: string): unknown {
+	try {
+		return JSON.parse(text);
 	} catch {
 		return null;
 	}
@@ -437,6 +494,16 @@ githubProfileRouter.get('/current', rateLimitRead, async (c) => {
 	});
 });
 
+githubProfileRouter.get('/snapshot-health', rateLimitRead, async (c) => {
+	const env = c.env as unknown as ProfileSnapshotEnv;
+	const rows = await readSnapshotHealthRows(env.DB);
+	// `no-store`: this endpoint IS the freshness probe — a cached
+	// answer would let a stale snapshot look fresh to the smoke.
+	return c.json(buildSnapshotHealth(rows, Date.now()), 200, {
+		'Cache-Control': 'no-store',
+	});
+});
+
 githubProfileRouter.all('/card', methodNotAllowed(['GET']));
 githubProfileRouter.all('/status', methodNotAllowed(['GET']));
 githubProfileRouter.all('/now', methodNotAllowed(['GET']));
@@ -449,3 +516,4 @@ githubProfileRouter.all('/activity-map', methodNotAllowed(['GET']));
 githubProfileRouter.all('/vitals', methodNotAllowed(['GET']));
 githubProfileRouter.all('/top-languages', methodNotAllowed(['GET']));
 githubProfileRouter.all('/stack', methodNotAllowed(['GET']));
+githubProfileRouter.all('/snapshot-health', methodNotAllowed(['GET']));

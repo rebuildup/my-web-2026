@@ -853,6 +853,14 @@ head + Draft PR. Release branches are the only exception, and only
 while they are zero-diff against `main`. See
 `skills/agent-recovery/SKILL.md`.
 
+The primary checkout (`~/work/my-web-2026`) is shared by concurrent
+agent sessions. Never switch its branch (or stash / reset / clean it)
+while another session may hold uncommitted work — a branch switch
+silently discards that state. Parallel work belongs in a dedicated
+`git worktree` (e.g. `~/work/my-web-2026-<ticket>`); treat the shared
+checkout's current branch as someone else's workspace. See
+`skills/worktree-workflow/SKILL.md`.
+
 ## 8. Decision precedence
 
 For any judgement call, follow:
@@ -893,21 +901,24 @@ ship: design skills keep `references/`, and `cf-cli`,
 `security-audit` keep `references/` / `scripts/` / schema files.
 Upstreams:
 
-- `rebuildup/project-init` — delivery / quality / runtime / agent
-  environment skills. Current-generation skills are pinned to
-  **v0.9.0** (`bb017a7`); deliberately pinned or forked variants keep
-  their older `0.1.1` / PR-head provenance (see the fork table).
-  `writing-discipline` remains the project-init `0.1.1` vendored copy.
-- `rebuildup/design-skills` — design skills, pinned to **v0.3.0**
-  (`e1b64c4`). `composition-review` (Issue #1137) is the one exception:
-  it was released upstream in **v0.6.0** (`10b0d4a`) and is vendored
-  from there, because the L-C half of ADR-0023 is that Skill's
-  responsibility.
-- `rebuildup/writing-skills` — `skill-authoring`, pinned to
-  `release-0-4-0` (`b0f1398`).
+- `rebuildup/project-init` (aude-skills) — delivery / quality / runtime /
+  agent environment skills. Current-generation skills are pinned to
+  **v0.14.1** (`2ac7951`); `agent-delivery-estimation` and
+  `correctness-assurance` remain at **v0.9.0** (`bb017a7`) because the
+  v0.14.1 text adds references to siblings this repository does not
+  vendor (`github-delivery/references/*`, `quality-gate/references/
+  gate-honesty.md`, `scripts/delivery-status/`), and deliberately pinned
+  or forked variants keep their older `0.1.1` / PR-head provenance (see
+  the fork table).
+- `rebuildup/design-skills` — design skills, pinned to **v0.7.1**
+  (`5ca210a` upstream merge of `release-0-7-1`); every vendored copy is
+  byte-identical to that tag except the documented forks below.
+- `rebuildup/writing-skills` — `writing-discipline`, `skill-authoring`,
+  and `natural-japanese`, pinned to `43fecf5` (`release-0-5-0` merge
+  head; the repository has no tags).
 - `cloudflare/skills` — `cf-cli`, `workers-best-practices`, pinned to
-  `cbf893b`.
-- `mattpocock/skills` — `diagnosing-bugs`, `tdd`, pinned to `5863806`.
+  `ff191de`.
+- `mattpocock/skills` — `diagnosing-bugs`, `tdd`, pinned to `6f7f783`.
 
 This repository keeps `AGENTS.md` + `docs/adr/` as its agent contract
 and decision history. It does **not** copy project-init's
@@ -930,27 +941,40 @@ canonical link:
 | `engineering-decisions` | Encodes the same 6-level precedence list as §8 (the wording differs); upstream's 9-level variant introduces Constitution / Operating Model / Practice concepts this repository does not have, so §8 would have to change in the same commit. |
 | `quality-gate` | The local file is upstream project-init 0.1.1 **minus** `## 7.1 Delivery-estimation integration` and **plus** four local-only sections that exist in no upstream release or branch tip: `## 17. Dependency / static-analysis goals`, `## 18. UI information architecture gate`, `## 19. Rendered UI verification`, `## 20. Build / container / deliverable verification`. Those local sections are the rules this repository's own `quality/profile.yaml` fast gate implements (`knip:check` ↔ §17, rendered-UI verification ↔ §19, build / deliverable verification ↔ §20), so a blanket sync would delete live local gates and re-add a section this repository does not use. **Owner decision: OPEN** — keep the local variant, or re-sync to upstream. |
 | `parallel-orchestration`, `policy-evaluation` | Content sync deferred to a later release — see Issue #647. |
-| `agent-recovery`, `onboarding`, `sandbox-runtime`, `writing-discipline` | Pinned to project-init `0.1.1`. Current `v0.9.0` text assumes autonomous Ready-ticket landing and project-init `organization/` / upstream ADR-0019/0020 vocabulary; adopting it verbatim would conflict with §6 merge authorization and this repository's own ADR numbering. Re-sync requires a local adaptation pass, not a blanket copy. |
-| `form-design`, `motion-system` | Edited in this repository to stop cross-referencing upstream's `interaction-state`: `form-design` drops the single line that points at it, `motion-system` drops its whole `### Interaction-state boundary` section. Both files are otherwise byte-identical to design-skills `v0.3.0`. |
+| `agent-recovery`, `onboarding`, `sandbox-runtime` | Pinned to project-init `0.1.1`. Re-verified against `v0.14.1` (2026-11-27): the conflicts still stand — `agent-recovery` / `onboarding` grant autonomous Ready-ticket landing and Issue close during recovery, `sandbox-runtime` is written against project-init `constitution/` / upstream ADR-0020 vocabulary this repository does not have. Re-sync requires a local adaptation pass, not a blanket copy. |
+| `agent-delivery-estimation`, `correctness-assurance` | Held at project-init `v0.9.0`. The `v0.14.1` text is otherwise adoptable, but it adds references to siblings this repository does not vendor (`github-delivery/references/adaptive-release-batching.md`, `quality-gate/references/gate-honesty.md`) and to project-init's own `scripts/delivery-status/`; vendoring it verbatim would ship dangling pointers. Unblock together with the `github-delivery` / `quality-gate` fork decisions. |
+| `form-design`, `motion-system` | Edited in this repository to stop cross-referencing upstream's `interaction-state`: `form-design` drops the single line that points at it, `motion-system` drops its whole `### Interaction-state boundary` section. Re-verified at design-skills `v0.7.1` (2026-11-27, Issue #1275): the divergence is unchanged — upstream still ships those references and the local files drop exactly them. |
 | `interaction-states` | The local file is upstream design-skills' `interaction-states` **as it existed before upstream deleted it** in `6c2acf5` (2026-09-17, "remove duplicate interaction-states skill"); it was imported verbatim (commit `2a7460a6`) and is byte-identical to that revision. It is **not** a rename of upstream's current `interaction-state` — that is a different, later, "experimental" state-graph document (344 lines), while the local file is the 234-line component-state document (hover / focus / pressed / selected / disabled semantics) that `skills/touch-interface/SKILL.md:24`, `skills/dark-mode-design/SKILL.md:158` and `skills/keyboard-interface/SKILL.md:91,179` still point at. Copying upstream's current `interaction-state` over it would silently replace a different scope under the same name. **Owner decision: OPEN** — keep the deleted upstream variant, or re-import upstream's current `interaction-state` and re-point those references. |
-| `herdr-runtime` | Vendored verbatim from upstream project-init **PR #135 head** (`48fb2f6`, 240 lines), which is **newer than upstream's merged `origin/main`** (`0be0fcb`, 234 lines). The merged release has **no** `## Provider-scoped launch and bounded layout` section, so a blanket sync would **delete** the rules that say `herdr agent start --kind` does not replace the dotfiles `agent <harness> <provider>` launcher, that an existing terminal must not be commandeered and that a layout grants no authority. The local file adds one `## Local adaptation (my-web-2026)` section (this repository's canonical state / authority reading) and is otherwise byte-identical to the upstream PR head. |
+| `herdr-runtime` | Upstream has since merged PR #135 and renamed `project-init` → `aude-skills` (verified at `v0.14.1`), but the local file still diverges: it keeps the `## Local adaptation (my-web-2026)` section (canonical state = GitHub Issue / PR / branch, authority = §6 / §8, native-subagent default, no silent provider fallback) and replaces upstream's `../../organization/execution-placement.md` link with an inline rule, because the `organization/` tree is not vendored here. Re-sync requires re-applying the local adaptation, not a blanket copy. |
 
 Upstream project-init skills this repository still does **not**
 vendor: `linear-release-control` (explicitly declined — it conflicts
 with §7's GitHub-Projects SoT), `orca-frontend` (explicitly declined),
-`idea-discovery`, and `supervisor-boundary` (no dedicated non-authoring
-Supervisor profile is selected). `secrets-management`,
-`skill-selection`, `security-audit`, `agent-delivery-estimation`,
-`correctness-assurance`, `code-naming`, `cf-cli`,
-`workers-best-practices`, `diagnosing-bugs`, `tdd`, and
-`skill-authoring` were evaluated and adopted on 2026-11-16; the
-`interaction-discipline` YAML quoting fix and the
-`security-maintenance` → `security-audit` handoff were taken in the
-same pass.
+`idea-discovery` (situational capability, not a standing need), and
+`supervisor-boundary` (no dedicated non-authoring Supervisor profile is
+selected). `system-quality` was adopted on 2026-11-27 together with
+the `v0.14.1` sync (`code-naming`, `design-refinement`,
+`interaction-discipline`, `security-audit`, `skill-selection`), and
+`natural-japanese` / the `writing-skills` re-pin
+(`writing-discipline`, `skill-authoring`) landed in the same pass
+(Issue #1271 / PR #1272).
+
+`GoogleChrome/modern-web-guidance` was evaluated and **deferred**
+(2026-11-27): the skill's operative content is fetched at runtime via
+`npx modern-web-guidance@latest`, so `skills-lock.json` cannot pin what
+an agent actually retrieves, and a faithful vendored copy carries a
+2.4 MB / 212-file `guides/` corpus that `SKILL.md` never reads locally.
+Revisit if upstream ships a pinned/offline retrieval path.
 
 To take an upstream change, diff it first, land it as its own ticket,
-and re-check the §3 / §6 / §7 invariants it touches. The update command
-is `npx skills add rebuildup/project-init --skill <name> --copy` —
+and re-check the §3 / §6 / §7 invariants it touches. `rebuildup/
+project-init` was renamed to `rebuildup/aude-skills` on 2026-11-27
+(repository ID `1328121003`, upstream Issue #212); GitHub redirects
+the old slug, but new references use the canonical name, and
+`skills-lock.json` `source` fields keep the slug that was actually
+fetched, so older entries still read `rebuildup/project-init` — that
+is provenance, not a stale pointer. The update command is
+`npx skills add rebuildup/aude-skills --skill <name> --copy` —
 **not** `bunx` (§2 forbids Bun here) and **never without `--copy``
 (a symlinked install is not what §10 promises readers). The CLI installs
 into an **agent** skills directory (`.claude/skills/`, `.agents/skills/`,
@@ -967,6 +991,7 @@ copy and diff it into `skills/<name>/` by hand. Clone the upstream into
 
 ### Quality / evaluation
 - `skills/quality-gate/SKILL.md` — quality profile + change-risk
+- `skills/system-quality/SKILL.md` — requirement preservation + whole-system consistency
 - `skills/policy-evaluation/SKILL.md` — policy / Skill change evaluation
 - `skills/correctness-assurance/SKILL.md` — invariant → minimal guarantee mapping
 - `skills/security-maintenance/SKILL.md` — framework advisory workflow
@@ -990,6 +1015,7 @@ copy and diff it into `skills/<name>/` by hand. Clone the upstream into
 
 ### Communication
 - `skills/writing-discipline/SKILL.md` — reader-facing prose pipeline
+- `skills/natural-japanese/SKILL.md` — natural Japanese prose layer on writing-discipline
 - `skills/interaction-discipline/SKILL.md` — active-work interaction discipline
 - `skills/skill-authoring/SKILL.md` — creating / updating Agent Skills
 
@@ -997,7 +1023,9 @@ copy and diff it into `skills/<name>/` by hand. Clone the upstream into
 
 Web fundamentals / design-layout / animation-interaction の汎用 Skills。
 Vendor-specific design system / media production 系は含まない
-(`design-skills` upstream 47 件から 25 件選抜、 release-0-3-0)。
+(`design-skills` upstream から選抜; release-0-3-0 時点で 25 件、
+Issue #1275 で v0.7.1 の候補を再評価し 9 件追加して 34 件;
+現在の pin は **v0.7.1**)。
 
 - `skills/design-intent/SKILL.md` — DESIGN-BRIEF 起点の design direction
 - `skills/color-system/SKILL.md` — semantic color roles, light/dark
@@ -1025,6 +1053,15 @@ Vendor-specific design system / media production 系は含まない
 - `skills/high-contrast-design/SKILL.md` — high-contrast / forced-colors
 - `skills/touch-interface/SKILL.md` — touch / coarse-pointer interaction
 - `skills/keyboard-interface/SKILL.md` — keyboard interaction model
+- `skills/visual-hierarchy/SKILL.md` — cross-channel priority system (position / type / contrast / grouping)
+- `skills/visual-review/SKILL.md` — rendered-UI review: screenshots, baselines, bounded rerender (Issue #1275)
+- `skills/design-review-routing/SKILL.md` — who reviews what: agent / deterministic / independent / human (Issue #1275)
+- `skills/information-density/SKILL.md` — task-appropriate density without shrinking everything (Issue #1275)
+- `skills/numeric-typography/SKILL.md` — numbers as a first-class reading/comparison surface (Issue #1275)
+- `skills/ui-primitive-architecture/SKILL.md` — which controls become shared primitives vs feature-local (Issue #1275)
+- `skills/design-system-enforcement/SKILL.md` — drift prevention via component/token contracts + focused checks (Issue #1275)
+- `skills/design-discipline/SKILL.md` — meaning-first redesign of 2D visual artifacts before generating (Issue #1275)
+- `skills/reduced-motion-design/SKILL.md` — preserve task meaning while reducing non-essential motion (Issue #1275)
 
 Architecture docs (`docs/architecture.md`), development docs
 (`docs/development.md`), and release docs (`docs/release.md`) are the

@@ -396,7 +396,11 @@ function ProjectRow({ project, today, changed, reducedMotion, grouped, index }: 
 				<GridItem span={1} className={rowIndexClassName} aria-hidden="true">
 					{String(index).padStart(2, '0')}
 				</GridItem>
-				<GridItem span={{ base: 12, md: 5 }} start={{ base: 1, md: 2 }}>
+				{/* Issue #1279 — a record with no measured facts must not
+				    keep the hairline column: the border belongs to the
+				    facts, so the column is rendered only when a fact
+				    exists, and the name column takes the freed measure. */}
+				<GridItem span={{ base: 12, md: rows.length > 0 ? 5 : 11 }} start={{ base: 1, md: 2 }}>
 					<div className={rowHeaderClassName}>
 						<Heading className={nameClassName}>{project.name}</Heading>
 						{!grouped && level ? (
@@ -416,13 +420,15 @@ function ProjectRow({ project, today, changed, reducedMotion, grouped, index }: 
 						</a>
 					) : null}
 				</GridItem>
-				<GridItem
-					span={{ base: 12, md: 6 }}
-					start={{ base: 1, md: 7 }}
-					className={factsColumnClassName}
-				>
-					<ProjectFacts rows={rows} />
-				</GridItem>
+				{rows.length > 0 ? (
+					<GridItem
+						span={{ base: 12, md: 6 }}
+						start={{ base: 1, md: 7 }}
+						className={factsColumnClassName}
+					>
+						<ProjectFacts rows={rows} />
+					</GridItem>
+				) : null}
 			</Grid>
 		</li>
 	);

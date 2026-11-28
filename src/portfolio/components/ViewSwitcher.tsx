@@ -64,7 +64,15 @@ export function ViewSwitcher({ value }: ViewSwitcherProps) {
 	};
 
 	return (
-		<Stack as="fieldset" gap="3" className={css({ margin: '0', padding: '0', border: 'none' })}>
+		// Issue #1277 — the switcher stacks directly under FacetFilter
+		// on /portfolio; without a block-start inset the VIEW legend
+		// collided with the bottom edge of the facet pills. `6` is the
+		// cluster-separator step from layout-system.md §6.
+		<Stack
+			as="fieldset"
+			gap="3"
+			className={css({ margin: '0', marginBlockStart: '6', padding: '0', border: 'none' })}
+		>
 			<legend className={css(eyebrowSans)}>View</legend>
 			{/* No `aria-label` here: the `<fieldset>`/`<legend>` above
 			    already names this group, and a bare `<div>` cannot carry

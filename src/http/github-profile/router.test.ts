@@ -31,7 +31,12 @@ function fakeDb(payloads: Record<string, unknown>): D1Database {
 								? 'github_stats_snapshot'
 								: null;
 					const payload = table ? payloads[table] : undefined;
-					return payload === undefined ? null : { payload: JSON.stringify(payload) };
+					return payload === undefined
+						? null
+						: {
+								payload: JSON.stringify(payload),
+								received_at: new Date().toISOString(),
+							};
 				},
 			};
 		},
@@ -267,6 +272,36 @@ describe('GET /vitals', () => {
 		} as never);
 		expect(res.status).toBe(405);
 	});
+
+	it('renders the participated scope as one muted line when measured (Issue #1264)', async () => {
+		const res = await githubProfileRouter.request('/vitals', { method: 'GET' }, {
+			...ENV_BASE,
+			DB: fakeDb({ github_stats_snapshot: STATS }),
+		} as never);
+		expect(res.status).toBe(200);
+		const body = await res.text();
+		expect(body).toContain('12 contributed projects');
+		expect(body).toContain('60 stars');
+		// The scope note must not read as a second metric lane.
+		expect(body).not.toContain('PARTICIPATED');
+	});
+
+	it('hides the participated line when the scope was not measured', async () => {
+		const unmeasured = {
+			...STATS,
+			metrics: { ...STATS.metrics, contributedTo: null },
+			repos: { ...STATS.repos, participated: null },
+			stars: { ...STATS.stars, participated: null },
+		};
+		const res = await githubProfileRouter.request('/vitals', { method: 'GET' }, {
+			...ENV_BASE,
+			DB: fakeDb({ github_stats_snapshot: unmeasured }),
+		} as never);
+		expect(res.status).toBe(200);
+		const body = await res.text();
+		expect(body).not.toContain('contributed projects');
+		expect(body).not.toContain('PARTICIPATED');
+	});
 });
 
 describe('GET /top-languages', () => {
@@ -298,6 +333,29 @@ describe('GET /top-languages', () => {
 		} as never);
 		expect(res.status).toBe(405);
 	});
+
+	it('renders the participated-scope bar when the snapshot measured it (Issue #1262)', async () => {
+		const withParticipated = {
+			...STATS,
+			languages: {
+				...STATS.languages,
+				participated: [
+					{ name: 'Rust', color: '#dea584', size: 800, count: 6 },
+					{ name: 'Go', color: '#00add8', size: 200, count: 2 },
+				],
+			},
+		};
+		const res = await githubProfileRouter.request('/top-languages', { method: 'GET' }, {
+			...ENV_BASE,
+			DB: fakeDb({ github_stats_snapshot: withParticipated }),
+		} as never);
+		expect(res.status).toBe(200);
+		const body = await res.text();
+		expect(body).toContain('OWNED REPOS');
+		expect(body).toContain('PARTICIPATED REPOS');
+		expect(body).toContain('Rust');
+		expect(body).toContain('80.0%');
+	});
 });
 
 describe('GET /profile stats wiring', () => {
@@ -315,5 +373,51 @@ describe('GET /profile stats wiring', () => {
 		expect(body).toContain('data:image/png;base64');
 		expect(body).toContain('4,211');
 		expect(body).toContain('TypeScript');
+	});
+});
+
+describe('GET /snapshot-health (Issue #1254)', () => {
+	it('reports every source fresh when all snapshot rows exist', async () => {
+		const res = await githubProfileRouter.request('/snapshot-health', { method: 'GET' }, {
+			...ENV_BASE,
+			DB: fakeDb({
+				github_activity_snapshot: ACTIVITY,
+				discord_presence_snapshot: PRESENCE,
+				github_stats_snapshot: STATS,
+			}),
+		} as never);
+		expect(res.status).toBe(200);
+		expect(res.headers.get('cache-control')).toBe('no-store');
+		const body = (await res.json()) as {
+			sources: Array<Record<string, unknown>>;
+		};
+		expect(body.sources).toHaveLength(3);
+		for (const source of body.sources) {
+			expect(source.state).toBe('fresh');
+			expect(source.receivedAt).toBeTruthy();
+		}
+	});
+
+	it('reports absent — not stale — when no snapshot rows exist', async () => {
+		const res = await githubProfileRouter.request('/snapshot-health', { method: 'GET' }, {
+			...ENV_BASE,
+			DB: fakeDb({}),
+		} as never);
+		expect(res.status).toBe(200);
+		const body = (await res.json()) as {
+			sources: Array<Record<string, unknown>>;
+		};
+		for (const source of body.sources) {
+			expect(source.state).toBe('absent');
+			expect(source.receivedAt).toBeNull();
+			expect(source.ageSeconds).toBeNull();
+		}
+	});
+
+	it('rejects non-GET methods', async () => {
+		const res = await githubProfileRouter.request('/snapshot-health', { method: 'POST' }, {
+			...ENV_BASE,
+		} as never);
+		expect(res.status).toBe(405);
 	});
 });

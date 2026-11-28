@@ -447,3 +447,27 @@ updated directly.
   integration endpoints) according to their own release cadence.
 - Archive the release branch once the next sprint starts (the
   branch is no longer the integration line).
+
+### Post-deploy operational acceptance (github-profile surfaces, Issue #1254)
+
+A release that changes the GitHub profile surfaces or the stats /
+activity sync pipeline is not accepted on HTTP 200 alone. After the
+production deploy, verify and record in `docs/verification/`:
+
+1. **Delivery**: `e2e/prod-smoke.spec.ts` profile-surfaces block —
+   every surface variant 200 with byte floor, `/snapshot-health`
+   reports all sources `fresh`, and the camo end-to-end check passes
+   (GitHub profile page → camo → origin render).
+2. **Sync jobs**: both launchd jobs
+   (`dev.rebuildup.my-web-2026-github-activity` /
+   `dev.rebuildup.my-web-2026-github-stats`) completed their
+   scheduled run after deploy — check `log show` / plist logs for the
+   last success timestamp, not just kickstart.
+3. **Catch-up**: after a host sleep / missed window, the next
+   scheduled slot (evening 21:00/21:30 JST) must recover without
+   manual intervention; the `.tmp` lockfile must prevent overlap.
+4. **LKG**: with a sync job stopped, surfaces keep serving the last
+   snapshot (no honest-empty flash); a deliberately failed ingest
+   must leave the previous payload in place.
+5. **Partial failure**: a single-source failure shows `stale`/`absent`
+   per source in `/snapshot-health` while other sources stay `fresh`.

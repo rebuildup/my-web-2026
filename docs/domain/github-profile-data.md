@@ -101,9 +101,67 @@ snapshot は同一入力で `rank.current`（vendored calculateRank）と
 データとして残す。いずれかの入力が未計測（null）の場合 rank 全体を
 `null` とし、欠損を 0 として計算しない。
 
+**表示採用（2026-11-27 決定、Issue #1262、2026-11-27 精査で再確認）**:
+surface が表示するのは `rank.current` のみ。採用基準は新旧ではなく
+**評価指標としての妥当性と実態への適合性**: (1) 入力が all-time
+authored commits（`all_commits=true` の weight-10 経路）で、legacy 式は
+repos 入力を使わず median 中心の旧重み付けのため、同じ実態を測っても
+系統的に上位（実測: current B+ 40.1% vs legacy A+ 10.2%）を返す —
+percentile の意味が実態から乖離する。(2) vendored `calculateRank` は
+upstream が維持する現行式で、owned スコープ入力・all-time 窓との
+整合が契約で固定済み。`rank.legacy` は snapshot に残し、乖離の
+監視用データとして扱う（表示面には出さない）。
+
 - 検証証跡: `scripts/sync-github-stats.test.mjs` が同一入力での
   両式出力と null 伝播を固定。実データでの新旧差分は初回 sync 後の
   snapshot 値で確認する（`docs/verification/` に記録予定）。
+
+### 3.2 participated スコープの表示意味論（Issue #1262）
+
+`languages.*` / `stars.*` / `repos.*` は **リポジトリ単位の集計**
+であり、本人のコード変更量ではない。表示面はこの区別を保つ:
+
+- `/vitals`: account/owned 指標を意味グループ（consistency:
+  streak/contributions → output: commits/PRs/issues/stars）に分けた
+  2 行 strip とし、PARTICIPATED スコープ（参加プロジェクト数
+  `repos.participated`・参加 repo の stars）はその下に 1 行の
+  muted テキストとして従属表示する。参加指標を owned 指標へ
+  合算・混在させず、別 metric row も立てない（高さ抑制）。
+  - **冗長排除（2026-11-27 精査）**: `repos.participated`（実績計測:
+    直近窓の commit/PR 実績が確認できた repo）と
+    `metrics.contributedTo`（GraphQL `repositoriesContributedTo`
+    affiliation 数）は**定義の異なる別集計**であり、実データで
+    件数が一致（ともに 28）しても母集団の同一性は証明されない
+    — affiliation は貢献実績ゼロの repo も含み得る。表示には
+    実績計測値 `repos.participated` のみを使い、affiliation 値は
+    snapshot に残すが表示しない。
+- `/top-languages`: BOTH scope が計測済みなら **ALL REPOS — OWNED +
+  PARTICIPATED** の結合バーを主表示とし、OWNED REPOS /
+  PARTICIPATED REPOS を従属ペア（desktop 横並び・mobile 縦積み、
+  6px 細バー + top-2 言語凡例）で比較表示する。片 scope のみ計測ならその scope の単独バー。
+  各バーは「その scope の repo が持つ言語構成（bytes）」であり、
+  本人がその言語で書いた量ではない — キャプションで scope を明示する。
+- **本人のコード変更量の言語別計測（調査結果・2026-11-27）**:
+  現行データ源では**計測不能**。languages API・commits/issues
+  search は repo 単位の集計か件数のみで、作者別 diff bytes を
+  返さない。実現には repo clone + `git log --numstat` 相当の
+  言語別 attribution が必要で、(a) owned repo のみ clone 可能、
+  (b) participated の private repo は不可、(c) co-author 行の
+  帰属が曖昧、(d) 新規パイプラインと増分集計基盤が必要 — のため
+  現時点では見送り、repo 言語構成の scope 別表示を正とする。
+  将来 owned scope 限定の tokei/cloc 系バッチを検討する余地は
+  あるが、別 Issue で設計する。
+- `/profile`（互換合成）は凍結済みの旧構成を維持し、参加指標を
+  追加しない（モバイル高さ予算・README 未参照の legacy 面）。
+- participated 集計が未計測（null）の場合、レーン/バー自体を出さ
+  ない — 「参加なし」と「未計測」を区別する。
+- **stats card の 503 と配信継続**: `/api/v1/github-readme-stats/api`
+  は snapshot 不在時に 503 を返すが、`serveCard` の SWR store が
+  先に評価されるため、一度でも描画済みのカードは snapshot 障害中も
+  stale 配信を継続する（LKG 相当）。503 が出るのは store 未保持の
+  初回のみで、upstream 障害時と同じ degraded 契約 — 「HTTP 200 のみを
+  もって配信継続とみなさない」運用検証は docs/release.md の
+  post-deploy acceptance に従う。
 
 ## 4. 公開範囲
 
@@ -167,7 +225,7 @@ sync 時に R2 または stats snapshot 内の data URI として永続化
 
 | surface | endpoint | 読む snapshot |
 |---|---|---|
-| Identity(masthead) | `/identity`（band1 互換 fragment: masthead+vitals+langs 合成） | activity + presence + stats + avatar(stats 内) |
+| Identity(masthead) | `/identity`（person fragment のみ: avatar+name+tagline+Discord presence。Issue #1286 で vitals/language bar を除去 — 公開 README が `/vitals` `/top-languages` を独立資産として配信するため責務を分離） | activity + presence + stats snapshot は avatar 取得のみに使用 |
 | Presence | `/presence` | discord_presence_snapshot |
 | Vitals | `/vitals`（新規） | github_stats_snapshot |
 | TopLangs | `/top-languages`（新規） | github_stats_snapshot |
@@ -175,10 +233,14 @@ sync 時に R2 または stats snapshot 内の data URI として永続化
 | Stack | `/stack` | 静的資産 |
 | 互換合成 | `/profile` | 全 snapshot（現行と同一 SVG） |
 | `/now` `/status` `/activity` `/current` `/card` | 既存 | 各 snapshot（request 時上流呼出なし） |
+| サイト GitHub STATUS カード `/api/v1/github-readme-stats/api{,/top-langs/,/streak}` | 既存 | **github_stats_snapshot**（stats: Issue #1262、top-langs/streak: Issue #1268 で request 時 upstream fetch から移行。top-langs は `languages.owned`（旧 fetchTopLanguages と同一の owned 母集団）、streak は `streak` ブロックをそのまま投影。snapshot 不在・未計測は **200 の未観測 SVG**（Issue #1284 — 「first sync pending」を明示する有効な画像で、store 非永続・60s cache。検知は snapshot-health が担い画像 status code と分離）。その他の上流障害は 503 degraded + SWR stale 配信） |
+| サイト pin カード `/api/v1/github-readme-stats/api/pin/?repo=` | 既存 | **request 時 upstream fetch を許容**（Issue #1284 案B — repo 単位の動的データで snapshot 化には対象集合の固定が必要。障害分離: pin の失敗は他カードに波及しない独立 store/refresh。タイムアウト: `fetchRepo` は vendored retry/timeout を継承。キャッシュ: `microCache` 5s + `svgStore` SWR（freshSeconds=10日）で上流障害時も stale 配信） |
 
-`/identity` は README 未参照の legacy fragment で、分割 surface
-完成までは band1 全体を返す。README 切替時に masthead のみへ
-再定義するか廃止するかは #1240 の視覚作業と合わせて決める。
+`/identity` は person fragment（masthead + Discord presence）に
+再定義済み（Issue #1286）。vitals 数値と言語構成は `/vitals`・
+`/top-languages` が唯一の描画責務を持ち、README 上で統計情報が
+重複しない。互換 `/profile` 合成 SVG は `drawIdentitySection` の
+`accountStats` 既定値（true）で従来どおり vitals+langs を内包する。
 
 ## 8. 変更管理
 

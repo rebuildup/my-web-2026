@@ -167,6 +167,8 @@ const LUCIDE_INNER: Record<string, string> = {
 	'trending-up':
 		'<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>',
 	user: '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+	'git-fork':
+		'<circle cx="12" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><path d="M18 9v2c0 .6-.4 1-1 1H7c-.6 0-1-.4-1-1V9"/><path d="M12 12v3"/>',
 };
 
 /** Lucide glyph centered on (cx, cy), `size` px square. */
@@ -224,6 +226,23 @@ export interface BandStats {
 	readonly totalCommits: number | null;
 	readonly totalPRs: number | null;
 	readonly totalIssues: number | null;
+	/**
+	 * Participated scope (Issue #1262, contract §2.1): repos the
+	 * account contributed to but does not own, the stars those repos
+	 * carry, and their language composition. `null` when the
+	 * snapshot's participated aggregation was not measured — the
+	 * surface hides the lane rather than printing a zero.
+	 */
+	readonly participatedRepos: number | null;
+	readonly participatedStars: number | null;
+	readonly participatedLangs: readonly BandLang[] | null;
+	/**
+	 * Owned + participated merged by language name (disjoint scopes,
+	 * contract §2.1) — the "total development area" primary view for
+	 * `/top-languages` (Issue #1262 review). `null` when neither
+	 * scope was measured.
+	 */
+	readonly combinedLangs: readonly BandLang[] | null;
 }
 
 export interface Band1Model {
@@ -283,11 +302,12 @@ interface LangSegment {
 	readonly other: boolean;
 }
 
-/** Top-3 named languages plus a single neutral "Other" remainder —
+/** Top-N named languages plus a single neutral "Other" remainder —
  * every colored slice stays labelled, and the bar always sums to
- * ~100% without silently dropping languages. */
-function langSegments(langs: readonly BandLang[]): readonly LangSegment[] {
-	const shown = langs.slice(0, 3);
+ * ~100% without silently dropping languages. The legend must name
+ * exactly the same top-N the bar draws or an unnamed slice appears. */
+function langSegments(langs: readonly BandLang[], named = 3): readonly LangSegment[] {
+	const shown = langs.slice(0, named);
 	const shownPct = shown.reduce((a, l) => a + l.pct, 0);
 	const otherPct = Math.max(0, 100 - shownPct);
 	const segs: LangSegment[] = shown.map((l) => ({ pct: l.pct, swatch: l.color, other: false }));
@@ -403,11 +423,19 @@ const METRICS: readonly Metric[] = [
 		value: (st) => st.totalContributions,
 		unit: null,
 	},
-	{ icon: 'star', label: 'stars', value: (st) => st.totalStars, unit: null },
 	{ icon: 'commit', label: 'commits', value: (st) => st.totalCommits, unit: null },
 	{ icon: 'pr', label: 'PRs', value: (st) => st.totalPRs, unit: null },
 	{ icon: 'issues', label: 'issues', value: (st) => st.totalIssues, unit: null },
+	{ icon: 'star', label: 'stars', value: (st) => st.totalStars, unit: null },
 ];
+
+/** Vitals grouping (Issue #1264 r3): the strip splits by meaning —
+ * CONSISTENCY (streak + contributions, the figures a profile is
+ * remembered by) gets the wide cells, OUTPUT (authored work + owned
+ * reach) fills the second row. Two rows of four keeps every metric
+ * on one baseline pair instead of the old 3+3+lane stack. */
+const HEADLINE_METRICS: readonly Metric[] = METRICS.slice(0, 2);
+const OUTPUT_METRICS: readonly Metric[] = METRICS.slice(2);
 
 /**
  * The metrics strip: equal cells on the column grid — icon +
@@ -424,22 +452,41 @@ function metricStrip(
 	stats: BandStats,
 	T: Theme,
 	sem: (k: string) => string,
+	opts: {
+		metrics?: readonly Metric[];
+		perRow?: number;
+		caption?: string;
+		muted?: boolean;
+		captionDy?: number;
+	} = {},
 ): { svg: string; bottom: number } {
 	const TT = typeTable(spec);
-	const list = METRICS;
-	// Row plans snap to the column grid: 3 cells per row inside the
+	const list = opts.metrics ?? METRICS;
+	// Row plans snap to the column grid: cells per row inside the
 	// caller's column span (full width → 4-col spans, right rail →
 	// 2-col spans). Every cell edge lands on a column boundary.
-	const rowPlan: readonly (readonly number[])[] = [
-		[0, 1, 2],
-		[3, 4, 5],
-	];
+	const perRow = Math.min(opts.perRow ?? 3, list.length);
+	const rowCount = Math.ceil(list.length / perRow);
+	const rowPlan: readonly (readonly number[])[] = Array.from(
+		{ length: rowCount },
+		(_, r) => Array.from({ length: perRow }, (_, i) => r * perRow + i) as readonly number[],
+	);
 	// cell anatomy: stat baseline → label ~6px below the numeral's
 	// foot, then a full s4 air gap before the next row's stat — the
 	// pair must read as one unit, not label-to-next-value
 	const rowH = TT.stat.lh + TT.label.lh + (spec.mobile ? SPACE.s2 : SPACE.s4);
-	const span = colCount / rowPlan[0].length;
+	const span = colCount / perRow;
 	let s = '';
+	if (opts.caption) {
+		s += bandText(
+			spec,
+			'caption',
+			gridX(spec, colStart),
+			snap(spec, y - (opts.captionDy ?? 8)),
+			T.faint,
+			opts.caption,
+		);
+	}
 	let cy = y;
 	for (const row of rowPlan) {
 		let col = colStart;
@@ -461,12 +508,13 @@ function metricStrip(
 			const numX = cx + ICON.sm + SPACE.s2;
 			const num = missing ? '—' : v.toLocaleString('en-US');
 			const unitTxt = !missing && mt.unit ? ` ${mt.unit}` : '';
-			s += `<text x="${numX}" y="${cy + TT.stat.size * 0.7}" xml:space="preserve"><tspan font-size="${TT.stat.size}" font-weight="${TT.stat.weight}" fill="${missing ? T.faint : T.fg}">${esc(num)}</tspan><tspan font-size="${TT.label.size}" font-weight="${TT.label.weight}" fill="${T.muted}">${esc(unitTxt)}</tspan></text>`;
+			const numFill = missing ? T.faint : opts.muted ? T.muted : T.fg;
+			s += `<text x="${numX}" y="${cy + TT.stat.size * 0.7}" xml:space="preserve"><tspan font-size="${TT.stat.size}" font-weight="${TT.stat.weight}" fill="${numFill}">${esc(num)}</tspan><tspan font-size="${TT.label.size}" font-weight="${TT.label.weight}" fill="${T.muted}">${esc(unitTxt)}</tspan></text>`;
 			s += bandText(spec, 'label', cx, snap(spec, cy + TT.stat.size * 0.7 + 16), T.muted, mt.label);
 		}
 		cy += rowH;
 	}
-	const rows = rowPlan.length;
+	const rows = rowCount;
 	// bottom hugs the last row's content — the s4 inter-row air gap
 	// belongs BETWEEN rows only, never as trailing space before the
 	// next module head
@@ -514,6 +562,21 @@ function flowWidth(text: string, fontSize: number): number {
 	return width;
 }
 
+/** Content-addressed id for a bar gradient — bars on one canvas can
+ * share an x (stacked mobile scopes, hero + owned pair) and inlined
+ * compositions can share a document, so `url(#…)` references need an
+ * id that is unique per DISTINCT gradient. Hashing the stop list keeps
+ * renders deterministic (unlike a counter) while identical bars may
+ * safely share one gradient. */
+function langBarGid(stops: string): string {
+	let h = 0x811c9dc5;
+	for (let i = 0; i < stops.length; i++) {
+		h ^= stops.charCodeAt(i);
+		h = Math.imul(h, 0x01000193) >>> 0;
+	}
+	return `langbar${h.toString(36)}`;
+}
+
 /** Language share bar: one pill track with hard-stop gradient
  * segments (crisp edges, rounded ends) + a legend that WRAPS inside
  * the bar's own width — every item keeps bar order, and a wrapped
@@ -526,13 +589,18 @@ function langBar(
 	w: number,
 	langs: readonly BandLang[],
 	T: Theme,
+	opts: { sub?: boolean } = {},
 ): { svg: string; bottom: number } {
 	const TT = typeTable(spec);
-	const segs = langSegments(langs);
-	const barY = y + 10;
-	const barH = 10;
+	// Subordinate bars (the owned/participated split under the hero)
+	// run thinner with tighter air so the hero keeps the hierarchy;
+	// their legend names fewer languages so it stays on one line.
+	const sub = opts.sub === true;
+	const named = sub ? 2 : 3;
+	const segs = langSegments(langs, named);
+	const barY = y + (sub ? 6 : 10);
+	const barH = sub ? 6 : 10;
 	const fs = TT.label.size;
-	const gid = `langbar${x | 0}`;
 	let stops = '';
 	let acc = 0;
 	for (const seg of segs) {
@@ -541,11 +609,12 @@ function langBar(
 		stops += `<stop offset="${c1}" stop-color="${seg.swatch}"/><stop offset="${c2}" stop-color="${seg.swatch}"/>`;
 		acc += seg.pct;
 	}
+	const gid = langBarGid(stops);
 	let s = `<defs><linearGradient id="${gid}" x1="0" y1="0" x2="1" y2="0">${stops}</linearGradient></defs>`;
 	s += `<rect x="${x}" y="${barY}" width="${w}" height="${barH}" rx="${barH / 2}" fill="url(#${gid})"/>`;
 	// leaders: every named language + the Other remainder, in bar order
 	const leaders: { name: string; pct: number; swatch: string }[] = langs
-		.slice(0, 3)
+		.slice(0, named)
 		.map((l) => ({ name: l.name, pct: l.pct, swatch: l.color }));
 	const namedPct = leaders.reduce((a, l) => a + l.pct, 0);
 	const otherPct = 100 - namedPct;
@@ -553,7 +622,7 @@ function langBar(
 		leaders.push({ name: 'Other', pct: otherPct, swatch: '#8b949e' });
 	}
 	let lx = x;
-	let ly2 = barY + barH + 15;
+	let ly2 = barY + barH + (sub ? 11 : 15);
 	for (const l of leaders) {
 		const txt = `${l.name} ${l.pct.toFixed(1)}%`;
 		const itemW = 10 + flowWidth(txt, fs) + 14;
@@ -630,9 +699,14 @@ function presenceCluster(
  * top edge; `bottom` is the last content baseline region — callers
  * own inter-section spacing.
  */
-function drawIdentityDesktop(model: Band1Model, y0: number): { svg: string; bottom: number } {
+function drawIdentityDesktop(
+	model: Band1Model,
+	y0: number,
+	accountStats: boolean,
+): { svg: string; bottom: number } {
 	const spec = canvasSpec(false);
-	const { T, sem } = skinFor(model.theme);
+	const skin = skinFor(model.theme);
+	const { T } = skin;
 	const TT = typeTable(spec);
 	const m = spec.margin;
 	let s = '';
@@ -644,6 +718,10 @@ function drawIdentityDesktop(model: Band1Model, y0: number): { svg: string; bott
 	// are self-evident; the VITALS head was text the data didn't
 	// need). TOP LANGUAGES closes the zone full-width, also
 	// unlabeled — the bar and its legend explain themselves.
+	// `accountStats: false` (the standalone `/identity` surface,
+	// Issue #1286) drops both stats blocks — the public README serves
+	// them as independent `/vitals` + `/top-languages` assets, so the
+	// identity fragment keeps only the person.
 	const as = 72;
 	const ax = m;
 	const ay = y0;
@@ -678,12 +756,18 @@ function drawIdentityDesktop(model: Band1Model, y0: number): { svg: string; bott
 	// (Clyde mark + status word + sync stamp) reads as a single
 	// cluster instead of a cluster exiled to the far edge
 	const pY1 = snap(spec, nameY + 18 + TT.body.lh + SPACE.s2);
-	const railRight = gridX(spec, 6) - spec.gutter;
+	const railRight = accountStats ? gridX(spec, 6) - spec.gutter : m + contentWidth(spec);
 	s += presenceCluster(spec, nx, pY1, snap(spec, pY1 + 16), railRight - nx, model, T);
+
+	if (!accountStats) {
+		// person-only fragment: the presence cluster is the last
+		// content — no stats rail, no language bar
+		return { svg: s, bottom: snap(spec, pY1 + 16 + SPACE.s4) };
+	}
 
 	// VITALS — unlabeled state grid on the right rail (cols 6–11),
 	// top-aligned with the avatar so the two rails share one top edge
-	const vit = metricStrip(spec, y0 + SPACE.s2, 6, 6, model.stats, T, sem);
+	const vit = metricStrip(spec, y0 + SPACE.s2, 6, 6, model.stats, T, skin.sem);
 	s += vit.svg;
 
 	// TOP LANGUAGES — share bar + wrapped legend, full width below
@@ -703,9 +787,14 @@ function drawIdentityDesktop(model: Band1Model, y0: number): { svg: string; bott
 	return { svg: s, bottom: snap(spec, bottom + SPACE.s4) };
 }
 
-function drawIdentityMobile(model: Band1Model, y0: number): { svg: string; bottom: number } {
+function drawIdentityMobile(
+	model: Band1Model,
+	y0: number,
+	accountStats: boolean,
+): { svg: string; bottom: number } {
 	const spec = canvasSpec(true);
-	const { T, sem } = skinFor(model.theme);
+	const skin = skinFor(model.theme);
+	const { T } = skin;
 	const TT = typeTable(spec);
 	const m = spec.margin;
 	let s = '';
@@ -743,10 +832,16 @@ function drawIdentityMobile(model: Band1Model, y0: number): { svg: string; botto
 	const clusterY = snap(spec, ay + as + SPACE.s6 + SPACE.s1);
 	s += presenceCluster(spec, m, clusterY, clusterY + 16, contentWidth(spec), model, T);
 
+	if (!accountStats) {
+		// person-only fragment (Issue #1286): presence cluster closes
+		// the card — no vitals strip, no language bar
+		return { svg: s, bottom: snap(spec, clusterY + 16 + SPACE.s4) };
+	}
+
 	// state zone — unlabeled per contract §22: the 3+3 vitals grid and
 	// the language bar explain themselves through icons and shape
 	const y = snap(spec, clusterY + 16 + SPACE.s4);
-	const strip = metricStrip(spec, y, 0, spec.columns, model.stats, T, sem);
+	const strip = metricStrip(spec, y, 0, spec.columns, model.stats, T, skin.sem);
 	s += strip.svg;
 
 	// the vitals→bar air is tighter than desktop's s4+s10: the removed
@@ -767,18 +862,26 @@ function drawIdentityMobile(model: Band1Model, y0: number): { svg: string; botto
 	return { svg: s, bottom: snap(spec, bottom + SPACE.s4) };
 }
 
-/** Identity section — dispatches on the model's canvas. */
+/** Identity section — dispatches on the model's canvas.
+ * `accountStats` (default true) keeps the vitals grid + language bar
+ * for the compat `/profile` composition; the standalone `/identity`
+ * surface passes false so stats stay owned by `/vitals` +
+ * `/top-languages` alone (Issue #1286). */
 export function drawIdentitySection(
 	model: Band1Model,
 	y0: number,
+	opts: { accountStats?: boolean } = {},
 ): { svg: string; bottom: number } {
-	return model.mobile ? drawIdentityMobile(model, y0) : drawIdentityDesktop(model, y0);
+	const accountStats = opts.accountStats ?? true;
+	return model.mobile
+		? drawIdentityMobile(model, y0, accountStats)
+		: drawIdentityDesktop(model, y0, accountStats);
 }
 
 export function renderBand1Svg(model: Band1Model, opts: { grid?: boolean } = {}): string {
 	const spec = canvasSpec(model.mobile);
 	const { T } = skinFor(model.theme);
-	const sec = drawIdentitySection(model, SPACE.s6);
+	const sec = drawIdentitySection(model, SPACE.s6, { accountStats: false });
 	const H = snap(spec, sec.bottom + SPACE.s4) + (opts.grid && model.mobile ? 28 : 0);
 	let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${spec.width}" height="${H}" viewBox="0 0 ${spec.width} ${H}" font-family="${FONT}">`;
 	svg += `<rect width="${spec.width}" height="${H}" fill="${T.bg}"/>`;
@@ -820,29 +923,126 @@ function statsSurfaceShell(
 	return svg;
 }
 
-/** VITALS — the account-figures strip alone (github_stats_snapshot). */
+/** VITALS — the account-figures strip alone (github_stats_snapshot).
+ * Two meaning-groups (consistency headline, then output) plus the
+ * participated scope as ONE muted line — a scope note, not a second
+ * metric row (Issue #1264 r3 height regression fix). */
 export function renderVitalsSvg(model: StatsSurfaceModel, opts: { grid?: boolean } = {}): string {
 	const spec = canvasSpec(model.mobile);
 	const { T, sem } = skinFor(model.theme);
-	const strip = metricStrip(spec, SPACE.s6, 0, spec.columns, model.stats, T, sem);
-	return statsSurfaceShell(model, strip.svg, strip.bottom, opts);
+	const TT = typeTable(spec);
+	const m = spec.margin;
+	const headline = metricStrip(spec, SPACE.s6, 0, spec.columns, model.stats, T, sem, {
+		metrics: HEADLINE_METRICS,
+		perRow: 2,
+	});
+	let s = headline.svg;
+	let bottom = headline.bottom;
+	const groupGap = spec.mobile ? SPACE.s2 : SPACE.s4;
+	// hairline between the two meaning groups — consistency vs output
+	// must read as separate sections, not one uneven text grid
+	const divY = snap(spec, bottom + (spec.mobile ? 2 : 6));
+	s += `<line x1="${m}" y1="${divY}" x2="${m + contentWidth(spec)}" y2="${divY}" stroke="${T.line}"/>`;
+	const output = metricStrip(spec, bottom + groupGap, 0, spec.columns, model.stats, T, sem, {
+		metrics: OUTPUT_METRICS,
+		perRow: spec.mobile ? 2 : 4,
+	});
+	s += output.svg;
+	bottom = output.bottom;
+	// Participated scope (Issue #1262): a single muted line — shown
+	// only when the snapshot measured it, so an absent aggregation
+	// never prints a fake zero. The short form keeps mobile width.
+	const st = model.stats;
+	const proj = st.participatedRepos;
+	const pst = st.participatedStars;
+	if (proj !== null || pst !== null) {
+		const parts: string[] = [];
+		if (proj !== null) parts.push(`${proj.toLocaleString('en-US')} contributed projects`);
+		if (pst !== null) parts.push(`${pst.toLocaleString('en-US')} stars`);
+		const ly = snap(spec, bottom + SPACE.s4 + 12);
+		// hairline anchors the scope note to the card — the owned vs
+		// participated boundary stays explicit without a lane
+		const ruleY = snap(spec, ly - SPACE.s4);
+		s += `<line x1="${m}" y1="${ruleY}" x2="${m + contentWidth(spec)}" y2="${ruleY}" stroke="${T.line}"/>`;
+		s += lucide('git-fork', m + ICON.sm / 2, iconCenterY(ly, TT.label.size), ICON.sm, T.faint);
+		s += bandText(spec, 'label', m + ICON.sm + SPACE.s2, ly, T.muted, parts.join(' · '));
+		bottom = snap(spec, ly + SPACE.s2);
+	}
+	return statsSurfaceShell(model, s, bottom, opts);
 }
 
-/** TOP LANGUAGES — the owned-scope share bar + legend alone
- * (github_stats_snapshot). */
+/** Scope caption above one language bar — the two scopes measure
+ * different populations (owned repos vs repos contributed to), so
+ * each bar names its scope instead of implying one blended mix. */
+function scopeCaption(spec: CanvasSpec, x: number, y: number, T: Theme, label: string): string {
+	return bandText(spec, 'caption', x, snap(spec, y), T.faint, label);
+}
+
+/** TOP LANGUAGES — repo language composition (bytes) per scope
+ * (github_stats_snapshot). When both scopes are measured the surface
+ * leads with the COMBINED mix (the total development area) and shows
+ * the owned/participated split as a subordinate pair — on desktop
+ * the pair sits side by side so the comparison reads at a glance;
+ * on mobile they stack. Never the owner's personal change volume —
+ * the captions keep that meaning explicit (contract §3.2). */
 export function renderTopLangsSvg(model: StatsSurfaceModel, opts: { grid?: boolean } = {}): string {
 	const spec = canvasSpec(model.mobile);
 	const { T } = skinFor(model.theme);
 	const m = spec.margin;
+	const w = contentWidth(spec);
 	const y = SPACE.s6;
 	const langs = model.stats.topLangs;
+	const participated = model.stats.participatedLangs;
+	const combined = model.stats.combinedLangs;
+	const bothScopes =
+		langs !== null && langs.length > 0 && participated !== null && participated.length > 0;
 	let s = '';
 	let bottom: number;
-	if (!langs || langs.length === 0) {
+	if ((!langs || langs.length === 0) && (!participated || participated.length === 0)) {
 		s += bandText(spec, 'body', m, snap(spec, y + 20), T.faint, 'language data unavailable');
 		bottom = snap(spec, y + 36);
+	} else if (bothScopes && combined && combined.length > 0) {
+		s += scopeCaption(spec, m, y, T, 'ALL REPOS — OWNED + PARTICIPATED');
+		// kicker→bar air matches the subordinate bars (16px) so all
+		// three blocks share one vertical rhythm
+		const hero = langBar(spec, m, y + 6, w, combined, T);
+		s += hero.svg;
+		bottom = hero.bottom;
+		// scope pair: side-by-side on desktop, stacked on mobile —
+		// subordinate bars (thinner, fewer legend items) keep the hero
+		// the visual weight. Air is concentrated BETWEEN blocks
+		// (legend→next kicker) rather than inside them (kicker→bar).
+		const blockGap = SPACE.s4;
+		let pairY = bottom + blockGap;
+		if (spec.mobile) {
+			for (const [label, scopeLangs] of [
+				['OWNED REPOS', langs],
+				['PARTICIPATED REPOS', participated],
+			] as const) {
+				s += scopeCaption(spec, m, pairY, T, label);
+				const bar = langBar(spec, m, pairY + 4, w, scopeLangs, T, { sub: true });
+				s += bar.svg;
+				bottom = bar.bottom;
+				pairY = bar.bottom + blockGap;
+			}
+		} else {
+			const gap = spec.gutter;
+			const half = (w - gap) / 2;
+			s += scopeCaption(spec, m, pairY, T, 'OWNED REPOS');
+			s += scopeCaption(spec, m + half + gap, pairY, T, 'PARTICIPATED REPOS');
+			const ownedBar = langBar(spec, m, pairY + 8, half, langs, T, { sub: true });
+			const partBar = langBar(spec, m + half + gap, pairY + 8, half, participated, T, {
+				sub: true,
+			});
+			s += ownedBar.svg + partBar.svg;
+			bottom = Math.max(ownedBar.bottom, partBar.bottom);
+		}
 	} else {
-		const bar = langBar(spec, m, y + 10, contentWidth(spec), langs, T);
+		const ownedOnly = langs !== null && langs.length > 0;
+		const only = ownedOnly ? langs : (participated ?? []);
+		const label = ownedOnly ? 'OWNED REPOS' : 'PARTICIPATED REPOS';
+		s += scopeCaption(spec, m, y, T, label);
+		const bar = langBar(spec, m, y + 6, w, only, T);
 		s += bar.svg;
 		bottom = bar.bottom;
 	}
@@ -851,21 +1051,46 @@ export function renderTopLangsSvg(model: StatsSurfaceModel, opts: { grid?: boole
 
 // ---- Band 2 ----
 
-/** Feed verb → past-tense display word. */
+/** Feed verb → past-tense display word. Every GitHub event type the
+ * public-events feed can carry maps to a human word — the raw
+ * `*Event` name is an API internal and must never reach the SVG
+ * (Issue #1286 review: `IssuesEvent` was the most common real type
+ * and printed verbatim). */
 const EVENT_VERB: Record<string, string> = {
 	PushEvent: 'pushed',
 	PullRequestEvent: 'PR',
+	PullRequestReviewEvent: 'reviewed',
+	PullRequestReviewCommentEvent: 'reviewed',
+	IssuesEvent: 'issue',
+	IssueCommentEvent: 'commented',
+	CommitCommentEvent: 'commented',
 	CreateEvent: 'created',
 	DeleteEvent: 'deleted',
+	ReleaseEvent: 'released',
+	WatchEvent: 'starred',
+	ForkEvent: 'forked',
 };
 
 /** Feed verb → plural noun for collapsed runs ('2 pushes'). */
 const EVENT_NOUN: Record<string, string> = {
 	PushEvent: 'pushes',
 	PullRequestEvent: 'PRs',
+	PullRequestReviewEvent: 'reviews',
+	PullRequestReviewCommentEvent: 'reviews',
+	IssuesEvent: 'issues',
+	IssueCommentEvent: 'comments',
+	CommitCommentEvent: 'comments',
 	CreateEvent: 'creates',
 	DeleteEvent: 'deletes',
+	ReleaseEvent: 'releases',
+	WatchEvent: 'stars',
+	ForkEvent: 'forks',
 };
+
+/** Unknown event types degrade to a generic word, never the raw
+ * API type name. */
+const EVENT_FALLBACK_VERB = 'activity';
+const EVENT_FALLBACK_NOUN = 'activities';
 
 /** Absolute JST stamp for one event — a static SVG must never print
  * relative ages that silently rot after the observation instant. */
@@ -937,7 +1162,9 @@ function renderRecentActivity(
 		const ry = firstBaseline + i * rowH;
 		s += eventGlyph(r.type, x + 6, iconCenterY(ry, TT.data.size), ICON.sm - 2, typeColor(r.type));
 		const verb =
-			r.count > 1 ? `${r.count} ${EVENT_NOUN[r.type] ?? r.type}` : (EVENT_VERB[r.type] ?? r.type);
+			r.count > 1
+				? `${r.count} ${EVENT_NOUN[r.type] ?? EVENT_FALLBACK_NOUN}`
+				: (EVENT_VERB[r.type] ?? EVENT_FALLBACK_VERB);
 		// repo owns the strong role — events are the band's readable
 		// payload, so nothing here sits below the legibility floor
 		const verbTxt = ` · ${verb}`;

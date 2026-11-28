@@ -132,7 +132,7 @@ function coverOf(project: PortfolioProject) {
  * The work's additional media, in display order — the material an
  * exhibition hangs BESIDE the cover. `isSeries` reads this count:
  * a work with a real gallery gets the diptych cell, a work with
- * only a cover stays a single plate (Issue #1296 exhibition pass).
+ * only a cover stays a single plate (Epic #1266 exhibition pass).
  */
 function extrasOf(project: PortfolioProject, limit = 3) {
 	return project.media.filter((m) => !m.isCover).slice(0, limit);

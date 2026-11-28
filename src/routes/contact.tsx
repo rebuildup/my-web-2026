@@ -1,9 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router';
+import { css } from '../../styled-system/css';
 import { getContactChannels } from '../contact/load';
 import { ContactPage } from '../contact/page';
 import { PublicNav } from '../editorial/nav';
 import { BreadcrumbJsonLd, Breadcrumbs } from '../editorial/nav/Breadcrumbs';
 import { breadcrumbsChrome } from '../editorial/nav/Breadcrumbs.styles';
+import { Container } from '../editorial/primitives/Container';
 import { PrivacyNoticeCompact } from '../home/privacy-notice-compact';
 import { getCompactPrivacyNotice } from '../home/privacy/load';
 import { getHomeReactions } from '../home/public';
@@ -82,7 +84,14 @@ function ContactRoute() {
 			<BreadcrumbJsonLd />
 			<ContactPage channels={channels} empty={empty} unverifiableCount={unverifiableCount} />
 			<ReactionsWidget data={reactions} />
-			<PrivacyNoticeCompact {...privacyNotice} />
+			{/* Issue #1298 — the page must close on the contact contract,
+			    not on a padded legal band: the notice renders as one
+			    muted line (`bare`) inside the canonical container. */}
+			<div className={css({ paddingBlock: '8' })}>
+				<Container>
+					<PrivacyNoticeCompact {...privacyNotice} bare />
+				</Container>
+			</div>
 		</>
 	);
 }

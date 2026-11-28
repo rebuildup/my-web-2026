@@ -1,8 +1,15 @@
-import { css } from '../../../styled-system/css';
+import { css, cx } from '../../../styled-system/css';
+import { Button } from '../../editorial/primitives/Button';
+import { Cluster, listResetClassName } from '../../editorial/primitives/Flow';
 import { Split } from '../../editorial/primitives/Grid';
 import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
-import { eyebrowMonoSm, focusRing, pageTitle } from '../../editorial/primitives/shared-styles';
+import {
+	eyebrowMonoSm,
+	focusRing,
+	noteMonoSm,
+	pageTitle,
+} from '../../editorial/primitives/shared-styles';
 import { CjkLineBreak } from './sections/CjkLineBreak';
 import { ColorSwatches } from './sections/ColorSwatches';
 import { Composition } from './sections/Composition';
@@ -182,7 +189,64 @@ function Hero() {
 					</p>
 				</div>
 			</Split>
+			{/* Issue #1298 — wayfinding for a 24k px specimen: the audit
+			    flagged the page as too large to scan, so the entry now
+			    carries a compact index of every section. Compression or
+			    removal of sections remains an owner decision (Epic
+			    #1266 §8.3); this is the navigation half only. */}
+			<SectionIndex />
 		</PageSection>
+	);
+}
+
+/**
+ * The page's own section index — one anchor per rendered section,
+ * including the unnumbered tone matrix (which anchors to its first
+ * band). Numbers match the eyebrow numbering where one exists.
+ */
+const SECTION_INDEX: readonly { readonly href: string; readonly label: string }[] = [
+	{ href: '#design-system-color', label: '01 Color' },
+	{ href: '#design-system-typography', label: '02 Typography' },
+	{ href: '#design-system-spacing', label: '03 Spacing' },
+	{ href: '#design-system-surface', label: '04 Surface' },
+	{ href: '#tone-matrix-ground', label: '05 Tone matrix' },
+	{ href: '#design-system-states', label: '06 Interactive' },
+	{ href: '#design-system-status', label: '07 Status' },
+	{ href: '#design-system-image', label: '08 Image / CLS' },
+	{ href: '#design-system-cjk', label: '09 CJK' },
+	{ href: '#design-system-table-code', label: '10 Table & code' },
+	{ href: '#design-system-composition', label: '11 Composition' },
+];
+
+function SectionIndex() {
+	return (
+		<nav aria-label="セクション index" className={css({ marginBlockStart: '10' })}>
+			<p className={css(noteMonoSm)}>Sections</p>
+			<Cluster as="ul" gap="2" className={cx(listResetClassName, css({ marginBlockStart: '3' }))}>
+				{SECTION_INDEX.map((item) => (
+					<li key={item.href}>
+						<Button
+							as="a"
+							href={item.href}
+							variant="secondary"
+							size="sm"
+							className={css({
+								minHeight: '8',
+								borderRadius: 'full',
+								fontFamily: 'mono',
+								fontSize: 'xs',
+								fontWeight: '400',
+								letterSpacing: '0.04em',
+								color: 'text.muted',
+								_hover: { borderColor: 'border.strong', color: 'text.default' },
+							})}
+						>
+							{item.label}
+						</Button>
+					</li>
+				))}
+			</Cluster>
+		</nav>
 	);
 }
 

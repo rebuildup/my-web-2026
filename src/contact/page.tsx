@@ -2,7 +2,6 @@ import { Fragment } from 'react';
 import { css } from '../../styled-system/css';
 import { Stack, listResetClassName } from '../editorial/primitives/Flow';
 import { Split } from '../editorial/primitives/Grid';
-import { EditorialIndex } from '../editorial/primitives/EditorialIndex';
 import { PageHero } from '../editorial/primitives/PageHero';
 import { PageSection } from '../editorial/primitives/PageSection';
 import { Panel } from '../editorial/primitives/Panel';
@@ -58,41 +57,21 @@ export interface ContactPageProps {
  *
  * No JS interactivity. The page is fully static SSR.
  */
-/**
- * The published channels, in the entry's right column.
- *
- * Issue #1163 — one row per channel: its purpose, and when it was
- * last confirmed. The rows below repeat the detail (the URL, the
- * verification note); this is the choice, not the record.
- */
-function ChannelIndex({ channels }: { readonly channels: readonly PublicContactChannel[] }) {
-	return (
-		<EditorialIndex
-			ariaLabel="Channels"
-			items={channels.map((channel) => ({
-				href: `#contact-channel-${channel.id}`,
-				label: channel.label,
-				meta: `${PURPOSE_LABEL_JA[channel.purpose] ?? channel.purpose} · ${channel.verifiedDaysAgo} 日前`,
-			}))}
-		/>
-	);
-}
-
 export function ContactPage({ channels, empty, unverifiableCount }: ContactPageProps) {
 	return (
 		<>
 			<SkipLink />
-			{/* Issue #1163 — the right column carries the page's own
-			    channel inventory: which channel exists, for what
-			    purpose, and when it was last confirmed. The reader can
-			    pick a channel before scrolling the list below. */}
+			{/* Issue #1298 — the hero no longer repeats the channel list
+			    in its right column: the audit flagged the CHANNELS
+			    preview as a duplication of the section one screen
+			    below. The entry states the CONTRACT (verified-only,
+			    purpose-labelled) and the count; the rows below are the
+			    content itself. */}
 			<PageHero
 				labelledBy="contact-hero-title"
 				eyebrow="my-web-2026 · /contact"
 				title="Contact"
-				description="現在利用可能な、用途別の contact channel だけを掲載しています。掲載されていない channel は現在 re-verified されていないため、ここには載せていません。"
-				asideLabel="Channels"
-				aside={<ChannelIndex channels={channels} />}
+				description={`現在 re-verified な連絡手段は ${channels.length} 件です。各 channel は用途別にラベル付けし、最終確認から時間が経過したものには要再検証の注記を付けています。掲載されていない手段(メール直送・フォームなど)は現在公開していません。`}
 			>
 				<p
 					lang="ja"
@@ -106,9 +85,12 @@ export function ContactPage({ channels, empty, unverifiableCount }: ContactPageP
 						maxWidth: '640px',
 					})}
 				>
-					制作依頼の受付状況は
+					連絡は掲載 channel のリンク先(GitHub の Issue / Discussion
+					など)から行います。制作依頼の受付状況は
 					<TextLink href="/commission">/commission</TextLink>
-					を参照してください。 お問い合わせは、公開されている channel 経由でお願いします。
+					を、公開アカウントの一覧は
+					<TextLink href="/links">/links</TextLink>
+					を参照してください。
 				</p>
 			</PageHero>
 			<main id="main">

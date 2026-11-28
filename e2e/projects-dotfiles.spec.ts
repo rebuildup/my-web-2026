@@ -41,8 +41,13 @@ test.describe('projects/dotfiles — committed snapshot rendering (#621)', () =>
 			page.getByText('ユーザー設定・エージェント配線・実行時 secret 注入'),
 		).toBeVisible();
 
+		// Issue #1298 — the README excerpt is curated, not mirrored: the
+		// five allowlisted sections live inside ONE collapsed
+		// disclosure. Open it before asserting the subsection headings
+		// (they are h3 under the section's own h2).
+		await page.getByText(/README の全 \d+ セクションを表示/).click();
 		for (const heading of README_HEADINGS) {
-			await expect(page.getByRole('heading', { level: 2, name: heading })).toBeVisible();
+			await expect(page.getByRole('heading', { level: 3, name: heading })).toBeVisible();
 		}
 
 		await expect(page.getByRole('heading', { name: 'dotfiles と pc-setup の境界' })).toBeVisible();

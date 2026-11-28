@@ -6,6 +6,7 @@ import react from '@vitejs/plugin-react';
 import { type Plugin, defineConfig } from 'vite';
 import { buildClientBundleGraph } from './scripts/_client-bundle-graph.mjs';
 import { LOCAL_STATE_DIR } from './scripts/_cloudflare-identity.mjs';
+import { inspectLocalD1Table } from './scripts/_local-d1-state.mjs';
 import { isRemoteBindingsEnabled } from './src/cloudflare/data-source';
 
 /**
@@ -171,6 +172,47 @@ function toolCorsPreviewPlugin(): Plugin {
 }
 
 /**
+ * Dev-startup warning for the empty-local-D1 failure mode (Issue #1317).
+ *
+ * The observed hang-adjacent defect: with LOCAL bindings (the default
+ * `pnpm dev`), a `.tmp/d1state` that never saw
+ * `pnpm db:migrate:apply:local` has no `portfolio_project` table. Pages
+ * that read committed snapshots (`/`) keep working, so the failure is
+ * silent until `/portfolio` or `/about` returns a D1_ERROR 500 — and
+ * during the #1266 redesign program that silent 500 was indistinguishable
+ * from a wedged dev server.
+ *
+ * The check is a byte scan of the persisted miniflare state
+ * (`scripts/_local-d1-state.mjs`) — deliberately NOT a `cf d1` query,
+ * which would spawn a second miniflare at config time. It runs ONLY in
+ * `configureServer` (dev server, never `vite build` / `vite preview`)
+ * and ONLY when the bindings are local: `dev:production-data` reads
+ * production D1, where the local state dir is irrelevant, and
+ * `dev:read-only-guard` keeps local bindings so the warning still
+ * applies there.
+ */
+const LOCAL_D1_REQUIRED_TABLE = 'portfolio_project';
+
+function devLocalD1StatePlugin(): Plugin {
+	return {
+		name: 'my-web-2026:dev-local-d1-state',
+		apply: 'serve',
+		async configureServer() {
+			if (productionDataMode) return;
+			const stateDir = resolve(__dirname, LOCAL_STATE_DIR);
+			const inspection = await inspectLocalD1Table({
+				stateDir,
+				table: LOCAL_D1_REQUIRED_TABLE,
+			});
+			if (inspection.status === 'table-found') return;
+			console.warn(
+				`[dev] the local D1 (${LOCAL_STATE_DIR}) has no "${LOCAL_D1_REQUIRED_TABLE}" table — data routes such as /portfolio and /about will return 500 until the local schema exists. Run \`pnpm db:migrate:apply:local\` (or start with \`pnpm dev:production-data\` to read production data read-only). Diagnose dev-server hangs with \`pnpm dev:doctor\`.`,
+			);
+		},
+	};
+}
+
+/**
  * Whether the dev server's bindings point at the PRODUCTION D1 / R2
  * (Issue #377).
  *
@@ -204,6 +246,7 @@ export default defineConfig({
 	plugins: [
 		cloudflareWorkersClientStub,
 		toolCorsPreviewPlugin(),
+		devLocalD1StatePlugin(),
 		clientBundleGraphPlugin(),
 		// LOCAL_API_MODE=mock dev-server passthrough (Issue #186).
 		//

@@ -49,6 +49,7 @@
 		"deploy:production": "pnpm run build && pnpm run deploy:production:prepared",
 		"deploy:production:prepared": "node scripts/deploy-with-secrets.mjs --execute --environment=prod",
 		"dev": "node scripts/_run-dev.mjs",
+		"dev:doctor": "node scripts/dev-doctor.mjs",
 		"dev:mock": "cross-env LOCAL_API_MODE=mock node scripts/_run-dev.mjs",
 		"dev:production-data": "cross-env MY_WEB_2026_DATA_SOURCE=production-readonly node scripts/_run-dev.mjs",
 		"dev:read-only-guard": "cross-env MY_WEB_2026_DATA_SOURCE=production-readonly CLOUDFLARE_VITE_FORCE_LOCAL=true node scripts/_run-dev.mjs",

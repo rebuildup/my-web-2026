@@ -150,6 +150,19 @@ write can reach production.
 Full contract, failure modes and the verification artefacts:
 [`docs/runbook/development-data-source.md`](runbook/development-data-source.md).
 
+Two operational notes (Issue #1317):
+
+- `pnpm dev` reads the LOCAL D1 copy under `.tmp/d1state`. If it was
+  never migrated, `/portfolio` and `/about` return 500 while `/` keeps
+  working — run `pnpm db:migrate:apply:local` once (the dev server
+  also warns at startup in that state), or use
+  `pnpm dev:production-data` to read production data read-only.
+- "vite printed ready" is not readiness. `pnpm dev:doctor` probes
+  `GET /api/v1/health` and names the failure mode (not listening /
+  wedged on a stale `workerd` / empty local D1). Capture scripts use
+  the same contract — see
+  [`docs/runbook/dev-server-troubleshooting.md`](runbook/dev-server-troubleshooting.md).
+
 ### Fallback: `pnpm run generate:dev-vars`
 
 Use the fallback when the Infisical CLI (`infisical` binary) is

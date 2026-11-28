@@ -125,3 +125,9 @@ binding target and the write policy cannot drift apart.
 - Issue #186 — the mock gate (`LOCAL_API_MODE=mock`).
 - AGENTS.md §4 — the secret policy (no production credential is ever
   copied into development).
+- `docs/runbook/dev-server-troubleshooting.md` (Issue #1317) — which
+  dev mode to pick per task, how to recognise each hang mode
+  (`pnpm dev:doctor`), and recovery commands. The `local` mode's
+  empty-D1 failure (`/portfolio` 500 on an unmigrated
+  `.tmp/d1state`) is covered there; `pnpm dev:production-data`
+  avoids it structurally.

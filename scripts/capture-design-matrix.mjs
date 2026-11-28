@@ -22,9 +22,17 @@
  * tiles like the `887-current` captures.
  *
  * Usage:
- *   node scripts/capture-design-matrix.mjs [base-url] [--routes=/,/about,…] [--out=dir]
+ *   node scripts/capture-design-matrix.mjs [base-url] [--routes=/,/about,…] [--out=dir] [--ready-timeout=<seconds>]
  *
  * Requires a running server (default http://127.0.0.1:3000 — `pnpm run dev`).
+ * Before the first capture the script waits for the READINESS contract —
+ * `GET /api/v1/health` answering 200 (`waitForDevServer` in
+ * `scripts/dev-doctor.mjs`, Issue #1317) — because "vite printed ready"
+ * is not readiness: under load the SSR worker can take minutes, and a
+ * stale `workerd` child makes every request hang with 0 bytes. A server
+ * that never becomes ready fails HERE with a named cause (and a pointer
+ * to `pnpm dev:doctor`) instead of inside a Playwright `page.goto`
+ * timeout.
  * Read-only against the origin: GET requests only, no mutation, no
  * secret, no binding value is touched or printed.
  *
@@ -37,6 +45,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
 import sharp from 'sharp';
+import { waitForDevServer } from './dev-doctor.mjs';
 
 const REPO_ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 
@@ -64,11 +73,19 @@ const PART_HEIGHT = 16_000;
 
 function parseArgs(argv) {
 	const positional = [];
-	const options = { routes: null, out: null };
-	for (const arg of argv) {
+	const options = { routes: null, out: null, readyTimeoutMs: 600_000 };
+	// pnpm forwards its own `--` separator; drop exactly one leading one.
+	const args = argv[0] === '--' ? argv.slice(1) : argv;
+	for (const arg of args) {
 		if (arg.startsWith('--routes=')) options.routes = arg.slice('--routes='.length);
 		else if (arg.startsWith('--out=')) options.out = arg.slice('--out='.length);
-		else if (arg.startsWith('--')) throw new Error(`unknown option: ${arg}`);
+		else if (arg.startsWith('--ready-timeout=')) {
+			const seconds = Number(arg.slice('--ready-timeout='.length));
+			if (!Number.isFinite(seconds) || seconds <= 0) {
+				throw new Error(`--ready-timeout expects seconds > 0 (got ${arg})`);
+			}
+			options.readyTimeoutMs = seconds * 1000;
+		} else if (arg.startsWith('--')) throw new Error(`unknown option: ${arg}`);
 		else positional.push(arg);
 	}
 	return { base: positional[0] ?? 'http://127.0.0.1:3000', ...options };
@@ -129,12 +146,17 @@ async function captureCondition(browser, base, route, viewport, scheme, outDir) 
 	const page = await context.newPage();
 	try {
 		const url = `${base}${route === '/' ? '/' : route}`;
-		const response = await page.goto(url, { waitUntil: 'networkidle', timeout: 60_000 });
+		// Issue #1317: 240 s — under machine load the dev server's "ready in"
+		// alone was observed at 100–600 s during the #1266 redesign program,
+		// and `networkidle` waits on every in-flight request, not just TTFB.
+		const response = await page.goto(url, { waitUntil: 'networkidle', timeout: 240_000 });
 		const status = response?.status() ?? 0;
 		if (status !== 200) {
 			return { route, viewport: viewport.name, scheme, status, error: `GET ${route} -> ${status}` };
 		}
 		await settleLazyAssets(page);
+		// 180 s: tall pages at deviceScaleFactor 2 produce very large PNGs;
+		// the 30 s Playwright default timed out on the #1266 captures.
 		const png = await page.screenshot({ fullPage: true, timeout: 180_000 });
 		const meta = await sharp(png).metadata();
 		const height = meta.height ?? 0;
@@ -156,6 +178,18 @@ async function captureCondition(browser, base, route, viewport, scheme, outDir) 
 			await pipe.png().toFile(out);
 		}
 		return { route, viewport: viewport.name, scheme, status, parts, height, width };
+	} catch (error) {
+		// A hung/failed navigation or screenshot is ONE route's failure,
+		// not the whole matrix's — record it and keep capturing the rest
+		// (previously a Playwright timeout rejected the run outright and
+		// every later route was lost).
+		return {
+			route,
+			viewport: viewport.name,
+			scheme,
+			status: 0,
+			error: `${route}: ${error instanceof Error ? error.message : String(error)}`,
+		};
 	} finally {
 		await context.close();
 	}
@@ -174,6 +208,28 @@ async function main() {
 		: DEFAULT_ROUTES;
 	const outDir = resolve(REPO_ROOT, args.out ?? '.tmp/design-matrix');
 	mkdirSync(outDir, { recursive: true });
+
+	// Pre-flight readiness (Issue #1317): wait for SSR to actually answer
+	// `/api/v1/health` before spending a browser on it. On timeout, name
+	// the failure mode and point at the doctor instead of surfacing as a
+	// Playwright navigation timeout minutes later.
+	const ready = await waitForDevServer(args.base, { timeoutMs: args.readyTimeoutMs });
+	if (!ready.ready) {
+		const last = ready.last;
+		const detail =
+			last?.kind === 'timeout'
+				? 'the port accepts connections but never answers — likely a stale `workerd` child from a previous dev server'
+				: last?.kind === 'refused'
+					? 'nothing is listening — the dev server is not running'
+					: `last probe: ${last?.kind ?? 'none'}${last?.status ? ` HTTP ${last.status}` : ''}`;
+		process.stderr.write(
+			`[capture-design-matrix] FAIL: ${args.base} did not become ready within ${args.readyTimeoutMs / 1000}s (${ready.attempts} probe(s)) — ${detail}. Run \`pnpm dev:doctor\` for the failure-mode diagnosis.\n`,
+		);
+		return 1;
+	}
+	process.stdout.write(
+		`[capture-design-matrix] ${args.base} ready after ${ready.attempts} probe(s)\n`,
+	);
 
 	const browser = await chromium.launch();
 	const results = [];

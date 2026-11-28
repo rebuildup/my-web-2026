@@ -17,6 +17,7 @@ import {
 	noteSansSm,
 	sizeDisplay,
 } from '../editorial/primitives/shared-styles';
+import { ScrollRegion } from '../editorial/table-code';
 import { RichText } from './RichText';
 import type {
 	FreshnessState,
@@ -845,28 +846,22 @@ function RepoRootPanel({
 			>
 				dotfiles /
 			</figcaption>
-			<pre
-				// A scrollable box that cannot be focused cannot be
-				// scrolled with a keyboard (SC 2.1.1); the named region
-				// is what a screen reader announces.
-				// biome-ignore lint/a11y/noNoninteractiveTabindex: a scroll container must be focusable so arrow keys scroll it (WCAG 2.2 SC 2.1.1).
-				tabIndex={0}
-				role="region"
-				aria-label="dotfiles repository root listing"
-				className={css({
-					margin: '0',
-					marginBlockStart: '3',
-					padding: '0',
-					border: '0',
-					fontFamily: 'mono',
-					fontSize: 'sm',
-					lineHeight: '1.9',
-					color: 'text.default',
-					overflowX: 'auto',
-				})}
-			>
-				{entries.join('\n')}
-			</pre>
+			<ScrollRegion label="dotfiles repository root listing">
+				<pre
+					className={css({
+						margin: '0',
+						marginBlockStart: '3',
+						padding: '0',
+						border: '0',
+						fontFamily: 'mono',
+						fontSize: 'sm',
+						lineHeight: '1.9',
+						color: 'text.default',
+					})}
+				>
+					{entries.join('\n')}
+				</pre>
+			</ScrollRegion>
 		</Panel>
 	);
 }

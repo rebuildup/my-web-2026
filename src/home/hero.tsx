@@ -1,8 +1,8 @@
 import { css } from '../../styled-system/css';
 import { Button } from '../editorial/primitives/Button';
+import { EditorialIndex } from '../editorial/primitives/EditorialIndex';
 import { Grid, GridItem } from '../editorial/primitives/Grid';
 import { PageSection } from '../editorial/primitives/PageSection';
-import { EditorialIndex } from '../editorial/primitives/EditorialIndex';
 import { TextLink } from '../editorial/primitives/TextLink';
 import { sizeTitle } from '../editorial/primitives/shared-styles';
 import { SiteMark } from './mark';
@@ -147,9 +147,15 @@ export function Hero() {
 				>
 					<EditorialIndex
 						ariaLabel="Index"
-						items={SECTION_INDEX.map((entry, index) => ({
+						items={SECTION_INDEX.map((entry) => ({
 							href: `#${entry.id}`,
-							number: String(index + 1).padStart(2, '0'),
+							// Issue #1279 — the rail printed `index + 1`
+							// (01–04) while the sections it indexes are
+							// eyebrowed 00–03, so the index numbers and
+							// the section numbers disagreed on the same
+							// page. The entry's own `number` is the
+							// contract; render it, not a recount.
+							number: entry.number,
 							label: entry.title,
 						}))}
 					/>

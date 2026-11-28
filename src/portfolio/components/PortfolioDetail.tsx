@@ -208,7 +208,7 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 							    stack — an empty 8/12 column would be a
 							    dead region, not a composition. */}
 							{cover !== null || video !== null ? (
-								<Split gap="10" rowGap="8">
+								<Split gap="10">
 									{/* agy re-review (#1278): a tall portrait cover left
 									    the whole lower third of the split empty beside
 									    the short copy block. `alignSelf: center` shares

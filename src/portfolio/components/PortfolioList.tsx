@@ -1,17 +1,11 @@
-import { css, cx } from '../../../styled-system/css';
+import { css } from '../../../styled-system/css';
 import { Button } from '../../editorial/primitives/Button';
-import { listResetClassName } from '../../editorial/primitives/Flow';
-import { Grid } from '../../editorial/primitives/Grid';
+import { MaterialSymbol } from '../../editorial/primitives/MaterialSymbol';
 import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import { SkipLink } from '../../editorial/primitives/SkipLink';
-import {
-	bodySansMd,
-	eyebrowSans,
-	gridMin,
-	pageTitleFlush,
-	sizeDisplay,
-} from '../../editorial/primitives/shared-styles';
+import { ARROW_FORWARD_PATH } from '../../editorial/primitives/material-symbol-paths';
+import { bodySansMd, eyebrowSans, pageTitleFlush } from '../../editorial/primitives/shared-styles';
 import type { PortfolioListPage, PortfolioProject } from '../schema';
 import type { PortfolioFacet } from '../schema';
 import { resolveSelectedWorks } from '../selected';
@@ -20,7 +14,7 @@ import { DesignView } from './DesignView';
 import { DevelopView } from './DevelopView';
 import { PortfolioEmptyState } from './EmptyState';
 import { FacetFilter } from './FacetFilter';
-import { ProjectCard } from './ProjectCard';
+import { PortfolioArchive } from './PortfolioArchive';
 import { SelectedWorks } from './SelectedWorks';
 import { VideoView } from './VideoView';
 import { ViewSwitcher } from './ViewSwitcher';
@@ -37,8 +31,11 @@ import { ViewSwitcher } from './ViewSwitcher';
  * Reading order:
  *   - Page header (eyebrow / h1 / blurb),
  *   - Facet filter (URL-synced),
- *   - Project list (cards) — or empty state when no entries are
- *     visible. The empty state is selected by `activeFacets`:
+ *   - Selected works band (curated exhibition, `all` view only),
+ *   - Archive (facet-grouped compact index of every published work)
+ *     or the named exhibition views — or the empty state when no
+ *     entries are visible. The empty state is selected by
+ *     `activeFacets`:
  *     a filter applied to a non-empty catalogue renders the
  *     `<output>` "該当する project はありません" branch (Issue
  *     #77); a genuinely empty catalogue (pre-migration from
@@ -58,8 +55,8 @@ export interface PortfolioListProps {
 	 */
 	queryFacets: readonly PortfolioFacet[];
 	/**
-	 * Exhibition mode (Issue #1048). `all` keeps the card grid this
-	 * component shipped with; `develop` / `video` / `design` render
+	 * Exhibition mode (Issue #1048). `all` renders the archive index
+	 * (Issue #1318); `develop` / `video` / `design` render
 	 * the same filtered project set through the predecessor's three
 	 * gallery presentations. Optional so existing callers and tests
 	 * that predate the switcher keep compiling — absent means `all`.
@@ -90,6 +87,9 @@ export function PortfolioList({
 	// answering a narrower question than "what does this site stand
 	// behind".
 	const selectedWorks = view === 'all' ? resolveSelectedWorks(allProjects) : [];
+	// The archive marks — never hides — the works the band exhibits,
+	// so the two layers agree on what "selected" means (Issue #1318).
+	const selectedSlugs = new Set(selectedWorks.map((work) => work.slug));
 
 	return (
 		<>
@@ -173,32 +173,23 @@ export function PortfolioList({
 					) : view === 'design' ? (
 						<DesignView projects={allProjects} />
 					) : (
-						// Issue #912 round 2 (owner feedback 2026-11-05): the
-						// full-width vertical stack read as stretched-out, so
-						// the list is a card grid on the documented pattern —
-						// `Grid` preset 5 (1/2/3 columns), the 24px gutter, the
-						// 40px row beat and `equalRows`, the measured fix for
-						// uneven card heights (design #764).
-						<Grid
-							as="ol"
-							columns={5}
-							columnGap="6"
-							rowGap="10"
-							// Issue #1136 — the grid no longer stretches the
-							// cards. `equalRows` sized every row to the tallest
-							// card in the grid, and the card is a grid item of
-							// its own, so a card's surface ran hundreds of
-							// pixels past its copy: the L-C review recorded the
-							// grid as "card-shaped voids". The cards now keep
-							// their own height and sit on the row's top edge.
-							className={cx(listResetClassName, cardsTopAlignedClassName)}
-						>
-							{allProjects.map((project) => (
-								<li key={project.id} className={liStretchClass}>
-									<ProjectCard project={project} />
-								</li>
-							))}
-						</Grid>
+						// Issue #1318 — the `all` catalogue is no longer a
+						// uniform card grid (audit finding #2/#4: ~74 equal
+						// cards was a ~40,000px mobile scroll marathon).
+						// It renders as the archive layer: compact rows
+						// filed under their primary facet, every published
+						// work still server-rendered, band exhibits
+						// marked `Selected`.
+						<>
+							<SectionHeading
+								id="portfolio-archive-heading"
+								eyebrow="Archive"
+								title="作品アーカイブ"
+								titleEn="Archive"
+								description="公開している全作品を facet ごとにまとめた目録です。上の Selected works は厳選した展示、こちらは網羅のための索引です。"
+							/>
+							<PortfolioArchive projects={allProjects} selectedSlugs={selectedSlugs} />
+						</>
 					)}
 					{hasMore ? (
 						<div
@@ -234,27 +225,32 @@ export function PortfolioList({
 						</p>
 					) : null}
 				</PageSection>
+				{/* Issue #1318 — audit finding #7: the page used to dead-end
+				    on the last archive row. Every public page closes on the
+				    shared rhythm's CTA band (site-concept-2026 §5); for a
+				    visitor who just browsed the works the honest next step
+				    is the commission surface, not another list. */}
+				<PageSection
+					labelledBy="portfolio-closing-heading"
+					rhythm="closing"
+					tone="sunken"
+					separator
+					name="commission"
+				>
+					<SectionHeading
+						id="portfolio-closing-heading"
+						eyebrow="Commission"
+						title="制作の依頼"
+						titleEn="Commission"
+						description="Web 開発・アプリケーション開発・映像制作の依頼受付状況と、見積もりに必要な情報をまとめています。"
+					>
+						<Button as="a" href="/commission" variant="primary">
+							<span lang="ja">Commission を見る</span>
+							<MaterialSymbol d={ARROW_FORWARD_PATH} size={18} />
+						</Button>
+					</SectionHeading>
+				</PageSection>
 			</main>
 		</>
 	);
 }
-
-/**
- * Grid item behaviour for one card (same shape as the tools index's
- * `cardItem`): the `<li>` stretches to its row track (`gridAutoRows` on
- * the list) and the card inside fills it, so every card in a row is the
- * same height.
- */
-const liStretchClass = css(gridMin);
-
-/**
- * Issue #1136 — the cards sit on the row's TOP edge.
- *
- * The grid item is a grid container of its own, so its card child is
- * stretched to the item's height by default. With the row height set
- * by the tallest card in the row, every other card's surface ran far
- * below its own copy. Top alignment lets each card keep its height.
- */
-const cardsTopAlignedClassName = css({
-	alignItems: 'start',
-});

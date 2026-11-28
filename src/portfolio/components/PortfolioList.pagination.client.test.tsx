@@ -98,13 +98,15 @@ describe('PortfolioList — 100+ row pagination boundary', () => {
 		);
 		const items = screen.getAllByRole('listitem');
 		expect(items).toHaveLength(LARGE_FIXTURE_SIZE);
-		// Order is preserved across the boundary: the first page is
-		// still exactly the first page.
-		expect(items[0].textContent).toContain(firstPage.projects[0].title);
-		expect(items[firstPage.projects.length - 1].textContent).toContain(
-			firstPage.projects[firstPage.projects.length - 1].title,
-		);
-		expect(items[firstPage.projects.length].textContent).toContain(secondPage.projects[0].title);
+		// Issue #1318 — the archive files rows under facet groups, so
+		// the flattened order is grouped, not page order. The boundary
+		// contract that survives is completeness: every fixture title
+		// renders exactly once, first page and appended page alike.
+		const titles = items.map((item) => item.textContent ?? '');
+		for (const project of [...firstPage.projects, ...secondPage.projects]) {
+			const matches = titles.filter((text) => text.includes(project.title));
+			expect(matches).toHaveLength(1);
+		}
 		expect(document.querySelectorAll('#portfolio-list ol > li')).toHaveLength(LARGE_FIXTURE_SIZE);
 	});
 
@@ -123,12 +125,15 @@ describe('PortfolioList — 100+ row pagination boundary', () => {
 		expect(screen.getAllByRole('listitem')).toHaveLength(LARGE_FIXTURE_SIZE);
 	});
 
-	it('keeps the facet group of every card reachable as a named group', () => {
+	it('files every archive row under a named facet group', () => {
 		const { container } = renderList();
-		const groups = container.querySelectorAll(
-			'#portfolio-list [role="group"][aria-label="facets"]',
-		);
-		expect(groups).toHaveLength(DEFAULT_PAGE_SIZE);
+		// Issue #1318 — the catalogue layer groups rows by primary
+		// facet; the group heading is the row's category cue, so the
+		// per-card facet pill group the grid carried is gone by design.
+		const groups = container.querySelectorAll('#portfolio-archive [data-facet]');
+		expect(groups.length).toBeGreaterThan(0);
+		const rows = container.querySelectorAll('#portfolio-list ol > li');
+		expect(rows).toHaveLength(DEFAULT_PAGE_SIZE);
 		// No labelled generic element survives anywhere in the list.
 		for (const el of container.querySelectorAll('#portfolio-list [aria-label]')) {
 			expect(el.getAttribute('role')).not.toBeNull();

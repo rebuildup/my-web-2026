@@ -15,8 +15,10 @@ import {
 	getHomeSystemStatus,
 	recordHomeHit,
 } from '../home/public';
+import { SelectedWorks } from '../portfolio/components/SelectedWorks';
 import { listPortfolioProjects } from '../portfolio/public';
 import type { PortfolioProject } from '../portfolio/schema';
+import { resolveSelectedWorks } from '../portfolio/selected';
 
 /**
  * TanStack Start route binding for the canonical home surface.
@@ -62,8 +64,10 @@ export const Route = createFileRoute('/')({
 			// portfolio work through the SAME public read the
 			// /portfolio index uses. A portfolio outage must not take
 			// the home page down with it: the ad surface degrades to
-			// its Tool-only roster.
-			listPortfolioProjects({ data: { limit: 6 } })
+			// its Tool-only roster. Issue #1294 widened the read to the
+			// full first page so the SAME rows also feed the Selected
+			// Works band — one catalogue read serves both surfaces.
+			listPortfolioProjects({ data: { limit: 100 } })
 				.then((page) => page.projects)
 				.catch(() => null),
 			// Issue #319 — the committed GitHub activity snapshot,
@@ -107,6 +111,13 @@ export const Route = createFileRoute('/')({
 				.map(toHomeAdProject)
 				.filter((project): project is HomeAdProject => project !== null)
 				.slice(0, 4),
+			// Issue #1294 — the Selected Works band reads the portfolio
+			// obligation's committed selection (`selected.ts`) resolved
+			// against the same catalogue page. The route owns the
+			// composition edge: the loader ships the resolved rows and
+			// `HomeRoute` renders the SAME `SelectedWorks` component the
+			// /portfolio index uses, so the two surfaces cannot drift.
+			selectedProjects: resolveSelectedWorks(portfolioProjects ?? []),
 			// Issue #320 — Discord presence card from the D1 snapshot.
 			// Optional: degrades to unavailable when missing/stale.
 			discordPresence,
@@ -160,7 +171,21 @@ export const Route = createFileRoute('/')({
 });
 
 function HomeRoute() {
-	return <HomePage data={Route.useLoaderData()} />;
+	const data = Route.useLoaderData();
+	return (
+		<HomePage
+			data={data}
+			selectedWorksBand={
+				data.selectedProjects.length > 0 ? (
+					// Home exhibits the SAME band over a shorter slice —
+					// one hierarchy, two placements. The agy review of
+					// PR #1299 rejected a second home-only presentation
+					// as layout whiplash (Issue #1294).
+					<SelectedWorks works={data.selectedProjects.slice(0, 6)} headingLevel="h2" />
+				) : null
+			}
+		/>
+	);
 }
 
 /**

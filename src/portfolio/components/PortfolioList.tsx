@@ -3,6 +3,7 @@ import { Button } from '../../editorial/primitives/Button';
 import { listResetClassName } from '../../editorial/primitives/Flow';
 import { Grid } from '../../editorial/primitives/Grid';
 import { PageSection } from '../../editorial/primitives/PageSection';
+import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import { SkipLink } from '../../editorial/primitives/SkipLink';
 import {
 	bodySansMd,
@@ -13,12 +14,14 @@ import {
 } from '../../editorial/primitives/shared-styles';
 import type { PortfolioListPage, PortfolioProject } from '../schema';
 import type { PortfolioFacet } from '../schema';
+import { resolveSelectedWorks } from '../selected';
 import { DEFAULT_PORTFOLIO_VIEW, type PortfolioView } from '../views';
 import { DesignView } from './DesignView';
 import { DevelopView } from './DevelopView';
 import { PortfolioEmptyState } from './EmptyState';
 import { FacetFilter } from './FacetFilter';
 import { ProjectCard } from './ProjectCard';
+import { SelectedWorks } from './SelectedWorks';
 import { VideoView } from './VideoView';
 import { ViewSwitcher } from './ViewSwitcher';
 
@@ -81,6 +84,12 @@ export function PortfolioList({
 	extra,
 }: PortfolioListProps) {
 	const allProjects: PortfolioProject[] = [...initialPage.projects, ...extra];
+	// Issue #1295 — the editorial band reads the SAME committed
+	// selection the home page does (`src/portfolio/selected.ts`), and
+	// only on the unfiltered `all` view: a facet-scoped exhibition is
+	// answering a narrower question than "what does this site stand
+	// behind".
+	const selectedWorks = view === 'all' ? resolveSelectedWorks(allProjects) : [];
 
 	return (
 		<>
@@ -109,7 +118,8 @@ export function PortfolioList({
 								maxWidth: '640px',
 							})}
 						>
-							技術選定・設計・成果・振り返りを、第三者が URL
+							デザインから実装・公開まで一人で通した制作物を厳選し、
+							技術選定・設計・成果・振り返りを第三者が URL
 							を渡されただけで辿れるように整理しています。 facet で絞り込み、各 project
 							の詳細ページから repository / release / 解説へ移動できます。
 						</p>
@@ -117,6 +127,18 @@ export function PortfolioList({
 					<FacetFilter value={activeFacets} />
 					<ViewSwitcher value={view} />
 				</PageSection>
+				{selectedWorks.length > 0 ? (
+					<PageSection id="portfolio-selected" label="selected works">
+						<SectionHeading
+							id="portfolio-selected-heading"
+							eyebrow="Selected"
+							title="選んだ作品"
+							titleEn="Selected works"
+							description="デザインから実装まで一人で通した制作物を厳選して展示しています。"
+						/>
+						<SelectedWorks works={selectedWorks} />
+					</PageSection>
+				) : null}
 				<PageSection id="portfolio-list" label="projects">
 					{allProjects.length === 0 ? (
 						queryFacets.length > 0 ? (

@@ -135,7 +135,7 @@ async function captureCondition(browser, base, route, viewport, scheme, outDir) 
 			return { route, viewport: viewport.name, scheme, status, error: `GET ${route} -> ${status}` };
 		}
 		await settleLazyAssets(page);
-		const png = await page.screenshot({ fullPage: true });
+		const png = await page.screenshot({ fullPage: true, timeout: 180_000 });
 		const meta = await sharp(png).metadata();
 		const height = meta.height ?? 0;
 		const width = meta.width ?? 1;

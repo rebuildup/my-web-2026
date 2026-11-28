@@ -183,6 +183,11 @@ const imageStyle = css({
 	height: 'auto',
 	borderRadius: '6px',
 	backgroundColor: 'bg.subtle',
+	// Issue #1295 (agy review of PR #1299): a bare bitmap dissolves
+	// into same-value surfaces — dark UI shots on the dark canvas,
+	// light pages on beige. The hairline is the frame that keeps
+	// every published cover a distinct artifact in both themes.
+	border: '1px solid {colors.border.subtle}',
 });
 
 /**

@@ -9,4 +9,3 @@
 export { PublicNav, PUBLIC_NAV_ITEMS, isActiveRoute } from './PublicNav';
 export type { PublicNavItem, PublicNavProps } from './PublicNav';
 export { SectionSpy } from './SectionSpy';
-export type { SectionSpyProps } from './SectionSpy';

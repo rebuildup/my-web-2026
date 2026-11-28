@@ -56,10 +56,15 @@ for the profile surfaces is the webp asset itself plus the
 
 ## Known limitations carried forward
 
-- Mobile "Selected Work" legibility lives inside the raster
-  `showcase.webp` (fixed 800×360 canvas scaled by GitHub); it is a
-  static asset, not an SVG surface, and is not re-composed per
-  layout. Deferred to a future asset revision.
+- Mobile "Selected Work" legibility has TWO causes, both outside the
+  SVG surfaces: (1) the raster `showcase.webp` is a fixed 800×360
+  canvas that GitHub scales down, and (2) the public README composes
+  the showcase via HTML picture elements in a two-column table/inline
+  flow, so the image is rendered at roughly half the README width on
+  mobile and text inside the raster wraps awkwardly. Deferred to a
+  future asset revision AND a README composition revision (next
+  release; recorded here so the cause is not misattributed to the SVG
+  surfaces alone).
 - The 72h pulse counts public feed events inside the snapshot's
   observation window; the sync caps `feed` at the 30 most recent
   events, so a >30-events-in-72h burst would undercount. Honest

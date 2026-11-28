@@ -174,7 +174,6 @@ function LinkGroupSection({ group, index }: { group: AboutLinkGroup; index: numb
 							display: 'inline-flex',
 							alignItems: 'center',
 							gap: '2',
-							whiteSpace: 'nowrap',
 						})}
 					>
 						<MaterialSymbol d={icon} size={14} />

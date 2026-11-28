@@ -901,15 +901,15 @@ ship: design skills keep `references/`, and `cf-cli`,
 `security-audit` keep `references/` / `scripts/` / schema files.
 Upstreams:
 
-- `rebuildup/project-init` (aude-skills) — delivery / quality / runtime /
-  agent environment skills. Current-generation skills are pinned to
-  **v0.14.1** (`2ac7951`); `agent-delivery-estimation` and
-  `correctness-assurance` remain at **v0.9.0** (`bb017a7`) because the
-  v0.14.1 text adds references to siblings this repository does not
-  vendor (`github-delivery/references/*`, `quality-gate/references/
-  gate-honesty.md`, `scripts/delivery-status/`), and deliberately pinned
-  or forked variants keep their older `0.1.1` / PR-head provenance (see
-  the fork table).
+- `rebuildup/aude-skills` (formerly `rebuildup/project-init`) —
+  delivery / quality / runtime / agent environment skills. Current-
+  generation skills are pinned to **v0.14.1** (`2ac7951`);
+  `secrets-management` and `security-maintenance` are byte-identical
+  across v0.9.0→v0.14.1 so their lock `ref` reads v0.14.1, and
+  `agent-delivery-estimation` / `correctness-assurance` were re-synced
+  to v0.14.1 on 2026-11-29 with two upstream-URL link adaptations (see
+  the fork table). Deliberately pinned or forked variants keep older
+  `0.1.1` / commit-SHA provenance (see the fork table).
 - `rebuildup/design-skills` — design skills, pinned to **v0.7.1**
   (`5ca210a` upstream merge of `release-0-7-1`); every vendored copy is
   byte-identical to that tag except the documented forks below.
@@ -936,18 +936,19 @@ canonical link:
 
 | Skill | Why it is forked |
 | --- | --- |
-| `github-delivery` | Owns the **all-merges-need-explicit-authorization** rule (§6) and the `Release PR merge human gate (canonical rule)` heading. `docs/release.md` and `docs/runbook/sbom.md` anchor to that heading — upstream deleted it, and `scripts/check-content-links.mjs` excludes `skills/**`, so a broken anchor would not be caught. Upstream also grants *autonomous ticket-PR landing*, which would widen agent merge authority, and routes planning through Linear rather than the GitHub Projects SoT that §7 declares. **Issue #741 adds a third local divergence**: the Done criteria and the bulk-landing clause now require per-issue acceptance-criteria **evidence** before an Issue is closed (`docs/runbook/issue-lifecycle.md`). The 2026-10-31 sweep happened because the pre-amendment skill made "landed on the release trunk → close the Issue" a step with no evidence step, so a blanket sync would restore the rule that caused the incident. |
-| `worktree-workflow` | Pinned to this repo's `.config/wt.toml` (Issue #284); upstream's additions assume a Rust/Cargo build this repository does not have. |
-| `engineering-decisions` | Encodes the same 6-level precedence list as §8 (the wording differs); upstream's 9-level variant introduces Constitution / Operating Model / Practice concepts this repository does not have, so §8 would have to change in the same commit. |
+| `github-delivery` | Owns the **all-merges-need-explicit-authorization** rule (§6) and the `Release PR merge human gate (canonical rule)` heading. `docs/release.md` and `docs/runbook/sbom.md` anchor to that heading — upstream deleted it, and `scripts/check-content-links.mjs` excludes `skills/**`, so a broken anchor would not be caught. Upstream also grants *autonomous ticket-PR landing*, which would widen agent merge authority, and routes planning through Linear rather than the GitHub Projects SoT that §7 declares. **Issue #741 adds a third local divergence**: the Done criteria and the bulk-landing clause now require per-issue acceptance-criteria **evidence** before an Issue is closed (`docs/runbook/issue-lifecycle.md`). The 2026-10-31 sweep happened because the pre-amendment skill made "landed on the release trunk → close the Issue" a step with no evidence step, so a blanket sync would restore the rule that caused the incident. The vendored base is upstream commit `14ce6d7f` (2026-09-12, ancestor of `0.1.1`) plus the local divergences above — re-verified 2026-11-29 (Issue #1291); `v0.14.1` still routes planning through Linear and grants autonomous ticket-PR landing, so the hold continues. |
+| `worktree-workflow` | The vendored `SKILL.md` is **byte-identical to upstream commit `88203fc5`** (2026-09-13, an ancestor of tag `0.1.1`); there is no local content edit — the pin itself is the fork. Re-verified against `v0.14.1` (2026-11-29, Issue #1291): upstream's additions assume a Rust/Cargo build this repository does not have and carry autonomous-landing wording, so the hold continues. |
+| `engineering-decisions` | Not a content fork — the vendored file is **byte-identical to upstream tag `0.1.1`** (re-verified 2026-11-29, Issue #1291; the earlier "wording differs" note was stale). Held at `0.1.1` because `v0.14.1` introduces a 9-level precedence list (Constitution / Operating Model / Practice / ADR-0027 concepts this repository does not have, so §8 would have to change in the same commit) and a "ticket-class は自律 landing" clause that conflicts with §6's explicit-authorization rule. |
 | `quality-gate` | The local file is upstream project-init 0.1.1 **minus** `## 7.1 Delivery-estimation integration` and **plus** four local-only sections that exist in no upstream release or branch tip: `## 17. Dependency / static-analysis goals`, `## 18. UI information architecture gate`, `## 19. Rendered UI verification`, `## 20. Build / container / deliverable verification`. Those local sections are the rules this repository's own `quality/profile.yaml` fast gate implements (`knip:check` ↔ §17, rendered-UI verification ↔ §19, build / deliverable verification ↔ §20), so a blanket sync would delete live local gates and re-add a section this repository does not use. **Owner decision: OPEN** — keep the local variant, or re-sync to upstream. |
-| `parallel-orchestration`, `policy-evaluation` | Content sync deferred to a later release — see Issue #647. |
-| `agent-recovery`, `onboarding`, `sandbox-runtime` | Pinned to project-init `0.1.1`. Re-verified against `v0.14.1` (2026-11-27): the conflicts still stand — `agent-recovery` / `onboarding` grant autonomous Ready-ticket landing and Issue close during recovery, `sandbox-runtime` is written against project-init `constitution/` / upstream ADR-0020 vocabulary this repository does not have. Re-sync requires a local adaptation pass, not a blanket copy. |
-| `agent-delivery-estimation`, `correctness-assurance` | Held at project-init `v0.9.0`. The `v0.14.1` text is otherwise adoptable, but it adds references to siblings this repository does not vendor (`github-delivery/references/adaptive-release-batching.md`, `quality-gate/references/gate-honesty.md`) and to project-init's own `scripts/delivery-status/`; vendoring it verbatim would ship dangling pointers. Unblock together with the `github-delivery` / `quality-gate` fork decisions. |
-| `form-design`, `motion-system` | Edited in this repository to stop cross-referencing upstream's `interaction-state`: `form-design` drops the single line that points at it, `motion-system` drops its whole `### Interaction-state boundary` section. Re-verified at design-skills `v0.7.1` (2026-11-27, Issue #1275): the divergence is unchanged — upstream still ships those references and the local files drop exactly them. |
-| `interaction-states` | The local file is upstream design-skills' `interaction-states` **as it existed before upstream deleted it** in `6c2acf5` (2026-09-17, "remove duplicate interaction-states skill"); it was imported verbatim (commit `2a7460a6`) and is byte-identical to that revision. It is **not** a rename of upstream's current `interaction-state` — that is a different, later, "experimental" state-graph document (344 lines), while the local file is the 234-line component-state document (hover / focus / pressed / selected / disabled semantics) that `skills/touch-interface/SKILL.md:24`, `skills/dark-mode-design/SKILL.md:158` and `skills/keyboard-interface/SKILL.md:91,179` still point at. Copying upstream's current `interaction-state` over it would silently replace a different scope under the same name. **Owner decision: OPEN** — keep the deleted upstream variant, or re-import upstream's current `interaction-state` and re-point those references. |
-| `herdr-runtime` | Upstream has since merged PR #135 and renamed `project-init` → `aude-skills` (verified at `v0.14.1`), but the local file still diverges: it keeps the `## Local adaptation (my-web-2026)` section (canonical state = GitHub Issue / PR / branch, authority = §6 / §8, native-subagent default, no silent provider fallback) and replaces upstream's `../../organization/execution-placement.md` link with an inline rule, because the `organization/` tree is not vendored here. Re-sync requires re-applying the local adaptation, not a blanket copy. |
+| `parallel-orchestration`, `policy-evaluation` | Content sync deferred — see Issue #647. Re-verified 2026-11-29 (Issue #1291): `parallel-orchestration` is verbatim upstream commit `3d9f69a` (2026-09-13, ancestor of `0.1.1`); its `v0.14.1` text adds an autonomous ticket-landing clause plus `organization/` / `templates/agent-routing/` references this repository does not vendor, so the hold continues. `policy-evaluation` remains byte-identical to tag `0.1.1`. |
+| `agent-recovery`, `onboarding`, `sandbox-runtime` | Byte-identical to aude-skills tag `0.1.1`. Re-verified against `v0.14.1` (2026-11-29, Issue #1291): the conflicts still stand — `agent-recovery` / `onboarding` grant autonomous Ready-ticket landing and Issue close during recovery, `sandbox-runtime` is written against upstream `constitution/` / ADR-0020 vocabulary this repository does not have. Re-sync requires a local adaptation pass, not a blanket copy. |
+| `agent-delivery-estimation`, `correctness-assurance` | Re-synced to aude-skills `v0.14.1` on 2026-11-29 (Issue #1291). The upstream text's new sibling references do not exist in this repository's vendored set, so two links were repointed to pinned upstream URLs instead of shipping dangling pointers: `agent-delivery-estimation` links `adaptive-release-batching.md` and names `scripts/delivery-status/delivery-status.mts` as upstream `rebuildup/aude-skills@v0.14.1` (未 vendor); `correctness-assurance` links `gate-honesty.md` the same way. Its `metadata.requires-skills: system-quality` and `../system-quality/SKILL.md` link resolve — `system-quality` is vendored. If the referenced upstream files are ever vendored, restore the relative links. |
+| `form-design`, `motion-system` | Edited in this repository to stop cross-referencing upstream's `interaction-state`: `form-design` drops the single line that points at it, `motion-system` drops its whole `### Interaction-state boundary` section. Re-verified at design-skills `v0.7.1` (2026-11-29, Issue #1291): the divergence is unchanged — the local files differ from `v0.7.1` by exactly those dropped references and nothing else. |
+| `interaction-states` | The local file is upstream design-skills' `interaction-states` **as it existed before upstream deleted it** in `6c2acf5` (2026-09-17, "remove duplicate interaction-states skill"); it was imported verbatim (commit `2a7460a6`). It is **not** a rename of upstream's current `interaction-state` — that is a different, later, "experimental" state-graph document (344 lines), while the local file is the 234-line component-state document (hover / focus / pressed / selected / disabled semantics) that `skills/touch-interface/SKILL.md:24`, `skills/dark-mode-design/SKILL.md:158` and `skills/keyboard-interface/SKILL.md:91,179` still point at. Copying upstream's current `interaction-state` over it would silently replace a different scope under the same name. **Owner decision: OPEN** — keep the deleted upstream variant, or re-import upstream's current `interaction-state` and re-point those references. **2026-11-29 (Issue #1291)**: one local edit was added on top of the verbatim import — workflow step 3 no longer links `./references/states.md`, a file that never existed upstream or locally (dangling pointer removed). |
+| `herdr-runtime` | Base identified as upstream commit `90cb2915` (2026-10-29, first tagged in `v0.10.0`) — the earlier `0.1.1` lock ref was wrong because the skill did not exist at that tag. The local file keeps the `## Local adaptation (my-web-2026)` section (canonical state = GitHub Issue / PR / branch, authority = §6 / §8, native-subagent default, no silent provider fallback), drops the `organization/execution-placement.md`-dependent Cross-device placement section, and replaces the placement link with an inline rule, because the `organization/` tree is not vendored here. `v0.14.1` adds OpenClaw/inventory-settle content on top, so re-sync requires re-applying the local adaptation, not a blanket copy. |
+| `design-discipline`, `visual-review` | Single-line local edits (2026-11-29, Issue #1291) that repoint `../../docs/research/*.md` links — upstream repo-internal research docs this repository does not vendor — to pinned `design-skills@v0.7.1` blob URLs marked 未 vendor. Otherwise byte-identical to `v0.7.1`. |
 
-Upstream project-init skills this repository still does **not**
+Upstream aude-skills skills this repository still does **not**
 vendor: `linear-release-control` (explicitly declined — it conflicts
 with §7's GitHub-Projects SoT), `orca-frontend` (explicitly declined),
 `idea-discovery` (situational capability, not a standing need), and
@@ -970,10 +971,10 @@ To take an upstream change, diff it first, land it as its own ticket,
 and re-check the §3 / §6 / §7 invariants it touches. `rebuildup/
 project-init` was renamed to `rebuildup/aude-skills` on 2026-11-27
 (repository ID `1328121003`, upstream Issue #212); GitHub redirects
-the old slug, but new references use the canonical name, and
-`skills-lock.json` `source` fields keep the slug that was actually
-fetched, so older entries still read `rebuildup/project-init` — that
-is provenance, not a stale pointer. The update command is
+the old slug. `skills-lock.json` `source` fields were normalized to
+the canonical `rebuildup/aude-skills` slug on 2026-11-29 (Issue #1291)
+— `ref` keeps the tag or commit SHA that was actually fetched, which
+is the provenance that matters. The update command is
 `npx skills add rebuildup/aude-skills --skill <name> --copy` —
 **not** `bunx` (§2 forbids Bun here) and **never without `--copy``
 (a symlinked install is not what §10 promises readers). The CLI installs
@@ -987,7 +988,7 @@ copy and diff it into `skills/<name>/` by hand. Clone the upstream into
 - `skills/parallel-orchestration/SKILL.md` — multi-agent / stacked PR
 - `skills/onboarding/SKILL.md` — fresh contributor / fresh agent
 - `skills/agent-delivery-estimation/SKILL.md` — release / roadmap forecasting
-- `skills/skill-selection/SKILL.md` — project-init / external Skill selection
+- `skills/skill-selection/SKILL.md` — aude-skills / external Skill selection
 
 ### Quality / evaluation
 - `skills/quality-gate/SKILL.md` — quality profile + change-risk

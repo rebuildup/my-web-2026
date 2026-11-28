@@ -1183,14 +1183,6 @@
 			}
 		},
 		{
-			"path": "src/routes/activity/Timeline.tsx",
-			"clauses": ["C-8"],
-			"reason": "justified: TODO",
-			"signatures": {
-				"unbounded .map(": 1
-			}
-		},
-		{
 			"path": "src/routes/admin.keys.tsx",
 			"clauses": ["C-8"],
 			"reason": "justified: admin surface is outside the #1109 public-page migration scope (Epic #1104 acceptance excludes admin/tool-internal areas); admin chrome keeps its own composition pending a dedicated admin pass",
@@ -1283,7 +1275,7 @@
 			"clauses": ["C-8"],
 			"reason": "justified: /stack is the index route that owns full stack enumeration (ADR-0022 C-8)",
 			"signatures": {
-				"unbounded .map(": 4
+				"unbounded .map(": 3
 			}
 		},
 		{
@@ -1305,7 +1297,15 @@
 		{
 			"path": "src/routes/activity/Timeline.tsx",
 			"clauses": ["C-8"],
-			"reason": "justified: the /activity page IS the enumeration surface for the activity timeline — every published item is listed here, so there is no index route beyond it",
+			"reason": "justified: the /activity page IS the enumeration surface for the activity timeline — every published item is listed here, so there is no index route beyond it (Issue #1297 added the year/month group maps and the kind-count strip; same enumeration contract)",
+			"signatures": {
+				"unbounded .map(": 4
+			}
+		},
+		{
+			"path": "src/routes/activity/load.ts",
+			"clauses": ["C-8"],
+			"reason": "justified: toWorkLike is a projection transform onto the activity adapter's narrow input, not a rendered collection (same class as stack/resolve.ts)",
 			"signatures": {
 				"unbounded .map(": 1
 			}

@@ -21,7 +21,7 @@ Last reviewed: **2026-09-12**
 
 1. current component / task / existing design system を読む。
 2. component が取り得る state を列挙し、state ごとに意味を一文で定義する。
-3. [`references/states.md`](./references/states.md) から relevant な primary references を開く。
+3. relevant な primary references（WCAG / platform の state semantics 文書）を開く。
 4. reference 間で state semantics、visual cue、input method、focus behavior、state combination を比較する。
 5. current product の component model へ翻訳する。
 6. pointer / keyboard / touch / theme / high-contrast を含めて実装する。

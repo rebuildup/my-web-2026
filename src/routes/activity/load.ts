@@ -1,4 +1,5 @@
 import type { ActivityTimeline } from '../../activity/contract';
+import type { PortfolioWorkLike } from '../../activity/sources';
 import { getHomeGitHubActivity } from '../../home/public';
 import { listPortfolioProjects } from '../../portfolio/public';
 import type { PortfolioListPage, PortfolioProject } from '../../portfolio/schema';
@@ -61,6 +62,37 @@ async function listAllPortfolioProjects(): Promise<PortfolioProject[]> {
 }
 
 /**
+ * Project a `PortfolioProject` onto the adapter's narrow input
+ * (Issue #1297). The cover is the project's `isCover` media — or the
+ * first media row when none is flagged, the same fallback
+ * `/portfolio/$slug` uses — resolved to its composed `url`. A row
+ * whose media domain is unbound (`url === null`) or whose cover has
+ * no alt text contributes NO cover: the timeline renders the work
+ * text-only rather than a frame with no accessible name.
+ */
+function toWorkLike(project: PortfolioProject): PortfolioWorkLike {
+	const coverMedia = project.media.find((media) => media.isCover) ?? project.media[0];
+	const cover =
+		coverMedia?.url && coverMedia.alt
+			? {
+					url: coverMedia.url,
+					alt: coverMedia.alt,
+					width: coverMedia.width,
+					height: coverMedia.height,
+				}
+			: null;
+	return {
+		slug: project.slug,
+		title: project.title,
+		status: project.status,
+		visibility: project.visibility,
+		periodStart: project.periodStart,
+		periodLabel: project.periodLabel,
+		cover,
+	};
+}
+
+/**
  * The assembled timeline for `/activity`. `generatedAt` is the
  * route's clock — one instant for the whole assembly so the
  * 観測日 line can never disagree with itself.
@@ -71,5 +103,9 @@ export async function getActivityPageData(): Promise<ActivityTimeline> {
 		getHomeGitHubActivity({ data: {} }).catch(() => null),
 		listAllPortfolioProjects().catch(() => null),
 	]);
-	return assembleActivityTimeline({ github, portfolio, generatedAt });
+	return assembleActivityTimeline({
+		github,
+		portfolio: portfolio?.map(toWorkLike) ?? null,
+		generatedAt,
+	});
 }

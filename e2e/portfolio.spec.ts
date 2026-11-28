@@ -87,8 +87,11 @@ test.describe('portfolio — list (/portfolio)', () => {
 		// visible. The seed has 'my-web-2026' as the canonical
 		// always-present entry; if no seed is present the visibility
 		// boundary test below still gates the surface.
-		const cards = page.locator('ol li article');
-		await expect(cards.first()).toBeVisible();
+		// Issue #1318 — the `all` catalogue is the facet-grouped
+		// archive (compact rows), not the card grid; each row is an
+		// <li> linking to the detail page.
+		const rows = page.locator('#portfolio-archive ol > li');
+		await expect(rows.first()).toBeVisible();
 	});
 
 	test('toggling a facet updates the URL (?facets=...) and SSR state', async ({ page }) => {
@@ -115,8 +118,8 @@ test.describe('portfolio — list (/portfolio)', () => {
 
 		// Sanity: the develop-only filter MUST still surface at
 		// least one seeded public project (the `my-web-2026` row).
-		const cards = page.locator('ol li article');
-		await expect(cards.first()).toBeVisible();
+		const rows = page.locator('#portfolio-archive ol > li');
+		await expect(rows.first()).toBeVisible();
 	});
 
 	test('Home explore card CTA navigates to /portfolio', async ({ page }) => {

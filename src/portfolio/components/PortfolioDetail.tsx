@@ -169,10 +169,7 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 	// only one branch ever renders. `textWrap: balance` now applies
 	// to the no-media fallback too, matching the media branch.
 	const detailHeading = (
-		<h1
-			id="portfolio-detail-heading"
-			className={css({ ...pageTitleFlush, textWrap: 'balance' })}
-		>
+		<h1 id="portfolio-detail-heading" className={css({ ...pageTitleFlush, textWrap: 'balance' })}>
 			{project.title}
 		</h1>
 	);

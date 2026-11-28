@@ -3,7 +3,9 @@ import notionSnapshot from '../portfolio/notion/generated/snapshot.json';
 import {
 	SKILLS,
 	SKILL_CATEGORY_LABELS,
+	SKILL_CONTEXTS,
 	SKILL_USAGE_LABELS,
+	groupSkillsByContext,
 	selectCurrentSkills,
 	selectPastSkills,
 } from './skills';
@@ -25,10 +27,11 @@ import {
  *     percentage anywhere in its values.
  */
 
-const ENTRY_KEYS = new Set(['id', 'name', 'category', 'usage', 'summary', 'evidence']);
+const ENTRY_KEYS = new Set(['id', 'name', 'category', 'usage', 'context', 'summary', 'evidence']);
 const EVIDENCE_KEYS = new Set(['label', 'href']);
 const CATEGORIES = new Set(Object.keys(SKILL_CATEGORY_LABELS));
 const USAGES = new Set(Object.keys(SKILL_USAGE_LABELS));
+const CONTEXTS = new Set(SKILL_CONTEXTS.map((context) => context.id));
 const PROHIBITED_KEY = /level|proficien|percent|score|rank/i;
 
 const PORTFOLIO_SLUGS = new Set(
@@ -54,6 +57,7 @@ describe('SKILLS data contract', () => {
 			expect(skill.name.trim().length).toBeGreaterThan(0);
 			expect(CATEGORIES.has(skill.category)).toBe(true);
 			expect(USAGES.has(skill.usage)).toBe(true);
+			expect(CONTEXTS.has(skill.context), `${skill.id} context`).toBe(true);
 			expect(skill.evidence.length).toBeGreaterThanOrEqual(1);
 			for (const evidence of skill.evidence) {
 				for (const key of Object.keys(evidence)) {
@@ -106,6 +110,16 @@ describe('usage split', () => {
 
 	it('keeps at least one past-use entry distinct from the current toolchain', () => {
 		expect(selectPastSkills().length).toBeGreaterThan(0);
+	});
+
+	it('groups every entry under a declared context without loss (Issue #1296)', () => {
+		const groups = groupSkillsByContext();
+		const grouped = groups.flatMap((bucket) => bucket.skills);
+		expect(grouped.length).toBe(SKILLS.length);
+		for (const bucket of groups) {
+			expect(bucket.skills.length).toBeGreaterThan(0);
+			expect(bucket.skills.every((skill) => skill.context === bucket.context.id)).toBe(true);
+		}
 	});
 
 	it('returns empty selections for an empty input (empty-state contract)', () => {

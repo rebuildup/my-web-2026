@@ -122,9 +122,20 @@ function AboutRoute() {
 			<Breadcrumbs className={breadcrumbsChrome} />
 			<BreadcrumbJsonLd />
 			<PersonJsonLd facts={personFactsFromAbout(data)} />
-			<AboutPage data={data} />
-			<ReactionsWidget data={reactions} />
-			<PrivacyNoticeCompact {...privacyNotice} />
+			<AboutPage
+				data={data}
+				footerExtras={
+					<>
+						{/* Issue #1296 — reactions and the privacy pointer
+						    are page chrome, not trailing legal bands: they
+						    render inside the footer so the page closes on
+						    the editorial "elsewhere" block, not on a
+						    cookie notice. */}
+						<ReactionsWidget data={reactions} />
+						<PrivacyNoticeCompact {...privacyNotice} bare />
+					</>
+				}
+			/>
 		</>
 	);
 }

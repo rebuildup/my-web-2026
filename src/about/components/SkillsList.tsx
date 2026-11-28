@@ -5,28 +5,32 @@ import { TextLink } from '../../editorial/primitives/TextLink';
 import { bodySansMd, noteSansSmBody } from '../../editorial/primitives/shared-styles';
 import {
 	SKILL_CATEGORY_LABELS,
-	SKILL_USAGE_LABELS,
 	type SkillCategory,
 	type SkillEntry,
-	type SkillUsage,
-	selectCurrentSkills,
-	selectPastSkills,
+	groupSkillsByContext,
 } from '../skills';
 
 /**
- * SkillsList — the standalone evidence-linked skills view
- * (Issue #391).
+ * SkillsList — the evidence-linked skills view, grouped by the body
+ * of work each technology primarily belongs to (Issue #391 data,
+ * Issue #1296 presentation).
  *
  * Presentation only: it renders whatever `skills` it is given. The
  * data contract lives in `src/about/skills.ts` — every entry already
- * carries its evidence links, the current/past split, and (by
- * construction) no proficiency claim.
+ * carries its evidence links, the current/past split, its primary
+ * `context`, and (by construction) no proficiency claim.
  *
- * The list is grouped by `usage` into 「現在使用」 and 「過去に使用」
- * so a finished toolchain is never presented as a current one. A
- * group with no entries is not rendered at all; when BOTH groups are
- * empty the component renders an honest empty message rather than an
- * empty frame.
+ * Why context groups (Issue #1296)
+ * -------------------------------
+ * The previous 「現在使用 / 過去に使用」 split was a toolchain
+ * inventory: eighteen undifferentiated rows that never said WHICH
+ * work a technology belonged to. The audit read that as momentum
+ * loss. Grouping by `context` (the platform, Tastile, the After
+ * Effects tools, past work) makes the project relationship visible;
+ * the 「過去の制作」 group still keeps finished work visually
+ * separate from the current toolchain, and each skill's evidence
+ * row continues to name every work that demonstrates the use —
+ * including the ones outside its primary group.
  *
  * Composes `Badge` and the Panda style layer only — no route, no
  * binding, no peer obligation — so the Storybook story stands alone.
@@ -48,14 +52,15 @@ const CATEGORY_TONES: Readonly<Record<SkillCategory, 'accent' | 'neutral'>> = {
 const groupLabelStyle = css({
 	margin: '0',
 	display: 'flex',
-	alignItems: 'center',
+	alignItems: 'baseline',
 	gap: '3',
 	fontFamily: 'mono',
-	fontSize: 'xs',
-	letterSpacing: '0.06em',
-	textTransform: 'uppercase',
-	color: 'text.muted',
+	fontSize: 'sm',
+	letterSpacing: '0.04em',
+	color: 'text.default',
 });
+
+const groupDescriptionStyle = css(noteSansSmBody);
 
 const itemStyle = css({
 	display: 'flex',
@@ -91,42 +96,62 @@ const emptyStyle = css({
 	color: 'text.muted',
 });
 
-function SkillGroup({ usage, skills }: { usage: SkillUsage; skills: readonly SkillEntry[] }) {
-	if (skills.length === 0) return null;
+function SkillItem({ skill }: { skill: SkillEntry }) {
 	return (
-		<Stack as="section" gap="3" aria-label={SKILL_USAGE_LABELS[usage]}>
-			<h3 className={groupLabelStyle}>{SKILL_USAGE_LABELS[usage]}</h3>
+		<li className={itemStyle}>
+			<Cluster as="header" align="baseline" gap="3">
+				<h4 className={nameStyle}>{skill.name}</h4>
+				<Badge tone={CATEGORY_TONES[skill.category]}>{SKILL_CATEGORY_LABELS[skill.category]}</Badge>
+			</Cluster>
+			{skill.summary ? <p className={summaryStyle}>{skill.summary}</p> : null}
+			{skill.evidence.length > 0 ? (
+				<Cluster
+					as="ul"
+					gap="4"
+					align="start"
+					aria-label={`${skill.name} の根拠`}
+					className={evidenceListStyle}
+				>
+					{skill.evidence.map((evidence) => (
+						<li key={evidence.href}>
+							<TextLink
+								href={evidence.href}
+								rel={evidence.href.startsWith('http') ? 'noreferrer' : undefined}
+							>
+								{evidence.label}
+							</TextLink>
+						</li>
+					))}
+				</Cluster>
+			) : null}
+		</li>
+	);
+}
+
+function ContextGroup({ bucket }: { bucket: ReturnType<typeof groupSkillsByContext>[number] }) {
+	const { context, skills } = bucket;
+	return (
+		<Stack as="section" gap="3" aria-label={context.label}>
+			<Stack gap="1">
+				<h3 className={groupLabelStyle}>
+					{context.href ? (
+						<TextLink
+							href={context.href}
+							rel={context.href.startsWith('http') ? 'noreferrer' : undefined}
+						>
+							{context.label}
+						</TextLink>
+					) : (
+						context.label
+					)}
+				</h3>
+				{context.description ? (
+					<p className={groupDescriptionStyle}>{context.description}</p>
+				) : null}
+			</Stack>
 			<Stack as="ul" gap="0" className={listResetClassName}>
 				{skills.map((skill) => (
-					<li key={skill.id} className={itemStyle}>
-						<Cluster as="header" align="baseline" gap="3">
-							<h4 className={nameStyle}>{skill.name}</h4>
-							<Badge tone={CATEGORY_TONES[skill.category]}>
-								{SKILL_CATEGORY_LABELS[skill.category]}
-							</Badge>
-						</Cluster>
-						{skill.summary ? <p className={summaryStyle}>{skill.summary}</p> : null}
-						{skill.evidence.length > 0 ? (
-							<Cluster
-								as="ul"
-								gap="4"
-								align="start"
-								aria-label={`${skill.name} の根拠`}
-								className={evidenceListStyle}
-							>
-								{skill.evidence.map((evidence) => (
-									<li key={evidence.href}>
-										<TextLink
-											href={evidence.href}
-											rel={evidence.href.startsWith('http') ? 'noreferrer' : undefined}
-										>
-											{evidence.label}
-										</TextLink>
-									</li>
-								))}
-							</Cluster>
-						) : null}
-					</li>
+					<SkillItem key={skill.id} skill={skill} />
 				))}
 			</Stack>
 		</Stack>
@@ -134,9 +159,8 @@ function SkillGroup({ usage, skills }: { usage: SkillUsage; skills: readonly Ski
 }
 
 export function SkillsList({ skills }: SkillsListProps) {
-	const current = selectCurrentSkills(skills);
-	const past = selectPastSkills(skills);
-	if (current.length === 0 && past.length === 0) {
+	const groups = groupSkillsByContext(skills);
+	if (groups.length === 0) {
 		return (
 			<Stack as="output" gap="2" className={emptyStyle}>
 				<p className={css(bodySansMd)}>根拠となる制作記録が確認できた技術はまだありません。</p>
@@ -144,9 +168,10 @@ export function SkillsList({ skills }: SkillsListProps) {
 		);
 	}
 	return (
-		<Stack gap="4">
-			<SkillGroup usage="current" skills={current} />
-			<SkillGroup usage="past" skills={past} />
+		<Stack gap="10">
+			{groups.map((bucket) => (
+				<ContextGroup key={bucket.context.id} bucket={bucket} />
+			))}
 		</Stack>
 	);
 }

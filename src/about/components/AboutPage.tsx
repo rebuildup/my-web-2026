@@ -1,12 +1,12 @@
-import { Fragment } from 'react';
+import { Fragment, type ReactNode } from 'react';
 import { css, cx } from '../../../styled-system/css';
 import { PetCompanion, petSafeAreaStyle } from '../../editorial/pet';
 import { Badge } from '../../editorial/primitives/Badge';
 import { Container } from '../../editorial/primitives/Container';
+import { EditorialIndex } from '../../editorial/primitives/EditorialIndex';
 import { Cluster, Stack, listResetClassName } from '../../editorial/primitives/Flow';
 import { Grid, Split } from '../../editorial/primitives/Grid';
 import { MaterialSymbol } from '../../editorial/primitives/MaterialSymbol';
-import { EditorialIndex } from '../../editorial/primitives/EditorialIndex';
 import { PageHero } from '../../editorial/primitives/PageHero';
 import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
@@ -32,6 +32,7 @@ import type { PortfolioProject } from '../../portfolio/schema';
 import type { CareerEntry } from '../career';
 import type { SkillEntry } from '../skills';
 import type { AboutPageData } from '../types';
+import { AboutSectionSpy } from './AboutSectionSpy';
 import { CareerTimeline } from './CareerTimeline';
 import { SkillsList } from './SkillsList';
 
@@ -74,6 +75,14 @@ import { SkillsList } from './SkillsList';
 
 export interface AboutPageProps {
 	data: AboutPageData;
+	/**
+	 * Route-owned chrome rendered inside the page footer (Issue
+	 * #1296): the reactions widget and the compact privacy pointer
+	 * used to trail the page as sibling bands AFTER the footer,
+	 * which read as legal chrome tacked onto the editorial close.
+	 * The route still owns the data; the page owns the placement.
+	 */
+	footerExtras?: ReactNode;
 }
 
 const FACET_LABEL: Readonly<Record<string, string>> = {
@@ -102,26 +111,34 @@ const bodyText = css({
 	lineHeight: '1.6',
 });
 
-export function AboutPage({ data }: AboutPageProps) {
+export function AboutPage({ data, footerExtras }: AboutPageProps) {
 	const { identity, interests, skills, experience, career, current, future, externalHandles } =
 		data;
+	// Issue #1296 — `planned` entries are intentions with a date, not
+	// facts (the knowledge model keeps the kinds distinct). They must
+	// not sit inside the verified-history timeline where a recruiter
+	// reads "what happened"; they move to the Future section's plan
+	// lane, next to the active/parked intentions they belong with.
+	const careerHistory = career.filter((entry) => entry.kind !== 'planned');
+	const careerPlans = career.filter((entry) => entry.kind === 'planned');
 	return (
 		// Issue #767 — the fixed companion occupies the bottom-right
 		// corner; the page reserves that corridor so its text never
 		// scrolls underneath. See `src/editorial/pet/safe-area.ts`.
 		<div className={petSafeAreaStyle}>
 			<SkipLink href="#about-main" />
+			<AboutSectionSpy />
 			<Hero identity={identity} />
 			<main id="about-main">
 				<IdentitySection identity={identity} />
 				<InterestsSection interests={interests} />
 				<SkillsSection skills={skills} />
 				<ExperienceSection projects={experience} />
-				<CareerSection entries={career} />
+				<CareerSection entries={careerHistory} />
 				<CurrentSection items={current} />
-				<FutureSection active={future.active} parked={future.parked} />
+				<FutureSection active={future.active} parked={future.parked} plans={careerPlans} />
 			</main>
-			<ExternalHandlesFooter handles={externalHandles} />
+			<ExternalHandlesFooter handles={externalHandles} extras={footerExtras} />
 			<PetCompanion />
 		</div>
 	);
@@ -537,9 +554,11 @@ function CurrentSection({ items }: { items: readonly string[] }) {
 function FutureSection({
 	active,
 	parked,
+	plans,
 }: {
 	active: readonly string[];
 	parked: readonly string[];
+	plans: readonly CareerEntry[];
 }) {
 	return (
 		<PageSection labelledBy="about-section-future" separator tone="raised">
@@ -550,12 +569,62 @@ function FutureSection({
 				description="active = 今、方向として進めていること。parked = 意図的に保留しているもの。"
 				variant="spread"
 			>
+				{plans.length > 0 ? <PlanLane entries={plans} /> : null}
 				<Grid columns={2} columnGap="6" rowGap="6">
 					<FutureColumn tone="active" label="Active" items={active} />
 					<FutureColumn tone="parked" label="Parked" items={parked} />
 				</Grid>
 			</SectionHeading>
 		</PageSection>
+	);
+}
+
+/**
+ * The dated-plan lane (Issue #1296). `kind: 'planned'` career entries
+ * are intentions with a date — keeping them here, visually distinct
+ * from both the verified timeline and the undated active/parked
+ * lists, is what stops a future date from reading as a fact.
+ */
+function PlanLane({ entries }: { entries: readonly CareerEntry[] }) {
+	return (
+		<Stack
+			as="section"
+			gap="3"
+			aria-label="予定 / Planned"
+			className={css({ marginBlockEnd: '6' })}
+		>
+			<span className={css(eyebrowMonoXs)}>予定 / Planned</span>
+			<Stack as="ul" gap="0" className={listResetClassName}>
+				{entries.map((entry) => (
+					<li
+						key={entry.id}
+						className={css({
+							display: 'flex',
+							gap: '3',
+							alignItems: 'baseline',
+							borderBlockStartWidth: '1px',
+							borderBlockStartStyle: 'solid',
+							borderBlockStartColor: 'border.subtle',
+							paddingBlock: '3',
+						})}
+					>
+						<span
+							className={css({
+								fontFamily: 'mono',
+								fontSize: 'sm',
+								letterSpacing: '0.04em',
+								color: 'text.muted',
+								minWidth: '7ch',
+								flexShrink: '0',
+							})}
+						>
+							{entry.dateLabel}
+						</span>
+						<span className={bodyText}>{entry.title}</span>
+					</li>
+				))}
+			</Stack>
+		</Stack>
 	);
 }
 
@@ -604,8 +673,10 @@ function FutureColumn({
 
 function ExternalHandlesFooter({
 	handles,
+	extras,
 }: {
 	handles: AboutPageData['externalHandles'];
+	extras?: ReactNode;
 }) {
 	return (
 		<footer
@@ -662,6 +733,7 @@ function ExternalHandlesFooter({
 							))}
 						</Cluster>
 					</nav>
+					{extras}
 				</Stack>
 			</Container>
 		</footer>

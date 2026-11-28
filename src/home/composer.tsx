@@ -118,12 +118,12 @@ export interface HomePageProps {
 	/**
 	 * Issue #1294 — the Selected Works band, composed by the ROUTE
 	 * from the portfolio obligation's committed selection
-	 * (`src/portfolio/selected.ts` → `components/SelectedWorks`).
+	 * (`src/portfolio/selected.ts` → `components/SelectedWorksWall`).
 	 * The home surface owns only the section frame and the "see all"
-	 * exit; the band itself stays one component so the index and the
-	 * home page can never drift into two different selections. The
-	 * band is a node, not loader data: loader payloads stay
-	 * serializable and the route keeps the composition edge.
+	 * exit; the band itself stays one component family so the index
+	 * and the home page can never drift into two different
+	 * selections. The band is a node, not loader data: loader payloads
+	 * stay serializable and the route keeps the composition edge.
 	 */
 	selectedWorksBand?: ReactNode;
 }

@@ -15,7 +15,7 @@ import {
 	getHomeSystemStatus,
 	recordHomeHit,
 } from '../home/public';
-import { SelectedWorks } from '../portfolio/components/SelectedWorks';
+import { SelectedWorksWall } from '../portfolio/components/SelectedWorks';
 import { listPortfolioProjects } from '../portfolio/public';
 import type { PortfolioProject } from '../portfolio/schema';
 import { resolveSelectedWorks } from '../portfolio/selected';
@@ -177,7 +177,10 @@ function HomeRoute() {
 			data={data}
 			selectedWorksBand={
 				data.selectedProjects.length > 0 ? (
-					<SelectedWorks works={data.selectedProjects} headingLevel="h2" />
+					// Home gets the compact cover wall, not the index's
+					// feature+wall exhibition — same selection, different
+					// composition (Issue #1294, agy review of PR #1299).
+					<SelectedWorksWall works={data.selectedProjects.slice(0, 6)} headingLevel="h2" />
 				) : null
 			}
 		/>

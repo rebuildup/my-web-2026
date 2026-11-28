@@ -345,3 +345,9 @@ export const vStackGap1Min = {
 } as const;
 
 export const spaceNoneTo6 = { base: '0', md: '6' } as const;
+
+export const inlineIconRow = {
+	display: 'inline-flex',
+	alignItems: 'center',
+	gap: '2',
+} as const;

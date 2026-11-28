@@ -16,6 +16,7 @@ import {
 } from '../../editorial/primitives/material-symbol-paths';
 import {
 	focusRing,
+	inlineIconRow,
 	ledeSansLg,
 	noteMonoSm,
 	pageTitle,
@@ -169,13 +170,7 @@ function LinkGroupSection({ group, index }: { group: AboutLinkGroup; index: numb
 			<SectionHeading
 				id={`links-group-${group.id}`}
 				eyebrow={
-					<span
-						className={css({
-							display: 'inline-flex',
-							alignItems: 'center',
-							gap: '2',
-						})}
-					>
+					<span className={css(inlineIconRow)}>
 						<MaterialSymbol d={icon} size={14} />
 						{`${String(index).padStart(2, '0')} — ${group.labelEn}`}
 					</span>

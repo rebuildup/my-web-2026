@@ -331,9 +331,7 @@ function ReleasesBlock({ highlights }: { readonly highlights: ActivityHighlights
 	if (highlights.releases.length === 0) return null;
 	return (
 		<div>
-			<h3 className={blockTitleClassName}>
-				最新のリリース
-			</h3>
+			<h3 className={blockTitleClassName}>最新のリリース</h3>
 			<p className={blockDescriptionClassName}>
 				観測窓の中で記録されたリリースイベント。リポジトリが Portfolio
 				の作品に対応づくときは関連作品へリンクします。

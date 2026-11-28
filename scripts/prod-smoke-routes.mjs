@@ -326,7 +326,7 @@ export const PAGE_CONTENT_SECTIONS = '#app-root section[aria-labelledby]';
  * instead of as literals inside the Playwright adapter: one place to
  * edit when `/` or `/about` changes shape, and the same prose the
  * failure report names. The local Playwright suites pin the same facts
- * against a real render (`e2e/smoke.spec.ts` for the five home sections,
+ * against a real render (`e2e/smoke.spec.ts` for the home sections,
  * `e2e/about.spec.ts` for the seven narrative sections), so a composition
  * change is caught locally long before a production smoke can see it.
  *
@@ -350,10 +350,14 @@ export const PAGE_CONTENT_SECTIONS = '#app-root section[aria-labelledby]';
  * (Issue #391) and `about-section-career` (Issue #389) — so its count
  * went 5 -> 7.
  *
+ * Issue #1294 (the site redesign) added `selected-works-heading` —
+ * the proof band leads the page — and moved the Now records ahead of
+ * the site guide, so the home count went 6 -> 7.
+ *
  * @type {Readonly<Record<string, Readonly<Record<string, number>>>>}
  */
 export const EXPECTED_SECTION_COUNTS = Object.freeze({
-	'/': Object.freeze({ labelled: 6 }),
+	'/': Object.freeze({ labelled: 7 }),
 	'/about': Object.freeze({ narrative: 7 }),
 });
 

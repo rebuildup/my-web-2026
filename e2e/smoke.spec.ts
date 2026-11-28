@@ -89,7 +89,7 @@ test.describe('home page composition', () => {
 		await expect(h1).toHaveText('my-web-2026');
 		await expect(h1).toHaveAccessibleName('my-web-2026');
 
-		// Five named sections, in order, all anchored by aria-labelledby.
+		// The named sections, in order, all anchored by aria-labelledby.
 		//
 		// The count alone is not the assertion: every section is also
 		// named by the id that labels it, so a section that is removed,
@@ -119,18 +119,24 @@ test.describe('home page composition', () => {
 		// and the closing contact CTA — so the page carries six
 		// top-level sections.
 		//
+		// Issue #1294 (the site redesign) added `selected-works-heading`
+		// — the proof band leads the page — and moved the Now records
+		// ahead of the site guide, so the page carries seven
+		// top-level sections in a new order.
+		//
 		// The selector is scoped to the page subtree (Issue #664): the
 		// root layout's chrome — including the GA4 consent panel, which
 		// is itself a named `<section>` — is rendered outside it and is
 		// not a section of this page.
 		const sections = page.locator(PAGE_CONTENT_SECTIONS);
-		await expect(sections).toHaveCount(6);
+		await expect(sections).toHaveCount(7);
 		await expect(sections.nth(0)).toHaveAttribute('aria-labelledby', 'hero-title');
-		await expect(sections.nth(1)).toHaveAttribute('aria-labelledby', 'site-guide-heading');
+		await expect(sections.nth(1)).toHaveAttribute('aria-labelledby', 'selected-works-heading');
 		await expect(sections.nth(2)).toHaveAttribute('aria-labelledby', 'current-projects-heading');
-		await expect(sections.nth(3)).toHaveAttribute('aria-labelledby', 'site-status-heading');
-		await expect(sections.nth(4)).toHaveAttribute('aria-labelledby', 'sponsored-heading');
-		await expect(sections.nth(5)).toHaveAttribute('aria-labelledby', 'contact-cta-heading');
+		await expect(sections.nth(3)).toHaveAttribute('aria-labelledby', 'site-guide-heading');
+		await expect(sections.nth(4)).toHaveAttribute('aria-labelledby', 'site-status-heading');
+		await expect(sections.nth(5)).toHaveAttribute('aria-labelledby', 'sponsored-heading');
+		await expect(sections.nth(6)).toHaveAttribute('aria-labelledby', 'contact-cta-heading');
 
 		// Issue #925 second pass — the hero is editorial flow content
 		// again with a single /about link; the ad units are a separate
@@ -219,7 +225,7 @@ test.describe('home page composition', () => {
 			await expect(block).toBeVisible();
 		}
 		// None of the three may have survived as a top-level section:
-		// the page's section contract above pins the count at six.
+		// the page's section contract above pins the count at seven.
 		await expect(page.locator('section[aria-labelledby="reactions-heading"]')).toHaveCount(0);
 		await expect(page.locator('section[aria-labelledby="access-counter-heading"]')).toHaveCount(0);
 	});

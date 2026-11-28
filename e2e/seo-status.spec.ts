@@ -189,6 +189,10 @@ test.describe('seo status contract — browser rendering (#419)', () => {
 		const html = await page.content();
 		expectServed('public-projects-dotfiles', 200, html);
 		await expect(page.locator('h1')).toContainText('dotfiles');
+		// Issue #1323 — #1298 curates the README excerpt behind ONE
+		// collapsed disclosure, so the section headings (h3 inside it)
+		// are not rendered until it is opened.
+		await page.getByText(/README の全 \d+ セクションを表示/).click();
 		await expect(page.getByRole('heading', { name: '設計原則' })).toBeVisible();
 	});
 

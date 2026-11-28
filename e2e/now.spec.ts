@@ -31,16 +31,30 @@ test.describe('/now — full current-project enumeration (#1108)', () => {
 			page.getByRole('heading', { level: 1, name: '現在地 Where I am now' }),
 		).toBeVisible();
 
-		// The enumeration is complete: the summary count and the rendered
-		// rows must agree, and there is no see-all link — this IS the
-		// see-all destination.
+		// Issue #1297 — the enumeration split into two provenance
+		// sections (named roster records / GitHub-observed records),
+		// each with its own list hook. The summary count and the UNION
+		// of both lists' record rows must still agree, and there is no
+		// see-all link — this IS the see-all destination.
+		await expect(
+			page.getByRole('heading', { level: 2, name: '名付けたプロジェクト' }),
+		).toBeVisible();
+		await expect(
+			page.getByRole('heading', { level: 2, name: 'GitHub で観測されたリポジトリ' }),
+		).toBeVisible();
 		const summary = page.getByTestId('home-current-projects-summary');
 		await expect(summary).toBeVisible();
 		const summaryText = (await summary.innerText()) ?? '';
 		const declared = /全 (\d+) 件/.exec(summaryText);
 		expect(declared, `summary must declare a total count: ${summaryText}`).not.toBeNull();
-		const rows = page.getByTestId('home-current-projects-list').locator('li');
-		expect(await rows.count()).toBe(Number(declared?.[1]));
+		const namedRows = page
+			.getByTestId('now-named-projects-list')
+			.getByTestId('home-current-project');
+		const observedRows = page
+			.getByTestId('now-observed-projects-list')
+			.getByTestId('home-current-project');
+		const rowCount = (await namedRows.count()) + (await observedRows.count());
+		expect(rowCount).toBe(Number(declared?.[1]));
 		await expect(page.getByTestId('home-current-projects-see-all')).toHaveCount(0);
 	});
 

@@ -1,13 +1,16 @@
 import { css } from '../../../styled-system/css';
 import type { ActivityTimeline } from '../../activity/contract';
+import { Button } from '../../editorial/primitives/Button';
+import { MaterialSymbol } from '../../editorial/primitives/MaterialSymbol';
 import { PageHero } from '../../editorial/primitives/PageHero';
 import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import { SkipLink } from '../../editorial/primitives/SkipLink';
-import { ActivitySourceStatus, ActivityTimelineView } from './Timeline';
+import { ARROW_FORWARD_PATH } from '../../editorial/primitives/material-symbol-paths';
+import { ActivityTimelineView } from './Timeline';
 
 /**
- * `/activity` page composition (Issue #352).
+ * `/activity` page composition (Issue #352; redesigned Issue #1297).
  *
  * Presentation only — the assembled `ActivityTimeline` arrives
  * through the route loader (`load.ts`), which composes the GitHub
@@ -15,7 +18,16 @@ import { ActivitySourceStatus, ActivityTimelineView } from './Timeline';
  * `src/activity` adapters. This component renders exactly what the
  * server assembled and never re-derives a fact.
  *
- * Layout mirrors `/stack`: skip link → hero → one content section.
+ * Layout: skip link → hero → one content section → closing band.
+ *
+ * Issue #1297 changes:
+ *   - the per-source status strip left the hero's aside (where the
+ *     bordered table competed with the page title) and now renders
+ *     as one quiet line inside `ActivityTimelineView`, next to the
+ *     list it describes;
+ *   - the page ends with a closing CTA instead of dead-ending at
+ *     the last timeline row.
+ *
  * The honest-state vocabulary (per-source 観測中 / 未接続 / 取得失敗,
  * the empty list, the unreadable timeline) all lives inside
  * `ActivityTimelineView` — this page only frames it.
@@ -24,19 +36,11 @@ export function ActivityPage({ timeline }: { timeline: ActivityTimeline }) {
 	return (
 		<>
 			<SkipLink />
-			{/* Issue #1163 — the entry block takes 7 of 12 tracks and the
-			    source status takes the right column. The status was the
-			    one piece of the page's own context that the visitor needs
-			    BEFORE reading the list (which source feeds it, how fresh
-			    it is); it used to sit as a small line above the list, and
-			    the right half of the entry stayed empty. */}
 			<PageHero
 				labelledBy="activity-hero-title"
 				eyebrow="my-web-2026 · /activity"
 				title="活動タイムライン / Activity"
 				description="GitHub のリリース、公開された記事、Portfolio の公開作品を一つの時系列にまとめた読み取り専用の一覧です。各項目はソースが記録した日付だけを表示し、日付が分からない項目に日付を補いません。"
-				asideLabel="Source status"
-				aside={<ActivitySourceStatus timeline={timeline} />}
 			/>
 			<main id="main">
 				<PageSection labelledBy="activity-timeline-heading" separator testId="activity-page">
@@ -50,6 +54,29 @@ export function ActivityPage({ timeline }: { timeline: ActivityTimeline }) {
 					<div className={css({ marginBlockStart: '10' })}>
 						<ActivityTimelineView timeline={timeline} />
 					</div>
+				</PageSection>
+				{/* Issue #1297 — the closing band: the archive ends with a
+				    next step instead of a dead end (contact / portfolio). */}
+				<PageSection
+					labelledBy="activity-closing-heading"
+					rhythm="closing"
+					tone="inverse"
+					separator
+					name="contact"
+				>
+					<SectionHeading
+						id="activity-closing-heading"
+						eyebrow="02 — Next"
+						title="この活動について話す"
+						titleEn="Keep in touch"
+						description="タイムラインの元データは portfolio の case study と現在地の記録にも展開しています。仕事の相談・掲載の訂正は contact の verified channel からどうぞ。"
+						variant="spread"
+					>
+						<Button as="a" href="/contact" variant="primary">
+							<span lang="ja">Contact を見る</span>
+							<MaterialSymbol d={ARROW_FORWARD_PATH} size={18} />
+						</Button>
+					</SectionHeading>
 				</PageSection>
 			</main>
 		</>

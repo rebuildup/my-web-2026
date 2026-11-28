@@ -1440,6 +1440,52 @@
 				]
 			},
 			"note": "Page title of /now. Not a time-sensitive claim: it names the surface, it does not assert a date."
+		},
+		{
+			"id": "activity-closing-description-1297",
+			"path": "src/routes/activity/ActivityPage.tsx",
+			"expression": "タイムラインの元データは portfolio の case study と現在地の記録にも展開しています。仕事の相談・掲載の訂正は contact の verified channel からどうぞ。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-28",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/1297",
+						"note": "Issue #1297 — /activity closing band. The sentence routes corrections through /contact, whose channels are the freshness-gated verified set (src/contact/channels.json + the 30-day gate of src/contact/schema.ts); it claims no channel name and no freshness number of its own."
+					}
+				]
+			},
+			"note": "Closing-band description of /activity. True against the contact freshness contract: only re-verified channels render on /contact, so 'verified channel' names the gate, not a specific row. (src/routes/activity/ActivityPage.tsx)"
+		},
+		{
+			"id": "now-closing-description-1297",
+			"path": "src/routes/now.tsx",
+			"expression": "現在地の記録は portfolio の case study と活動タイムラインにも展開しています。仕事の相談・掲載の訂正は contact の verified channel からどうぞ。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-28",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/1297",
+						"note": "Issue #1297 — /now closing band. Same contact-freshness basis as the /activity closing record: corrections route through /contact's verified channel set only."
+					}
+				]
+			},
+			"note": "Closing-band description of /now. Same claim class as activity-closing-description-1297. (src/routes/now.tsx)"
 		}
 	]
 }

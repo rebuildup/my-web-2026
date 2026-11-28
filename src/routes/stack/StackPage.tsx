@@ -1,20 +1,21 @@
 import { css, cx } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
+import { Button } from '../../editorial/primitives/Button';
+import { Disclosure } from '../../editorial/primitives/Disclosure';
+import { EditorialIndex } from '../../editorial/primitives/EditorialIndex';
 import { Cluster, Stack, listResetClassName } from '../../editorial/primitives/Flow';
 import { Split } from '../../editorial/primitives/Grid';
-import { EditorialIndex } from '../../editorial/primitives/EditorialIndex';
+import { MaterialSymbol } from '../../editorial/primitives/MaterialSymbol';
 import { PageHero } from '../../editorial/primitives/PageHero';
 import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import { SkipLink } from '../../editorial/primitives/SkipLink';
 import { TextLink } from '../../editorial/primitives/TextLink';
+import { ARROW_FORWARD_PATH } from '../../editorial/primitives/material-symbol-paths';
 import {
 	emphasisDefault,
-	ledeSansLg,
-	noteMonoSm,
 	noteSansSmLoose,
 	noteSansXsBody,
-	pageTitle,
 	vStackGap1,
 } from '../../editorial/primitives/shared-styles';
 import { CodeBlock, DataTable, type TableRow } from '../../editorial/table-code';
@@ -71,7 +72,7 @@ export function StackPage({ data }: { data: StackPageData }) {
 				labelledBy="stack-hero-title"
 				eyebrow="my-web-2026 · /stack"
 				title="開発スタック / Stack"
-				description="このサイトを動かしている技術の一覧です。version は package.json と profile.yaml から読み取り、根拠となる source へのリンクを各項目に付けています。開発記事や整備 PR の 参照先として使えます。"
+				description="このサイトの技術選定を、採用理由と根拠ファイルへのリンク付きで記録した一覧です。version は package.json と profile.yaml から読み取り、判断の背景は各項目の「採用理由」が語ります。検討して見送った案は末尾の Exploration 節に分けています。"
 				asideLabel="Sections"
 				aside={<StackIndex sections={data.sections} />}
 			/>
@@ -79,6 +80,42 @@ export function StackPage({ data }: { data: StackPageData }) {
 				{data.sections.map((section, index) => (
 					<StackSectionBlock key={section.id} section={section} index={index + 1} />
 				))}
+				{/* Issue #1297 — the closing band: the reference list ends
+				    with a next step (contact / the repository itself)
+				    instead of dead-ending at the last item. */}
+				<PageSection
+					labelledBy="stack-closing-heading"
+					rhythm="closing"
+					tone="inverse"
+					separator
+					name="contact"
+				>
+					<SectionHeading
+						id="stack-closing-heading"
+						eyebrow="Next"
+						title="スタックの判断について話す"
+						titleEn="Keep in touch"
+						description="この一覧は公開リポジトリの設定ファイルと検証記録から生成しています。技術選定の背景・記事執筆の相談・掲載の訂正は contact の verified channel から、実装の一次情報は GitHub repository からどうぞ。"
+						variant="spread"
+					>
+						<Cluster gap="3">
+							<Button as="a" href="/contact" variant="primary">
+								<span lang="ja">Contact を見る</span>
+								<MaterialSymbol d={ARROW_FORWARD_PATH} size={18} />
+							</Button>
+							<Button
+								as="a"
+								href="https://github.com/rebuildup/my-web-2026"
+								target="_blank"
+								rel="noopener noreferrer"
+								variant="secondary"
+							>
+								<span>GitHub repository</span>
+								<MaterialSymbol d={ARROW_FORWARD_PATH} size={18} />
+							</Button>
+						</Cluster>
+					</SectionHeading>
+				</PageSection>
 			</main>
 		</>
 	);
@@ -160,13 +197,18 @@ function StackItemRow({ item }: { item: StackItemView }) {
 					{item.reason}
 				</p>
 				{item.settings !== undefined && item.settings.length > 0 ? (
+					// Issue #1297 — the biome.json dump is reference data,
+					// not narrative: it collapses behind a Disclosure so
+					// the decision (採用理由 / before-after) reads first.
 					<div data-testid={`stack-settings-${item.id}`}>
-						<DataTable
-							caption="biome.json の設定値（リクエスト時にファイルから読み取り）"
-							columns={BIOME_SETTINGS_COLUMNS}
-							rows={biomeSettingsRows(item.settings)}
-							compact
-						/>
+						<Disclosure summary="biome.json の設定値（リクエスト時にファイルから読み取り）">
+							<DataTable
+								caption="biome.json の設定値"
+								columns={BIOME_SETTINGS_COLUMNS}
+								rows={biomeSettingsRows(item.settings)}
+								compact
+							/>
+						</Disclosure>
 					</div>
 				) : null}
 				{item.samples !== undefined && item.samples.length > 0 ? (
@@ -187,6 +229,17 @@ function StackItemRow({ item }: { item: StackItemView }) {
 				) : null}
 				{item.checks !== undefined && item.checks.length > 0 ? (
 					<StackChecks checks={item.checks} itemId={item.id} />
+				) : null}
+				{item.caseStudy !== undefined ? (
+					// Issue #1297 — a stack item that a published project
+					// documents links INTO that case study, so the
+					// reference list connects to the narrative surface.
+					<p className={css({ margin: '0' })}>
+						<TextLink href={item.caseStudy.href}>
+							<span>{item.caseStudy.label}</span>
+							<span aria-hidden="true"> →</span>
+						</TextLink>
+					</p>
 				) : null}
 				{item.evidence.length > 0 ? (
 					<Cluster as="ul" aria-label="根拠 source" className={listResetClassName}>
@@ -325,8 +378,3 @@ function biomeSettingsRows(settings: readonly StackFactRow[]): TableRow[] {
 		cells: { value: row.value },
 	}));
 }
-
-const inlineCodeStyle = css({
-	fontFamily: 'mono',
-	fontSize: '0.9em',
-});

@@ -1,7 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router';
+import { css } from '../../styled-system/css';
 import { PublicNav } from '../editorial/nav';
 import { BreadcrumbJsonLd, Breadcrumbs } from '../editorial/nav/Breadcrumbs';
 import { breadcrumbsChrome } from '../editorial/nav/Breadcrumbs.styles';
+import { Container } from '../editorial/primitives/Container';
 import { PrivacyNoticeCompact } from '../home/privacy-notice-compact';
 import { getCompactPrivacyNotice } from '../home/privacy/load';
 import { getHomeReactions } from '../home/public';
@@ -65,7 +67,14 @@ function ProjectsDotfilesRoute() {
 			<BreadcrumbJsonLd />
 			<DotfilesIntroductionPage view={view} />
 			<ReactionsWidget data={reactions} />
-			<PrivacyNoticeCompact {...privacyNotice} />
+			{/* Issue #1298 — same closing treatment as /contact and
+			    /tools: the privacy pointer is one muted line, not a
+			    padded legal band after the provenance section. */}
+			<div className={css({ paddingBlock: '8' })}>
+				<Container>
+					<PrivacyNoticeCompact {...privacyNotice} bare />
+				</Container>
+			</div>
 		</>
 	);
 }

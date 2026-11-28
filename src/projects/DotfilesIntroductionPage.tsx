@@ -2,6 +2,7 @@ import { css } from '../../styled-system/css';
 import { Badge } from '../editorial/primitives/Badge';
 import { Button } from '../editorial/primitives/Button';
 import { Container } from '../editorial/primitives/Container';
+import { Disclosure } from '../editorial/primitives/Disclosure';
 import { Cluster, Stack, listResetClassName } from '../editorial/primitives/Flow';
 import { Grid } from '../editorial/primitives/Grid';
 import { PageSection } from '../editorial/primitives/PageSection';
@@ -16,6 +17,7 @@ import {
 	noteSansSm,
 	sizeDisplay,
 } from '../editorial/primitives/shared-styles';
+import { ScrollRegion } from '../editorial/table-code';
 import { RichText } from './RichText';
 import type {
 	FreshnessState,
@@ -229,6 +231,11 @@ export function DotfilesIntroductionPage({ view }: DotfilesIntroductionPageProps
 							</cite>
 						</blockquote>
 					) : null}
+					{/* Issue #1298 — the impact summary the README mirror
+					    lacked: what the excerpt actually contains, as
+					    counts a scanner can read before deciding to
+					    open the full text below. */}
+					{snapshot ? <ImpactStats snapshot={snapshot} /> : null}
 					<Cluster gap="4" className={css({ marginBlockStart: '6' })}>
 						<Button
 							as="a"
@@ -259,11 +266,29 @@ export function DotfilesIntroductionPage({ view }: DotfilesIntroductionPageProps
 
 				{snapshot ? <BoundarySection snapshot={snapshot} /> : <MissingSnapshotSection />}
 
-				{snapshot
-					? snapshot.introduction.sections.map((section, index) => (
-							<ReadmeSection key={section.id} section={section} index={index} />
-						))
-					: null}
+				{/* Issue #1298 — curated, not mirrored: the authored
+				    boundary section above carries the "so what", and the
+				    upstream README excerpt is now ONE collapsed
+				    disclosure instead of five full sections of mirror
+				    text. The full text stays one click away. */}
+				{snapshot ? (
+					<PageSection separator labelledBy="dotfiles-readme-heading" name="prose">
+						<SectionHeading
+							id="dotfiles-readme-heading"
+							eyebrow="02 — README"
+							title="上流 README の抜粋"
+							description="公開 README から allowlist 抽出した全文です。通常は閉じたままにし、必要なときだけ開きます。"
+						/>
+						<Disclosure
+							summary={`README の全 ${snapshot.introduction.sections.length} セクションを表示`}
+							className={css({ marginBlockStart: '6' })}
+						>
+							{snapshot.introduction.sections.map((section, index) => (
+								<ReadmeExcerpt key={section.id} section={section} index={index} />
+							))}
+						</Disclosure>
+					</PageSection>
+				) : null}
 
 				{snapshot && snapshot.introduction.relatedRepositories.length > 0 ? (
 					<PageSection labelledBy="dotfiles-related-heading">
@@ -383,6 +408,10 @@ function BoundarySection({
 					</TextLink>
 				</Panel>
 			</Grid>
+			{/* Issue #1298 — the visual anchor the README mirror lacked:
+			    the repository's own top level, drawn as a listing instead
+			    of buried as chip row inside the (now collapsed) excerpt. */}
+			<RepoRootPanel snapshot={snapshot} />
 			<p className={sourceNoteClassName} style={{ marginBlockStart: '16px' }}>
 				このページの抜粋元:{' '}
 				<TextLink href={snapshot.source.readmeUrl} target="_blank" rel="noopener noreferrer">
@@ -393,7 +422,14 @@ function BoundarySection({
 	);
 }
 
-function ReadmeSection({
+/**
+ * One allowlisted README section inside the collapsed excerpt
+ * (Issue #1298). No `PageSection` wrapper: the five excerpts share
+ * ONE disclosure, so each renders as a hairline-separated block with
+ * an `h3` — the page-level `h2` ("上流 README の抜粋") already owns
+ * the section landmark.
+ */
+function ReadmeExcerpt({
 	section,
 	index,
 }: {
@@ -405,18 +441,52 @@ function ReadmeSection({
 		description: '上流 README から抜粋したセクションです。',
 	};
 	return (
-		<PageSection separator labelledBy={`dotfiles-section-${section.id}`} name="prose">
-			{/* Issue #1160 — the README excerpts are PROSE sections, the same
-			    shape as the portfolio detail's markdown body. Naming them lets
-			    the composition contract's CL-11 exemption be scoped to them
-			    (the hero, the related-works band and the boundary section
-			    stay judged). */}
-			<SectionHeading
-				id={`dotfiles-section-${section.id}`}
-				eyebrow={`02.${index + 1} — README`}
-				title={meta.title}
-				description={meta.description}
-			/>
+		<div
+			className={css({
+				paddingBlock: '6',
+				borderBlockStartWidth: '1px',
+				borderBlockStartStyle: 'solid',
+				borderBlockStartColor: 'border.subtle',
+				'&:first-of-type': { borderBlockStartWidth: '0' },
+			})}
+		>
+			<p
+				className={css({
+					margin: '0',
+					fontFamily: 'mono',
+					fontSize: 'xs',
+					letterSpacing: '0.08em',
+					textTransform: 'uppercase',
+					color: 'text.muted',
+				})}
+			>
+				{`02.${index + 1} — README`}
+			</p>
+			<h3
+				id={`dotfiles-excerpt-${section.id}`}
+				className={css({
+					margin: '0',
+					marginBlockStart: '2',
+					fontFamily: 'heading',
+					fontSize: 'xl',
+					fontWeight: '700',
+					color: 'text.default',
+				})}
+			>
+				{meta.title}
+			</h3>
+			<p
+				className={css({
+					margin: '0',
+					marginBlockStart: '2',
+					fontFamily: 'sans',
+					fontSize: 'sm',
+					lineHeight: '1.6',
+					color: 'text.muted',
+				})}
+			>
+				{meta.description}
+			</p>
 			{section.summary ? (
 				<p
 					lang="en"
@@ -502,7 +572,7 @@ function ReadmeSection({
 					README の「{section.heading}」を読む
 				</TextLink>
 			</p>
-		</PageSection>
+		</div>
 	);
 }
 
@@ -676,5 +746,122 @@ function ProvenanceSection({ view }: { readonly view: ProjectIntroductionView })
 				を更新します。
 			</p>
 		</PageSection>
+	);
+}
+
+/**
+ * The impact summary (Issue #1298): counts computed from the committed
+ * snapshot, so the hero states what the page contains before the
+ * reader commits to the collapsed excerpt below. Nothing here is
+ * authored prose — every number is read off the same data the sections
+ * render.
+ */
+function ImpactStats({
+	snapshot,
+}: {
+	readonly snapshot: NonNullable<ProjectIntroductionView['snapshot']>;
+}) {
+	const sections = snapshot.introduction.sections;
+	const principles = sections.find((section) => section.id === 'principles');
+	const layout = sections.find((section) => section.id === 'layout');
+	const stats = [
+		{ value: sections.length, label: 'README セクション' },
+		{ value: principles?.points.length ?? 0, label: '設計原則' },
+		{ value: layout?.structure.length ?? 0, label: 'トップレベル構成' },
+		{
+			value: snapshot.introduction.relatedRepositories.length,
+			label: '関連リポジトリ',
+		},
+	];
+	return (
+		<dl
+			className={css({
+				display: 'flex',
+				flexWrap: 'wrap',
+				gap: '6',
+				margin: '0',
+				marginBlockStart: '6',
+			})}
+		>
+			{stats.map((stat) => (
+				<div
+					key={stat.label}
+					className={css({ display: 'flex', alignItems: 'baseline', gap: '2' })}
+				>
+					<dt
+						className={css({ order: 2, fontFamily: 'sans', fontSize: 'sm', color: 'text.muted' })}
+					>
+						{stat.label}
+					</dt>
+					<dd
+						className={css({
+							order: 1,
+							margin: '0',
+							fontFamily: 'mono',
+							fontSize: 'xl',
+							fontWeight: '700',
+							fontVariantNumeric: 'tabular-nums',
+							color: 'text.default',
+						})}
+					>
+						{stat.value}
+					</dd>
+				</div>
+			))}
+		</dl>
+	);
+}
+
+/**
+ * The repository's top level as a listing (Issue #1298) — the page's
+ * visual anchor. Entries come from the allowlisted `layout` README
+ * section's `structure` field, so the panel can never show a path the
+ * snapshot did not publish. Rendered as text, not an invented tree:
+ * the snapshot does not record which entries are directories.
+ */
+function RepoRootPanel({
+	snapshot,
+}: {
+	readonly snapshot: NonNullable<ProjectIntroductionView['snapshot']>;
+}) {
+	const layout = snapshot.introduction.sections.find((section) => section.id === 'layout');
+	const entries = layout?.structure ?? [];
+	if (entries.length === 0) return null;
+	return (
+		<Panel
+			as="figure"
+			variant="surface"
+			padding="6"
+			radius="lg"
+			className={css({ margin: '0', marginBlockStart: '8', maxWidth: '420px' })}
+		>
+			<figcaption
+				className={css({
+					fontFamily: 'mono',
+					fontSize: 'xs',
+					letterSpacing: '0.08em',
+					textTransform: 'uppercase',
+					color: 'text.muted',
+				})}
+			>
+				dotfiles /
+			</figcaption>
+			<ScrollRegion label="dotfiles repository root listing">
+				<pre
+					className={css({
+						margin: '0',
+						marginBlockStart: '3',
+						padding: '0',
+						border: '0',
+						fontFamily: 'mono',
+						fontSize: 'sm',
+						lineHeight: '1.9',
+						color: 'text.default',
+					})}
+				>
+					{entries.join('\n')}
+				</pre>
+			</ScrollRegion>
+		</Panel>
 	);
 }

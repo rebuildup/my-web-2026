@@ -1289,7 +1289,7 @@
 		{
 			"path": "src/routes/tools.index.tsx",
 			"clauses": ["C-8"],
-			"reason": "justified: preview image well fill (bg.subtle), a media asset surface not a Panel",
+			"reason": "justified: /tools IS the enumeration surface for the Tool catalogue (ADR-0022 C-8 indexOwners includes /tools) — the available and planned sections each render the committed manifest's complete list; available cards additionally carry per-tool hrefs to /tools/<slug>",
 			"signatures": {
 				"unbounded .map(": 2
 			}

@@ -70,8 +70,11 @@ export interface SectionHeadingProps {
 	 * Short, all-caps label above the title. Stays in `text.muted`
 	 * so the eyebrow reads as a section identifier rather than a
 	 * heading. Keep it to a single word or two — never a sentence.
+	 * `ReactNode` since Issue #1298 so a caller can lead the label
+	 * with a glyph (e.g. a group's Material Symbol on `/links`);
+	 * strings render unchanged.
 	 */
-	eyebrow?: string;
+	eyebrow?: ReactNode;
 	title: string;
 	/**
 	 * Optional English half of a bilingual section title (Issue #792).

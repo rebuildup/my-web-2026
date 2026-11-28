@@ -1,6 +1,10 @@
 import { css, cx } from '../../../styled-system/css';
 import { StateMark } from '../../editorial/primitives/StateMark';
-import { eyebrowMonoXsReset, focusRing } from '../../editorial/primitives/shared-styles';
+import {
+	eyebrowMonoXsReset,
+	focusRing,
+	inlineIconRow,
+} from '../../editorial/primitives/shared-styles';
 import { ScrollRegion } from '../../editorial/table-code';
 import { actionDescription, actionLabel, actionRaw, formatDate, layerLabel } from '../format';
 import { resolveGeometry } from '../geometry';
@@ -303,7 +307,7 @@ export function KeyDetail({ platform, layer, selectedIndex }: KeyDetailProps) {
 
 			<DetailRow label="アクション">
 				{action.kind === 'blocked' ? (
-					<span className={css({ display: 'inline-flex', alignItems: 'center', gap: '2' })}>
+					<span className={css(inlineIconRow)}>
 						<StateMark kind="unreachable" size="sm" />
 						{actionDescription(action, platform.id)}
 					</span>

@@ -2,6 +2,7 @@ import { css, cx } from '../../../../styled-system/css';
 import { StateMark } from '../../../editorial/primitives/StateMark';
 import {
 	cols1to2,
+	inlineIconRow,
 	labelAction,
 	monoXsPlain,
 	noteMonoXs,
@@ -663,12 +664,12 @@ function FamilyBand({
 					{note}
 				</p>
 				<div className={cx(flexBetweenClassName, css({ minWidth: '0', flexWrap: 'wrap' }))}>
-					<span className={css({ display: 'inline-flex', alignItems: 'center', gap: '2' })}>
+					<span className={css(inlineIconRow)}>
 						<StateMark kind={family.id} size="sm" />
 						<code className={monoCodeClassName}>field {family.fieldHex}</code>
 						<code className={monoCodeClassName}>· {ratio} : 1</code>
 					</span>
-					<span className={css({ display: 'inline-flex', alignItems: 'center', gap: '2' })}>
+					<span className={css(inlineIconRow)}>
 						<span
 							aria-hidden="true"
 							className={css({ display: 'block', width: '3', height: '3' })}

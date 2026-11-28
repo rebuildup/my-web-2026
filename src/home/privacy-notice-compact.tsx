@@ -47,7 +47,7 @@ export interface PrivacyNoticeCompactProps {
 	/**
 	 * `bare` renders only the notice line — no band padding, no
 	 * `Container` — for callers that already provide the page
-	 * container (e.g. a footer fine-print slot, Issue #1296).
+	 * container (e.g. a footer fine-print slot, Issue #1296/#1298).
 	 * Default `false` keeps the standalone band every existing
 	 * caller relies on.
 	 */

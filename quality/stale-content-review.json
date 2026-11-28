@@ -1396,29 +1396,6 @@
 			"note": "Section description of the component-integration example on /stack. 「現在地」 is the literal name of the Home section (src/home/current/), not a freshness claim; the sentence describes a stable structural fact."
 		},
 		{
-			"id": "contact-hero-description",
-			"path": "src/contact/page.tsx",
-			"expression": "現在利用可能な、用途別の contact channel だけを掲載しています。掲載されていない channel は現在 re-verified されていないため、ここには載せていません。",
-			"locale": "ja",
-			"dimension": "prose",
-			"reviewedAt": "2026-11-22",
-			"reviewedBy": "agent",
-			"provenance": {
-				"kind": "agent-recorded",
-				"reference": null,
-				"recordedBy": "agent",
-				"ownerConfirmation": "unconfirmed",
-				"evidence": [
-					{
-						"type": "issue",
-						"reference": "https://github.com/rebuildup/my-web-2026/issues/1163",
-						"note": "The hero description of `/contact` carries the same sentence the intro paragraph used to hold (split across two records: contact-intro-current-only / contact-intro-unpublished-excluded). The sentence moved into the PageHero description prop, so the gate now extracts it as one expression. True against src/contact/channels.json and the 30-day freshness gate of src/contact/schema.ts."
-					}
-				]
-			},
-			"note": "Same claim as the two records it supersedes for this surface; kept as a separate row because the extraction span changed when the sentence moved into the hero description prop."
-		},
-		{
 			"id": "now-hero-title",
 			"path": "src/routes/now.tsx",
 			"expression": "現在地",
@@ -1440,6 +1417,29 @@
 				]
 			},
 			"note": "Page title of /now. Not a time-sensitive claim: it names the surface, it does not assert a date."
+		},
+		{
+			"id": "contact-hero-description-1298",
+			"path": "src/contact/page.tsx",
+			"expression": "現在 re-verified な連絡手段は ${channels.length} 件です。各 channel は用途別にラベル付けし、最終確認から時間が経過したものには要再検証の注記を付けています。掲載されていない手段(メール直送・フォームなど)は現在公開していません。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-28",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/1298",
+						"note": "Issue #1298 — /contact hero description rewritten for the secondary-pages redesign. The count is interpolated from the same verified-channel set the page renders; the sentence claims no channel name and no freshness number of its own."
+					}
+				]
+			},
+			"note": "PageHero description of /contact. States the listing rule (re-verified channels only, labelled by purpose, stale ones annotated) — a description of the surface's own contract, not a dated claim. (src/contact/page.tsx)"
 		},
 		{
 			"id": "activity-closing-description-1297",

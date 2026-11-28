@@ -2,12 +2,21 @@ import { css } from '../../../styled-system/css';
 import { EditorialIndex } from '../../editorial/primitives/EditorialIndex';
 import { Stack, listResetClassName } from '../../editorial/primitives/Flow';
 import { Split } from '../../editorial/primitives/Grid';
+import { MaterialSymbol } from '../../editorial/primitives/MaterialSymbol';
 import { PageHero } from '../../editorial/primitives/PageHero';
 import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import { SkipLink } from '../../editorial/primitives/SkipLink';
 import {
+	CODE_BRACKETS_PATH,
+	COMPUTER_PATH,
+	PERSON_PATH,
+	PUBLIC_PATH,
+	SPORTS_ESPORTS_PATH,
+} from '../../editorial/primitives/material-symbol-paths';
+import {
 	focusRing,
+	inlineIconRow,
 	ledeSansLg,
 	noteMonoSm,
 	pageTitle,
@@ -124,12 +133,48 @@ function LinksEmptyState() {
 	);
 }
 
+/**
+ * One glyph per link group (Issue #1298 — the audit's 「グループ別の
+ * 視覚的手がかりなし」 finding): the directory is generic, so each
+ * section heading carries the group's own mark. `PUBLIC_PATH` is the
+ * fallback for a group nobody has classified yet. Real favicon
+ * fetches were rejected: they would add a third-party image request
+ * per row for a page whose contract is "committed inventory only".
+ */
+const GROUP_ICONS: Readonly<Record<string, string>> = {
+	site: COMPUTER_PATH,
+	accounts: PERSON_PATH,
+	development: CODE_BRACKETS_PATH,
+	games: SPORTS_ESPORTS_PATH,
+};
+
+const FALLBACK_GROUP_ICON = PUBLIC_PATH;
+
+/**
+ * The hostname an external row points at — the directory's cheapest
+ * honest wayfinding (which service, before the click). `null` for
+ * internal `/path` rows and for URLs that do not parse.
+ */
+function linkHost(url: string): string | null {
+	try {
+		return new URL(url).hostname;
+	} catch {
+		return null;
+	}
+}
+
 function LinkGroupSection({ group, index }: { group: AboutLinkGroup; index: number }) {
+	const icon = GROUP_ICONS[group.id] ?? FALLBACK_GROUP_ICON;
 	return (
 		<PageSection labelledBy={`links-group-${group.id}`} separator>
 			<SectionHeading
 				id={`links-group-${group.id}`}
-				eyebrow={`${String(index).padStart(2, '0')} — ${group.labelEn}`}
+				eyebrow={
+					<span className={css(inlineIconRow)}>
+						<MaterialSymbol d={icon} size={14} />
+						{`${String(index).padStart(2, '0')} — ${group.labelEn}`}
+					</span>
+				}
 				title={group.label}
 				variant="default"
 			/>
@@ -143,6 +188,7 @@ function LinkGroupSection({ group, index }: { group: AboutLinkGroup; index: numb
 }
 
 function LinkRow({ link }: { link: AboutLink }) {
+	const host = link.external ? linkHost(link.url) : null;
 	return (
 		<Split as="li" rowGap="2" separated>
 			<div className={css(vStackGap1)}>
@@ -159,6 +205,7 @@ function LinkRow({ link }: { link: AboutLink }) {
 				</span>
 				<span lang="en" className={css(noteMonoSm)}>
 					{link.description}
+					{host ? ` · ${host}` : ''}
 				</span>
 			</div>
 			<a

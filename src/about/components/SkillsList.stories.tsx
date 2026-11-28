@@ -12,9 +12,11 @@ import { SkillsList } from './SkillsList';
  * --------------------
  * The evidence-linked skills list drawn on its own with the committed
  * `SKILLS` data: every item names the work or record that demonstrates
- * the use, the list splits 「現在使用」 / 「過去に使用」, and no
- * proficiency level is claimed anywhere — the data type has no field
- * for one (`src/about/skills.test.ts` pins that).
+ * the use, the list groups technologies by the body of work they
+ * primarily belong to (Issue #1296 — the project relationship replaces
+ * the flat current/past inventory), and no proficiency level is
+ * claimed anywhere — the data type has no field for one
+ * (`src/about/skills.test.ts` pins that).
  *
  * `Empty` shows the honest empty state for the case where no skill has
  * a verifiable evidence link.

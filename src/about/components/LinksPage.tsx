@@ -1,7 +1,7 @@
 import { css } from '../../../styled-system/css';
+import { EditorialIndex } from '../../editorial/primitives/EditorialIndex';
 import { Stack, listResetClassName } from '../../editorial/primitives/Flow';
 import { Split } from '../../editorial/primitives/Grid';
-import { EditorialIndex } from '../../editorial/primitives/EditorialIndex';
 import { PageHero } from '../../editorial/primitives/PageHero';
 import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';

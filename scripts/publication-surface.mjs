@@ -311,6 +311,9 @@ export const ROUTE_DIR_INERT_FILES = [
 	'src/routes/activity/Timeline.stories.tsx',
 	'src/routes/activity/assemble.ts',
 	'src/routes/activity/load.ts',
+	'src/routes/now/NowFocus.tsx',
+	'src/routes/now/focus.ts',
+	'src/routes/now/load.ts',
 ];
 
 /**

@@ -36,6 +36,14 @@ test.describe('/now — full current-project enumeration (#1108)', () => {
 		// each with its own list hook. The summary count and the UNION
 		// of both lists' record rows must still agree, and there is no
 		// see-all link — this IS the see-all destination.
+		// Issue #1316 — the page now leads with the editorial "in
+		// focus" band (owner-declared 主軸 / 並行 records, with
+		// portfolio covers where a case study is mapped) before the
+		// two provenance enumerations.
+		await expect(
+			page.getByRole('heading', { level: 2, name: 'いまの焦点 In focus' }),
+		).toBeVisible();
+		await expect(page.getByTestId('now-focus-item').first()).toBeVisible();
 		await expect(
 			page.getByRole('heading', { level: 2, name: '名付けたプロジェクト' }),
 		).toBeVisible();
@@ -56,6 +64,9 @@ test.describe('/now — full current-project enumeration (#1108)', () => {
 		const rowCount = (await namedRows.count()) + (await observedRows.count());
 		expect(rowCount).toBe(Number(declared?.[1]));
 		await expect(page.getByTestId('home-current-projects-see-all')).toHaveCount(0);
+		// Issue #1316 — the observed section hands off to the full
+		// timeline instead of ending the enumeration cold.
+		await expect(page.getByTestId('now-activity-link')).toHaveAttribute('href', '/activity');
 	});
 
 	test('is reachable from the home see-all link', async ({ page }) => {

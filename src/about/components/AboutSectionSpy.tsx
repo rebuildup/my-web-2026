@@ -3,6 +3,7 @@ import { css, cx } from '../../../styled-system/css';
 import { Container } from '../../editorial/primitives/Container';
 import { Cluster, listResetClassName } from '../../editorial/primitives/Flow';
 import { focusRing, noteMonoSm } from '../../editorial/primitives/shared-styles';
+import { ScrollRegion } from '../../editorial/table-code';
 
 /**
  * AboutSectionSpy — the sticky section index for the long `/about`
@@ -145,44 +146,34 @@ export function AboutSectionSpy() {
 			})}
 		>
 			<Container>
-				<Cluster
-					as="ul"
-					gap="6"
-					aria-label="Sections"
-					className={cx(
-						listResetClassName,
-						css({
-							flexWrap: 'nowrap',
-							overflowX: 'auto',
-							scrollbarWidth: 'none',
-						}),
-					)}
-				>
-					{SPY_ITEMS.map((item) => {
-						const active = item.id === activeId;
-						return (
-							<li key={item.id} className={css({ flexShrink: '0' })}>
-								<a
-									href={`#${SECTION_ID_PREFIX}${item.id}`}
-									aria-current={active ? 'location' : undefined}
-									className={css({
-										...noteMonoSm,
-										display: 'inline-flex',
-										alignItems: 'baseline',
-										gap: '1',
-										color: active ? 'text.default' : 'text.muted',
-										textDecoration: 'none',
-										_hover: { color: 'text.default' },
-										_focusVisible: focusRing,
-									})}
-								>
-									<span aria-hidden="true">{item.number}</span>
-									{item.label}
-								</a>
-							</li>
-						);
-					})}
-				</Cluster>
+				<ScrollRegion label="Sections" className={css({ scrollbarWidth: 'none' })}>
+					<Cluster as="ul" gap="6" className={cx(listResetClassName, css({ flexWrap: 'nowrap' }))}>
+						{SPY_ITEMS.map((item) => {
+							const active = item.id === activeId;
+							return (
+								<li key={item.id} className={css({ flexShrink: '0' })}>
+									<a
+										href={`#${SECTION_ID_PREFIX}${item.id}`}
+										aria-current={active ? 'location' : undefined}
+										className={css({
+											...noteMonoSm,
+											display: 'inline-flex',
+											alignItems: 'baseline',
+											gap: '1',
+											color: active ? 'text.default' : 'text.muted',
+											textDecoration: 'none',
+											_hover: { color: 'text.default' },
+											_focusVisible: focusRing,
+										})}
+									>
+										<span aria-hidden="true">{item.number}</span>
+										{item.label}
+									</a>
+								</li>
+							);
+						})}
+					</Cluster>
+				</ScrollRegion>
 			</Container>
 		</nav>
 	);

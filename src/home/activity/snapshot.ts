@@ -166,6 +166,14 @@ const SAFE_DEFAULT_SUMMARY: Readonly<Record<ActivityRepoFacts['kind'], string>> 
  */
 export const MAX_GITHUB_PROJECT_RECORDS = 12;
 
+/**
+ * The id namespace every GitHub-observed record carries (Issue #1297).
+ * `/now` partitions the published list on this prefix — the roster's
+ * own ids never start with `gh-` — so the namespace is a contract,
+ * not a rendering detail.
+ */
+export const GITHUB_PROJECT_ID_PREFIX = 'gh-';
+
 /** The day part of an ISO instant, or `undefined` when unusable. */
 function isoDay(value: string | undefined): string | undefined {
 	if (!value) return undefined;
@@ -214,12 +222,27 @@ export function activityProjectRecords(
 	const observedOn = snapshot.generatedOn;
 	const evidence = `github-activity @ ${snapshot.headSha ?? snapshot.generatedOn}`;
 	const records: CurrentProjectRecord[] = [];
+	// Issue #1297 — private repos are anonymous BY CONTRACT: every one
+	// of them publishes the same name (「非公開プロジェクト」) and no
+	// link, so N private rows rendered N identical records that differed
+	// only in their measured counts — a duplication the reader cannot
+	// resolve and the page should not pretend is meaningful. They
+	// aggregate into ONE record whose facts are the publishable
+	// aggregates (summed window contribution, freshest activity day,
+	// observed repo count in the status line) — the same rule
+	// `publicGitHubActivity` already applies to `repoCount.private`:
+	// counts are publishable, identities are not.
+	const privateRepos: ActivityRepoFacts[] = [];
 	for (const raw of snapshot.repos) {
 		const repo = applyOverride(raw);
 		if (!repo) continue;
+		if (repo.kind === 'private') {
+			privateRepos.push(repo);
+			continue;
+		}
 		const updatedDay = isoDay(repo.lastActiveAt);
 		const record: CurrentProjectRecord = {
-			id: `gh-${repo.id}`,
+			id: `${GITHUB_PROJECT_ID_PREFIX}${repo.id}`,
 			name: repo.name,
 			statusJa: repo.summaryJa ?? SAFE_DEFAULT_SUMMARY[repo.kind],
 			...(updatedDay
@@ -264,7 +287,81 @@ export function activityProjectRecords(
 		};
 		records.push(record);
 	}
+	const aggregate = privateAggregateRecord(privateRepos, observedOn, evidence, snapshot.windowDays);
+	if (aggregate) records.push(aggregate);
 	return records.sort(compareGithubRecords).slice(0, MAX_GITHUB_PROJECT_RECORDS);
+}
+
+/**
+ * The single published record for every anonymised private repo
+ * (Issue #1297). Returns `null` when the snapshot observed none.
+ *
+ * What it claims — and only what it claims:
+ *   - the COUNT of observed private repos (a publishable aggregate,
+ *     the same number `repoCount.private` already reports);
+ *   - the summed window contribution, only over repos whose
+ *     contribution search actually ran (`commits !== undefined`) —
+ *     an unmeasured repo contributes nothing rather than a zero;
+ *   - the freshest `lastActiveAt` day across the set.
+ *
+ * It carries NO weight level: a level is the owner's judgement about
+ * a named project, and an anonymous aggregate is not one project.
+ */
+function privateAggregateRecord(
+	privateRepos: readonly ActivityRepoFacts[],
+	observedOn: string,
+	evidence: string,
+	defaultWindowDays: number,
+): CurrentProjectRecord | null {
+	if (privateRepos.length === 0) return null;
+
+	let commits = 0;
+	let pullRequests = 0;
+	let measured = 0;
+	let windowDays: number | undefined;
+	let latestDay: string | undefined;
+	for (const repo of privateRepos) {
+		const day = isoDay(repo.lastActiveAt);
+		if (day && (!latestDay || day > latestDay)) latestDay = day;
+		const activity = repo.activity;
+		if (activity?.commits === undefined) continue;
+		measured += 1;
+		commits += activity.commits;
+		pullRequests += activity.prs ?? 0;
+		windowDays ??= activity.windowDays;
+	}
+
+	const activity =
+		measured > 0
+			? {
+					value: {
+						commits,
+						windowDays: windowDays ?? defaultWindowDays,
+						...(pullRequests > 0 ? { pullRequests } : {}),
+					},
+					source: 'github' as const,
+					observedOn,
+					evidence,
+				}
+			: undefined;
+	return {
+		id: `${GITHUB_PROJECT_ID_PREFIX}private`,
+		name: '非公開プロジェクト',
+		statusJa: `GitHub 上で活動が観測された非公開リポジトリ（${privateRepos.length} 件）。`,
+		...(latestDay
+			? {
+					updatedOn: {
+						value: latestDay,
+						source: 'github' as const,
+						observedOn,
+						evidence,
+					},
+				}
+			: {}),
+		// No `weight.level`: a level is the owner's judgement about a
+		// named project, and an anonymous aggregate is not one project.
+		...(activity ? { weight: { activity } } : {}),
+	};
 }
 
 /**

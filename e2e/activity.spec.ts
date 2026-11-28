@@ -28,9 +28,10 @@ test.describe('activity — /activity timeline', () => {
 
 		const timeline = page.locator('[data-testid="activity-timeline"]');
 		await expect(timeline).toBeVisible();
-		// Issue #1174 — the source-health line names all three declared
-		// sources (GitHub, Portfolio and the not-yet-connected articles
-		// source) and lives in the entry's right column, above the list.
+		// Issue #1174 / #1297 — the source-health line names all three
+		// declared sources (GitHub, Portfolio and the not-yet-connected
+		// articles source). Issue #1297 moved it out of the hero's
+		// aside into the chronology section as one quiet strip.
 		const status = page.locator('[data-testid="activity-source-status"]');
 		await expect(status).toBeVisible();
 		await expect(status).toContainText('GitHub');

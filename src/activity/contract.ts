@@ -75,6 +75,24 @@ export const ACTIVITY_SOURCE_LABELS_JA: Readonly<Record<ActivityTimelineSourceId
 };
 
 /**
+ * The cover image a source recorded for an item (Issue #1297).
+ *
+ * Only the portfolio adapter fills this today — a work's published
+ * cover is the one piece of MEDIA the timeline can honestly show,
+ * and it gives the otherwise text-uniform chronology a visual way
+ * to find "the works" at a glance. `url` is the composed absolute
+ * media URL the portfolio loader already resolved; the item is
+ * emitted only when a real URL exists, so the renderer never draws
+ * a broken frame.
+ */
+export interface ActivityTimelineCover {
+	readonly url: string;
+	readonly alt: string;
+	readonly width: number | null;
+	readonly height: number | null;
+}
+
+/**
  * One chronology entry. `at` is the ISO instant the item SORTS by —
  * always a value a source recorded, never derived. `dateLabel`, when
  * present, is the authored display date (a portfolio `periodLabel`
@@ -95,6 +113,8 @@ export interface ActivityTimelineItem {
 	readonly dateLabel?: string;
 	/** Real permalink; absent when the source carries none. */
 	readonly href?: string;
+	/** Recorded cover media, when the source published one (Issue #1297). */
+	readonly cover?: ActivityTimelineCover;
 }
 
 /** One source's health line for the timeline header. */

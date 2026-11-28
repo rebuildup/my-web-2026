@@ -78,6 +78,18 @@ export interface PortfolioWorkLike {
 	/** Epoch milliseconds — the authored period start. */
 	readonly periodStart: number;
 	readonly periodLabel?: string | null;
+	/**
+	 * The project's published cover (Issue #1297), already resolved
+	 * to a displayable URL by the caller. Absent or `null` means the
+	 * work carries no usable cover — the item then renders text-only,
+	 * never a placeholder frame.
+	 */
+	readonly cover?: {
+		readonly url: string;
+		readonly alt: string;
+		readonly width: number | null;
+		readonly height: number | null;
+	} | null;
 }
 
 /**
@@ -102,6 +114,10 @@ export function portfolioWorkItems(
 			at,
 			...(project.periodLabel ? { dateLabel: project.periodLabel } : {}),
 			href: `/portfolio/${project.slug}`,
+			// Issue #1297 — a cover is emitted only with a real URL;
+			// the caller resolves `null` when the media domain is
+			// unbound, and an empty string is not a URL.
+			...(project.cover?.url ? { cover: project.cover } : {}),
 		});
 	}
 	return items;

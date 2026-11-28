@@ -14,14 +14,14 @@
 			"computedHash": "e23653bdb68e3e867e4cd4159846df8683279393ddbff0f6f846e41e5966f8a7"
 		},
 		"agent-delivery-estimation": {
-			"source": "rebuildup/project-init",
-			"ref": "v0.9.0",
+			"source": "rebuildup/aude-skills",
+			"ref": "v0.14.1",
 			"sourceType": "github",
 			"skillPath": "skills/agent-delivery-estimation/SKILL.md",
-			"computedHash": "af0f7f2cbdfb4f320dffe2bf7283a0e03e63f0406a0d616f018dd6cc868817d2"
+			"computedHash": "e3002785d5a936a92dd89413e4e76a88085b0c8fa178e084bd40bfe4dbae8de4"
 		},
 		"agent-recovery": {
-			"source": "rebuildup/project-init",
+			"source": "rebuildup/aude-skills",
 			"ref": "0.1.1",
 			"sourceType": "github",
 			"skillPath": "skills/agent-recovery/SKILL.md",
@@ -35,7 +35,7 @@
 			"computedHash": "439ebbec66d43c5bf28dea7468625c118c136cb810e09a8ef8dcc33184a990b3"
 		},
 		"code-naming": {
-			"source": "rebuildup/project-init",
+			"source": "rebuildup/aude-skills",
 			"ref": "v0.14.1",
 			"sourceType": "github",
 			"skillPath": "skills/code-naming/SKILL.md",
@@ -70,11 +70,11 @@
 			"computedHash": "7e9bb6085607212074c142bc5cc247fbd8dc808d7ccf7497cf978a6f2f098382"
 		},
 		"correctness-assurance": {
-			"source": "rebuildup/project-init",
-			"ref": "v0.9.0",
+			"source": "rebuildup/aude-skills",
+			"ref": "v0.14.1",
 			"sourceType": "github",
 			"skillPath": "skills/correctness-assurance/SKILL.md",
-			"computedHash": "7cf4969d12213263adc93ab3d76c6fba42e6c7c06046056d83ba0df9dafe11fa"
+			"computedHash": "c59b3d4227951dbfb2842198f981a7d303b5099bfad24f9ace3c97f3ce7a71dc"
 		},
 		"dark-mode-design": {
 			"source": "rebuildup/design-skills",
@@ -91,7 +91,7 @@
 			"computedHash": "61a00f7bc2b3aa9563f64f7219339775f93cdfa546039e94102d3871dc495e11"
 		},
 		"design-refinement": {
-			"source": "rebuildup/project-init",
+			"source": "rebuildup/aude-skills",
 			"ref": "v0.14.1",
 			"sourceType": "github",
 			"skillPath": "skills/design-refinement/SKILL.md",
@@ -101,7 +101,7 @@
 			"source": "mattpocock/skills",
 			"ref": "6f7f7831a625f040a8e06a0e7954826b87ce775a",
 			"sourceType": "github",
-			"skillPath": "skills/engineering/diagnosing-bugs/SKILL.md",
+			"skillPath": "skills/diagnosing-bugs/SKILL.md",
 			"computedHash": "ede7254edbd22fcab97a0941511f7d440d8f9a249348fea97c50987ad5501674"
 		},
 		"diagram-design": {
@@ -119,7 +119,7 @@
 			"computedHash": "6a1090b839f91bfc8bddffe50c0accc81dfa0557361a1cdb71e488e779b1151d"
 		},
 		"engineering-decisions": {
-			"source": "rebuildup/project-init",
+			"source": "rebuildup/aude-skills",
 			"ref": "0.1.1",
 			"sourceType": "github",
 			"skillPath": "skills/engineering-decisions/SKILL.md",
@@ -133,15 +133,15 @@
 			"computedHash": "7eb1ff66ebb111a59788b40e962b0c2364c31228259f93fe2a0146945ebb7e65"
 		},
 		"github-delivery": {
-			"source": "rebuildup/project-init",
-			"ref": "0.1.1",
+			"source": "rebuildup/aude-skills",
+			"ref": "14ce6d7f30ccb1a8bd0ec5dd93ab499015172924",
 			"sourceType": "github",
 			"skillPath": "skills/github-delivery/SKILL.md",
 			"computedHash": "fe81062ca2716d282614edc0257d218c32286a50049ef04bc162cb8fe0ce33c9"
 		},
 		"herdr-runtime": {
-			"source": "rebuildup/project-init",
-			"ref": "0.1.1",
+			"source": "rebuildup/aude-skills",
+			"ref": "90cb29159b9da13431d19fd65e215e59bd48be0a",
 			"sourceType": "github",
 			"skillPath": "skills/herdr-runtime/SKILL.md",
 			"computedHash": "0e001925055b4c9f1e66cf449f00b47a733c174ac258eac3f2aff2910ec7670d"
@@ -168,7 +168,7 @@
 			"computedHash": "76d04ea316605a7fc68ea891bffae04bd4e9e27301b58c25dcfd1f406d561562"
 		},
 		"interaction-discipline": {
-			"source": "rebuildup/project-init",
+			"source": "rebuildup/aude-skills",
 			"ref": "v0.14.1",
 			"sourceType": "github",
 			"skillPath": "skills/interaction-discipline/SKILL.md",
@@ -179,7 +179,7 @@
 			"ref": "v0.7.1",
 			"sourceType": "github",
 			"skillPath": "skills/interaction-states/SKILL.md",
-			"computedHash": "bf6a14392e1f763c3d843d7ff079f7f259eca84ddb534600d144abab90fbaaf1"
+			"computedHash": "8ebc80eebda22036fdee55c46c0562b299dc26eca4efc495dc1486c84016dd75"
 		},
 		"keyboard-interface": {
 			"source": "rebuildup/design-skills",
@@ -238,28 +238,28 @@
 			"computedHash": "5dd1fbe335d32351a47ca1ff439a8023970049de57f3dfb93f44260c4a57f521"
 		},
 		"onboarding": {
-			"source": "rebuildup/project-init",
+			"source": "rebuildup/aude-skills",
 			"ref": "0.1.1",
 			"sourceType": "github",
 			"skillPath": "skills/onboarding/SKILL.md",
 			"computedHash": "9df8226961f3ce224c900791b785771dd76b6f46fca26f0f25e36490b16a2ae5"
 		},
 		"parallel-orchestration": {
-			"source": "rebuildup/project-init",
-			"ref": "0.1.1",
+			"source": "rebuildup/aude-skills",
+			"ref": "3d9f69a3228225f1bfd0c61605042606ebb2c479",
 			"sourceType": "github",
 			"skillPath": "skills/parallel-orchestration/SKILL.md",
 			"computedHash": "54d4d7a572ef70d1338bf19b4f499b35bb01c759f135300f352c8712eecde06b"
 		},
 		"policy-evaluation": {
-			"source": "rebuildup/project-init",
+			"source": "rebuildup/aude-skills",
 			"ref": "0.1.1",
 			"sourceType": "github",
 			"skillPath": "skills/policy-evaluation/SKILL.md",
 			"computedHash": "50bcd987b360bff3e4864a0ca9c227b4f5b2fca47444e487a4428f95ef7ef98a"
 		},
 		"quality-gate": {
-			"source": "rebuildup/project-init",
+			"source": "rebuildup/aude-skills",
 			"ref": "0.1.1",
 			"sourceType": "github",
 			"skillPath": "skills/quality-gate/SKILL.md",
@@ -273,29 +273,29 @@
 			"computedHash": "8f3ec29b8d2a62c397e89b85ff01c046825e1345d1a651b27a1151e85247c4ab"
 		},
 		"sandbox-runtime": {
-			"source": "rebuildup/project-init",
+			"source": "rebuildup/aude-skills",
 			"ref": "0.1.1",
 			"sourceType": "github",
 			"skillPath": "skills/sandbox-runtime/SKILL.md",
 			"computedHash": "c9f611cd4f5feb96fb92daf6c5007989bc719d7f1dbaba0b2019e75839587fb1"
 		},
 		"secrets-management": {
-			"source": "rebuildup/project-init",
-			"ref": "v0.9.0",
+			"source": "rebuildup/aude-skills",
+			"ref": "v0.14.1",
 			"sourceType": "github",
 			"skillPath": "skills/secrets-management/SKILL.md",
 			"computedHash": "0503990897791cf757262598082f3ecfd45996f21c37837cb5300b41c4ea038d"
 		},
 		"security-audit": {
-			"source": "rebuildup/project-init",
+			"source": "rebuildup/aude-skills",
 			"ref": "v0.14.1",
 			"sourceType": "github",
 			"skillPath": "skills/security-audit/SKILL.md",
 			"computedHash": "cf01f4d250eebc61162ea76d32bbb4a6b26d3b8d40c40138d52545b0245ed967"
 		},
 		"security-maintenance": {
-			"source": "rebuildup/project-init",
-			"ref": "v0.9.0",
+			"source": "rebuildup/aude-skills",
+			"ref": "v0.14.1",
 			"sourceType": "github",
 			"skillPath": "skills/security-maintenance/SKILL.md",
 			"computedHash": "e17934113a433328b82102f06b8222793c04a420849d3f1e5a303a34e2dcb35d"
@@ -308,14 +308,14 @@
 			"computedHash": "2c1e406f4e91d6348fd46b42c57f4bd3f5e7ff289de4549dd72bc5152c66e731"
 		},
 		"skill-selection": {
-			"source": "rebuildup/project-init",
+			"source": "rebuildup/aude-skills",
 			"ref": "v0.14.1",
 			"sourceType": "github",
 			"skillPath": "skills/skill-selection/SKILL.md",
 			"computedHash": "4f77d9fa0aa29b0ed3c7ee33e8e27b5d98a84d073c0abb38f8df48fc0512f37b"
 		},
 		"system-quality": {
-			"source": "rebuildup/project-init",
+			"source": "rebuildup/aude-skills",
 			"ref": "v0.14.1",
 			"sourceType": "github",
 			"skillPath": "skills/system-quality/SKILL.md",
@@ -332,7 +332,7 @@
 			"source": "mattpocock/skills",
 			"ref": "6f7f7831a625f040a8e06a0e7954826b87ce775a",
 			"sourceType": "github",
-			"skillPath": "skills/engineering/tdd/SKILL.md",
+			"skillPath": "skills/tdd/SKILL.md",
 			"computedHash": "daf55026f456af104a72fa43247f7bcec89e5127316dc5b1b8d675d6a9d8ce94"
 		},
 		"token-audit": {
@@ -364,8 +364,8 @@
 			"computedHash": "afc1b560659bcbbf043741e04a865b99e7d5b094bf62573d6188a8b26de235ab"
 		},
 		"worktree-workflow": {
-			"source": "rebuildup/project-init",
-			"ref": "0.1.1",
+			"source": "rebuildup/aude-skills",
+			"ref": "88203fc59b1fbaa8cfbc68788c88b46582d3fb2b",
 			"sourceType": "github",
 			"skillPath": "skills/worktree-workflow/SKILL.md",
 			"computedHash": "e6508c428ea36505c090f439e4dd4c5198dedc22c153350ba941fd0684cadb69"
@@ -389,7 +389,7 @@
 			"ref": "v0.7.1",
 			"sourceType": "github",
 			"skillPath": "skills/visual-review/SKILL.md",
-			"computedHash": "e474613e930a6403139d5dff4ffa5d5e77cb0fd5f6239c35d8849f01e47a261b"
+			"computedHash": "1947a0377f3c9718692ae161dd50ea1128e21c4c0dd18ead944b5deed3af834b"
 		},
 		"information-density": {
 			"source": "rebuildup/design-skills",
@@ -431,7 +431,7 @@
 			"ref": "v0.7.1",
 			"sourceType": "github",
 			"skillPath": "skills/design-discipline/SKILL.md",
-			"computedHash": "22a19343ebed9a21421b454ed7956d0d1a3021aee6f8d936fe82d06db387bb68"
+			"computedHash": "86ad0b1ecedeab6ebea11cb7ee8516e54ba69280bba413885283c4f33c3bbe7a"
 		},
 		"reduced-motion-design": {
 			"source": "rebuildup/design-skills",

@@ -293,7 +293,7 @@ const levelTagClassName = /* @__PURE__ */ css({
 const emptyClassName = /* @__PURE__ */ css(noteSansMd);
 
 /** One measured line: label, value, and the word for where the value came from. */
-interface MetaRow {
+export interface MetaRow {
 	readonly label: string;
 	readonly value: string;
 	readonly source: ProjectFactSource;
@@ -306,7 +306,7 @@ interface MetaRow {
  * never fills the gap with a placeholder, because "not written" and "zero"
  * are different claims and only one of them is true.
  */
-function metaRows(project: CurrentProjectRecord, today: string): MetaRow[] {
+export function metaRows(project: CurrentProjectRecord, today: string): MetaRow[] {
 	const rows: MetaRow[] = [];
 	if (project.startedOn) {
 		const duration = formatDuration(project.startedOn.value, today);

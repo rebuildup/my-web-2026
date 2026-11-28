@@ -1509,6 +1509,190 @@
 				]
 			},
 			"note": "Context-group description for the 'past' skills bucket in SkillsList (src/about/skills.ts SKILL_CONTEXTS). Defines the bucket's membership rule; carries no date or freshness claim."
+		},
+		{
+			"id": "now-meta-description-1316",
+			"path": "src/routes/now.tsx",
+			"expression": "続けているプロジェクトと、最近動いたリポジトリ。いま注力しているものから、値の出所（手書き / git / GitHub）まで掲載しています。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-28",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/1316",
+						"note": "Issue #1316 — /now current-activity restructure. New public copy introduced by the information-design pass."
+					}
+				]
+			},
+			"note": "Meta description of /now, rewritten for the Issue #1316 'current activity' framing. (src/routes/now.tsx)"
+		},
+		{
+			"id": "now-hero-description-1316",
+			"path": "src/routes/now.tsx",
+			"expression": "続けているプロジェクトと、最近動いたリポジトリ。いま注力しているものから読み始められるよう、値の出所（手書き / git / GitHub）を一つずつ添えています。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-28",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/1316",
+						"note": "Issue #1316 — /now current-activity restructure. New public copy introduced by the information-design pass."
+					}
+				]
+			},
+			"note": "PageHero lead of /now — states what the page answers (focus first, provenance per value) instead of describing list columns. (src/routes/now.tsx)"
+		},
+		{
+			"id": "now-focus-heading-1316",
+			"path": "src/routes/now.tsx",
+			"expression": "いまの焦点",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-28",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/1316",
+						"note": "Issue #1316 — /now current-activity restructure. New public copy introduced by the information-design pass."
+					}
+				]
+			},
+			"note": "Focus-band section title of /now (Issue #1316). 'いまの' is the page's own now-frame, not a freshness claim about dated content. (src/routes/now.tsx)"
+		},
+		{
+			"id": "now-focus-description-1316",
+			"path": "src/routes/now.tsx",
+			"expression": "オーナーが重点度「主軸」「並行」と記録したプロジェクトです。case study が公開されているものは表紙を証拠として添え、ないものは文字だけで置きます。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-28",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/1316",
+						"note": "Issue #1316 — /now current-activity restructure. New public copy introduced by the information-design pass."
+					}
+				]
+			},
+			"note": "Focus-band description: states the selection rule (owner-declared primary/active levels) and the honest no-cover behaviour. (src/routes/now.tsx)"
+		},
+		{
+			"id": "now-named-description-1316",
+			"path": "src/routes/now.tsx",
+			"expression": "オーナーが名付けて記録している継続中のプロジェクトの全件です。開始日・最終更新・注力度は手書きまたは git の記録から読み、値ごとに出所を添えます。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-28",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/1316",
+						"note": "Issue #1316 — /now current-activity restructure. New public copy introduced by the information-design pass."
+					}
+				]
+			},
+			"note": "Named-projects section description, reworded to say '全件' (the complete enumeration) now that the focus band sits above it. (src/routes/now.tsx)"
+		},
+		{
+			"id": "now-observed-description-1316",
+			"path": "src/routes/now.tsx",
+			"expression": "GitHub の公開イベントとコミット計測から自動選定したリポジトリです。順位は直近の計測窓における貢献量（commits + PR）順で、非公開リポジトリは匿名の集計 1 行にまとめています。イベント単位の全記録は活動タイムラインにあります。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-28",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/1316",
+						"note": "Issue #1316 — /now current-activity restructure. New public copy introduced by the information-design pass."
+					}
+				]
+			},
+			"note": "Observed-projects section description, extended with the pointer to /activity. Same measurement claims as before. (src/routes/now.tsx)"
+		},
+		{
+			"id": "now-activity-link-1316",
+			"path": "src/routes/now.tsx",
+			"expression": "活動タイムラインですべての記録を読む",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-28",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/1316",
+						"note": "Issue #1316 — /now current-activity restructure. New public copy introduced by the information-design pass."
+					}
+				]
+			},
+			"note": "Link from the observed section to /activity (Issue #1316). (src/routes/now.tsx)"
+		},
+		{
+			"id": "now-focus-case-study-link-1316",
+			"path": "src/routes/now/NowFocus.tsx",
+			"expression": "case study を読む",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-28",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/1316",
+						"note": "Issue #1316 — /now current-activity restructure. New public copy introduced by the information-design pass."
+					}
+				]
+			},
+			"note": "Link label on a focus item that has a mapped portfolio case study (Issue #1316). (src/routes/now/NowFocus.tsx)"
 		}
 	]
 }

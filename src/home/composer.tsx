@@ -118,12 +118,13 @@ export interface HomePageProps {
 	/**
 	 * Issue #1294 — the Selected Works band, composed by the ROUTE
 	 * from the portfolio obligation's committed selection
-	 * (`src/portfolio/selected.ts` → `components/SelectedWorksWall`).
+	 * (`src/portfolio/selected.ts` → `components/SelectedWorks`).
 	 * The home surface owns only the section frame and the "see all"
-	 * exit; the band itself stays one component family so the index
-	 * and the home page can never drift into two different
-	 * selections. The band is a node, not loader data: loader payloads
-	 * stay serializable and the route keeps the composition edge.
+	 * exit; the band itself is ONE component so the index and the
+	 * home page can never drift into two different selections or
+	 * hierarchies — surfaces differ only in slice length. The band
+	 * is a node, not loader data: loader payloads stay serializable
+	 * and the route keeps the composition edge.
 	 */
 	selectedWorksBand?: ReactNode;
 }
@@ -307,7 +308,7 @@ export function HomePage({ data, locale, timeZone, selectedWorksBand }: HomePage
 							eyebrow="Works"
 							title="選んだ作品"
 							titleEn="Selected works"
-							description="このサイトが代表として選ぶ制作物です。"
+							description="デザインから実装まで一人で通した制作物を厳選して展示しています。"
 						/>
 						{selectedWorksBand}
 						<div className={css({ marginBlockStart: '6' })}>

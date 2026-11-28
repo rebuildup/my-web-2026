@@ -15,7 +15,7 @@ import {
 	getHomeSystemStatus,
 	recordHomeHit,
 } from '../home/public';
-import { SelectedWorksWall } from '../portfolio/components/SelectedWorks';
+import { SelectedWorks } from '../portfolio/components/SelectedWorks';
 import { listPortfolioProjects } from '../portfolio/public';
 import type { PortfolioProject } from '../portfolio/schema';
 import { resolveSelectedWorks } from '../portfolio/selected';
@@ -177,10 +177,11 @@ function HomeRoute() {
 			data={data}
 			selectedWorksBand={
 				data.selectedProjects.length > 0 ? (
-					// Home gets the compact cover wall, not the index's
-					// feature+wall exhibition — same selection, different
-					// composition (Issue #1294, agy review of PR #1299).
-					<SelectedWorksWall works={data.selectedProjects.slice(0, 6)} headingLevel="h2" />
+					// Home exhibits the SAME band over a shorter slice —
+					// one hierarchy, two placements. The agy review of
+					// PR #1299 rejected a second home-only presentation
+					// as layout whiplash (Issue #1294).
+					<SelectedWorks works={data.selectedProjects.slice(0, 6)} headingLevel="h2" />
 				) : null
 			}
 		/>

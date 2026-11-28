@@ -118,7 +118,8 @@ export function PortfolioList({
 								maxWidth: '640px',
 							})}
 						>
-							技術選定・設計・成果・振り返りを、第三者が URL
+							デザインから実装・公開まで一人で通した制作物を厳選し、
+							技術選定・設計・成果・振り返りを第三者が URL
 							を渡されただけで辿れるように整理しています。 facet で絞り込み、各 project
 							の詳細ページから repository / release / 解説へ移動できます。
 						</p>
@@ -133,7 +134,7 @@ export function PortfolioList({
 							eyebrow="Selected"
 							title="選んだ作品"
 							titleEn="Selected works"
-							description="このサイトが代表として選ぶ制作物です。facet の絞り込みとは別に、編集者が選んだ順で並べています。"
+							description="デザインから実装まで一人で通した制作物を厳選して展示しています。"
 						/>
 						<SelectedWorks works={selectedWorks} />
 					</PageSection>

@@ -48,6 +48,9 @@
  *   - live_tv:             https://fonts.gstatic.com/s/i/short-term/release/materialsymbolsoutlined/live_tv/default/24px.svg
  *   - emoticons:           https://fonts.gstatic.com/s/i/short-term/release/materialsymbolsoutlined/emoticons/default/24px.svg
  *   - sports_esports:      https://fonts.gstatic.com/s/i/short-term/release/materialsymbolsoutlined/sports_esports/default/24px.svg
+ *   - open_in_new:         https://fonts.gstatic.com/s/i/short-term/release/materialsymbolsoutlined/open_in_new/default/24px.svg
+ *   - public:              https://fonts.gstatic.com/s/i/short-term/release/materialsymbolsoutlined/public/default/24px.svg
+ *   - code:                https://fonts.gstatic.com/s/i/short-term/release/materialsymbolsoutlined/code/default/24px.svg
  */
 
 /** The link / navigation arrow — `arrow_forward`. */
@@ -93,3 +96,21 @@ export const EMOTICONS_PATH =
 /** The sports esports glyph — `sports_esports`. */
 export const SPORTS_ESPORTS_PATH =
 	'M480-80q-66 0-113-47t-47-113q0-66 47-113t113-47q66 0 113 47t47 113q0 66-47 113t-113 47Zm0-160q33 0 56.5-23.5T560-320q0-33-23.5-56.5T480-400q-33 0-56.5 23.5T400-320q0 33 23.5 56.5T480-240Zm-200-200q-17 0-28.5-11.5T240-560q0-17 11.5-28.5T280-600q17 0 28.5 11.5T320-560q0 17-11.5 28.5T280-520Zm160 40q-33 0-56.5-23.5T360-520q0-33 23.5-56.5T480-640q33 0 56.5 23.5T600-520q0 33-23.5 56.5T480-400Zm240-40q-17 0-28.5-11.5T560-560q0-17 11.5-28.5T600-600q17 0 28.5 11.5T640-560q0 17-11.5 28.5T600-520Zm-160 80h-40v-80h40v80Zm80 0h-40v-80h40v80Z';
+
+/** The open-in-new-window glyph — `open_in_new`. Marks an action that
+ * leaves the current editorial surface for the thing itself (a Tool
+ * shell, an external destination); never a same-page anchor. */
+export const OPEN_IN_NEW_PATH =
+	'M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h280v80H200v560h560v-280h80v280q0 33-23.5 56.5T760-120H200Zm188-212-56-56 372-372H560v-80h280v280h-80v-144L388-332Z';
+
+/** The globe glyph — `public`. The open web / external destination
+ * marker (a link directory's off-site rows, a group's "published
+ * elsewhere" identity). */
+export const PUBLIC_PATH =
+	'M324-111.5Q251-143 197-197t-85.5-127Q80-397 80-480t31.5-156Q143-709 197-763t127-85.5Q397-880 480-880t156 31.5Q709-817 763-763t85.5 127Q880-563 880-480t-31.5 156Q817-251 763-197t-127 85.5Q563-80 480-80t-156-31.5ZM440-162v-78q-33 0-56.5-23.5T360-320v-40L168-552q-3 18-5.5 36t-2.5 36q0 121 79.5 212T440-162Zm276-102q41-45 62.5-100.5T800-480q0-98-54.5-179T600-776v16q0 33-23.5 56.5T520-680h-80v80q0 17-11.5 28.5T400-560h-80v80h240q17 0 28.5 11.5T600-440v120h40q26 0 47 15.5t29 40.5Z';
+
+/** The code-brackets glyph — `code`. Platform-level glyph (the Tools
+ * route keeps its own `CODE_PATH` in `material-symbol-tool-paths.ts`
+ * for chunk isolation; this copy serves non-Tools surfaces). */
+export const CODE_BRACKETS_PATH =
+	'M320-240 80-480l240-240 57 57-184 184 183 183-56 56Zm320 0-57-57 184-184-183-183 56-56 240 240-240 240Z';

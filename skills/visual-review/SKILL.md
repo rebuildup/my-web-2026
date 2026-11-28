@@ -30,7 +30,7 @@ UI の source、lint、成功ログから「見た目が整った」と結論し
 
 ### Separate four Quality Floor concerns (Experiment 0 / 1B)
 
-UI の基礎品質検証では、次の 4 層を混同せず独立に満たす（詳細根拠: [Experiment 1B](../../docs/research/experiment-1b-quality-floor.md)）。
+UI の基礎品質検証では、次の 4 層を混同せず独立に満たす（詳細根拠: [Experiment 1B](https://github.com/rebuildup/design-skills/blob/v0.7.1/docs/research/experiment-1b-quality-floor.md)、upstream research doc・未 vendor）。
 
 1. **検証摩擦の低減（Verification friction）**: 毎回 ad-hoc にブラウザ起動スクリプトを書くとパス不一致・一時サーバー終了で検証が失敗または断念されやすい。project-local の単一検証コマンド（既存ブラウザ＋ローカルサーバー＋撮影＋DOM 基礎チェック）を優先して使う
 2. **最終リビジョン鮮度（Final-revision freshness）**: 最後のソース編集より前に取得したスクリーンショットや DOM 通過結果を最終版の証拠へ流用しない。最終編集後に再撮影・再実行し、対象ソースの SHA / build と検証証跡の一致を確認する

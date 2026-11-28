@@ -39,6 +39,22 @@ export type SkillCategory = 'language' | 'framework' | 'platform' | 'sdk' | 'too
 /** Whether the technology is part of the current toolchain. */
 export type SkillUsage = 'current' | 'past';
 
+/**
+ * The body of work a skill primarily belongs to (Issue #1296).
+ *
+ * The `/about` skills surface used to be one flat 「現在使用 /
+ * 過去に使用」 list, which read as a inventory rather than as
+ * evidence of what the person builds. Grouping by context restores
+ * the project relationship the audit asked for: a reader sees WHICH
+ * work a technology belongs to, and the per-skill `evidence` links
+ * still carry every other work that demonstrates the same use.
+ *
+ * `context` names the PRIMARY body of work only — a skill used by
+ * several projects sits in one group and its `evidence` row lists
+ * the rest, so nothing is duplicated and nothing is hidden.
+ */
+export type SkillContext = 'platform' | 'tastile' | 'creative-tools' | 'past';
+
 /** A work or record that demonstrates the use. */
 export interface SkillEvidence {
 	readonly label: string;
@@ -51,6 +67,7 @@ export interface SkillEntry {
 	readonly name: string;
 	readonly category: SkillCategory;
 	readonly usage: SkillUsage;
+	readonly context: SkillContext;
 	readonly summary?: string;
 	readonly evidence: readonly SkillEvidence[];
 }
@@ -85,6 +102,7 @@ export const SKILLS: readonly SkillEntry[] = [
 		name: 'TypeScript',
 		category: 'language',
 		usage: 'current',
+		context: 'platform',
 		summary: 'my-web-2026 / tastile / Aulymo の実装言語。',
 		evidence: [
 			{ label: 'my-web-2026', href: SITE_REPO_URL },
@@ -97,6 +115,7 @@ export const SKILLS: readonly SkillEntry[] = [
 		name: 'React',
 		category: 'framework',
 		usage: 'current',
+		context: 'platform',
 		summary: 'my-web-2026 と Tastile の UI 実装。',
 		evidence: [
 			{ label: 'my-web-2026', href: SITE_REPO_URL },
@@ -108,6 +127,7 @@ export const SKILLS: readonly SkillEntry[] = [
 		name: 'TanStack Start',
 		category: 'framework',
 		usage: 'current',
+		context: 'platform',
 		summary: 'my-web-2026 の Web framework。',
 		evidence: [{ label: 'my-web-2026', href: SITE_REPO_URL }],
 	},
@@ -116,6 +136,7 @@ export const SKILLS: readonly SkillEntry[] = [
 		name: 'Hono',
 		category: 'framework',
 		usage: 'current',
+		context: 'platform',
 		summary: 'my-web-2026 の外部 HTTP boundary (`/api/v1/*` 等)。',
 		evidence: [{ label: 'my-web-2026', href: SITE_REPO_URL }],
 	},
@@ -124,6 +145,7 @@ export const SKILLS: readonly SkillEntry[] = [
 		name: 'Panda CSS',
 		category: 'framework',
 		usage: 'current',
+		context: 'platform',
 		summary: 'my-web-2026 の styling 基盤。',
 		evidence: [{ label: 'my-web-2026', href: SITE_REPO_URL }],
 	},
@@ -132,6 +154,7 @@ export const SKILLS: readonly SkillEntry[] = [
 		name: 'Cloudflare Workers / D1 / R2',
 		category: 'platform',
 		usage: 'current',
+		context: 'platform',
 		summary: 'my-web-2026 の runtime とデータ層。',
 		evidence: [{ label: 'my-web-2026', href: SITE_REPO_URL }],
 	},
@@ -140,6 +163,7 @@ export const SKILLS: readonly SkillEntry[] = [
 		name: 'Vite',
 		category: 'tool',
 		usage: 'current',
+		context: 'platform',
 		summary: 'my-web-2026 / Tastile の build toolchain。',
 		evidence: [
 			{ label: 'my-web-2026', href: SITE_REPO_URL },
@@ -151,6 +175,7 @@ export const SKILLS: readonly SkillEntry[] = [
 		name: 'Biome',
 		category: 'tool',
 		usage: 'current',
+		context: 'platform',
 		summary: 'my-web-2026 の format / lint 基盤。',
 		evidence: [{ label: 'my-web-2026', href: SITE_REPO_URL }],
 	},
@@ -159,6 +184,7 @@ export const SKILLS: readonly SkillEntry[] = [
 		name: 'Kotlin',
 		category: 'language',
 		usage: 'current',
+		context: 'tastile',
 		summary: 'Tastile の Android client 実装。',
 		evidence: [{ label: 'Tastile', href: ABOUT_URL }],
 	},
@@ -167,6 +193,7 @@ export const SKILLS: readonly SkillEntry[] = [
 		name: 'Rust',
 		category: 'language',
 		usage: 'current',
+		context: 'tastile',
 		summary: 'Tastile の desktop / backend 側で使用。',
 		evidence: [{ label: 'Tastile', href: ABOUT_URL }],
 	},
@@ -175,6 +202,7 @@ export const SKILLS: readonly SkillEntry[] = [
 		name: 'Tauri',
 		category: 'framework',
 		usage: 'current',
+		context: 'tastile',
 		summary: 'Tastile の desktop client。',
 		evidence: [{ label: 'Tastile', href: ABOUT_URL }],
 	},
@@ -183,6 +211,7 @@ export const SKILLS: readonly SkillEntry[] = [
 		name: 'C++',
 		category: 'language',
 		usage: 'current',
+		context: 'creative-tools',
 		summary: 'MultiSlicer の After Effects native plugin 実装。',
 		evidence: [{ label: 'MultiSlicer', href: PORTFOLIO('multislicer') }],
 	},
@@ -191,6 +220,7 @@ export const SKILLS: readonly SkillEntry[] = [
 		name: 'After Effects SDK',
 		category: 'sdk',
 		usage: 'current',
+		context: 'creative-tools',
 		summary: 'MultiSlicer の effect plugin 開発。',
 		evidence: [{ label: 'MultiSlicer', href: PORTFOLIO('multislicer') }],
 	},
@@ -199,6 +229,7 @@ export const SKILLS: readonly SkillEntry[] = [
 		name: 'ExtendScript',
 		category: 'language',
 		usage: 'current',
+		context: 'creative-tools',
 		summary: 'Aulymo の After Effects 向け tool 実装。',
 		evidence: [{ label: 'Aulymo', href: PORTFOLIO('aulymo-v03') }],
 	},
@@ -208,6 +239,7 @@ export const SKILLS: readonly SkillEntry[] = [
 		name: 'Unity',
 		category: 'platform',
 		usage: 'past',
+		context: 'past',
 		summary:
 			'U-16 プログラミングコンテスト向けのゲーム制作で使用。現在の制作 toolchain には含まれない。',
 		evidence: [{ label: '旧サイト 経歴', href: LEGACY_ABOUT_URL }],
@@ -217,6 +249,7 @@ export const SKILLS: readonly SkillEntry[] = [
 		name: 'Scratch',
 		category: 'tool',
 		usage: 'past',
+		context: 'past',
 		summary: 'U-16 プログラミングコンテスト2023 の作品制作で使用。',
 		evidence: [{ label: '旧サイト 経歴', href: LEGACY_ABOUT_URL }],
 	},
@@ -225,6 +258,7 @@ export const SKILLS: readonly SkillEntry[] = [
 		name: 'Flask',
 		category: 'framework',
 		usage: 'past',
+		context: 'past',
 		summary: 'ドキュメントエディター Web アプリ試作で使用（旧サイト記載）。',
 		evidence: [{ label: '旧サイト 経歴', href: LEGACY_ABOUT_URL }],
 	},
@@ -246,6 +280,53 @@ export const SKILL_USAGE_LABELS: Readonly<Record<SkillUsage, string>> = {
 	past: '過去に使用',
 };
 
+/**
+ * The context groups the skills surface renders, in committed
+ * order (Issue #1296). `href` links the group header to the work
+ * that anchors it — the platform's repository, the `/about`
+ * current section for Tastile (no public portfolio entry yet),
+ * the MultiSlicer case study for the After Effects tools, and the
+ * legacy record for finished work.
+ */
+export interface SkillContextGroup {
+	readonly id: SkillContext;
+	readonly label: string;
+	readonly description?: string;
+	readonly href?: string;
+}
+
+export const SKILL_CONTEXTS: readonly SkillContextGroup[] = [
+	{
+		id: 'platform',
+		label: 'my-web-2026',
+		description: 'このサイト自身の platform stack。',
+		href: SITE_REPO_URL,
+	},
+	{
+		id: 'tastile',
+		label: 'Tastile',
+		description: 'scheduling product の multi-client stack。',
+		href: ABOUT_URL,
+	},
+	{
+		id: 'creative-tools',
+		label: 'After Effects tools',
+		description: 'script / plugin / extension の制作基盤。',
+		href: PORTFOLIO('multislicer'),
+	},
+	{
+		id: 'past',
+		label: '過去の制作',
+		description: '現在の toolchain には含まれない、完了した制作での使用。',
+		href: LEGACY_ABOUT_URL,
+	},
+];
+
+export interface SkillContextBucket {
+	readonly context: SkillContextGroup;
+	readonly skills: readonly SkillEntry[];
+}
+
 /** Skills currently in the toolchain, in committed order. */
 export function selectCurrentSkills(skills: readonly SkillEntry[] = SKILLS): readonly SkillEntry[] {
 	return skills.filter((skill) => skill.usage === 'current');
@@ -254,4 +335,21 @@ export function selectCurrentSkills(skills: readonly SkillEntry[] = SKILLS): rea
 /** Skills from finished work, in committed order. */
 export function selectPastSkills(skills: readonly SkillEntry[] = SKILLS): readonly SkillEntry[] {
 	return skills.filter((skill) => skill.usage === 'past');
+}
+
+/**
+ * Group skills by their primary context, in `SKILL_CONTEXTS`
+ * order. Groups with no entries are dropped; skills keep their
+ * committed order inside a group. A skill whose `context` is not
+ * declared in `SKILL_CONTEXTS` is dropped rather than rendered
+ * under a fabricated heading — the fail-closed rule the rest of
+ * this module follows.
+ */
+export function groupSkillsByContext(
+	skills: readonly SkillEntry[] = SKILLS,
+): readonly SkillContextBucket[] {
+	return SKILL_CONTEXTS.map((context) => ({
+		context,
+		skills: skills.filter((skill) => skill.context === context.id),
+	})).filter((bucket) => bucket.skills.length > 0);
 }

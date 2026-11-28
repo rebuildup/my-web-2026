@@ -29,6 +29,9 @@ test.describe('stack — /stack reference', () => {
 			'biome',
 			'delivery',
 			'component-integration',
+			// Issue #1297 — rejected/deferred alternatives live in their
+			// own Exploration section, outside the adopted stack list.
+			'exploration',
 		]) {
 			const list = page.locator(`[data-testid="stack-items-${section}"]`);
 			await expect(list).toBeVisible();
@@ -59,8 +62,11 @@ test.describe('stack — /stack reference', () => {
 
 		// The settings table is resolved from the committed biome.json
 		// at request time — the values the file declares must appear.
+		// Issue #1297 — the dump is reference data, so it sits inside
+		// a collapsed Disclosure; open it before reading the cells.
 		const settings = page.locator('[data-testid="stack-settings-biome-config"]');
 		await expect(settings).toBeVisible();
+		await settings.locator('summary').click();
 		await expect(settings).toContainText('formatter.lineWidth');
 		await expect(settings).toContainText('100');
 		await expect(settings).toContainText('javascript.formatter.trailingCommas');

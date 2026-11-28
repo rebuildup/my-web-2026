@@ -115,13 +115,52 @@ describe('activityProjectRecords', () => {
 		expect(pub?.link?.href).toBe('https://github.com/rebuildup/public-a');
 		expect(pub?.weight?.activity?.source).toBe('github');
 	});
-	it('projects private repos anonymously without any URL or real id', () => {
+	it('projects private repos as ONE anonymous aggregate record (Issue #1297)', () => {
 		const records = activityProjectRecords(base);
-		const priv = records.find((r) => r.id === 'gh-private-0123456789ab');
+		const priv = records.find((r) => r.id === 'gh-private');
 		expect(priv).toBeDefined();
 		expect(priv?.link).toBeUndefined();
 		expect(JSON.stringify(priv)).not.toContain('secret');
 		expect(priv?.name).not.toContain('/');
+		// The status line carries the observed COUNT — a publishable
+		// aggregate, the same number `repoCount.private` reports.
+		expect(priv?.statusJa).toContain('1 件');
+	});
+
+	it('aggregates private window contributions instead of listing identical rows', () => {
+		const snapshot: GitHubActivitySnapshot = {
+			...base,
+			repos: [
+				...base.repos.slice(0, 1),
+				{
+					id: 'private-0123456789ab',
+					kind: 'private',
+					name: '非公開プロジェクト',
+					lastActiveAt: '2026-11-14T00:00:00Z',
+					activity: { events: 1, commits: 10, prs: 2, windowDays: 30 },
+				},
+				{
+					id: 'private-fedcba987654',
+					kind: 'private',
+					name: '非公開プロジェクト',
+					lastActiveAt: '2026-11-15T00:00:00Z',
+					activity: { events: 1, commits: 5, windowDays: 30 },
+				},
+			],
+		};
+		const records = activityProjectRecords(snapshot);
+		const privateRecords = records.filter((r) => r.id === 'gh-private');
+		expect(privateRecords).toHaveLength(1);
+		const [aggregate] = privateRecords;
+		expect(aggregate?.statusJa).toContain('2 件');
+		expect(aggregate?.updatedOn?.value).toBe('2026-11-15');
+		expect(aggregate?.weight?.activity?.value).toEqual({
+			commits: 15,
+			windowDays: 30,
+			pullRequests: 2,
+		});
+		// The aggregate never claims a weight level.
+		expect(aggregate?.weight?.level).toBeUndefined();
 	});
 	it('reports measured commits/PRs, never the feed events count (Issue #967)', () => {
 		const records = activityProjectRecords(base);
@@ -133,7 +172,7 @@ describe('activityProjectRecords', () => {
 	});
 	it('publishes no activity claim when the contribution search did not run', () => {
 		const records = activityProjectRecords(base);
-		const priv = records.find((r) => r.id === 'gh-private-0123456789ab');
+		const priv = records.find((r) => r.id === 'gh-private');
 		expect(priv?.weight?.activity).toBeUndefined();
 	});
 	it('maps lastActiveAt to a github-stamped updatedOn', () => {

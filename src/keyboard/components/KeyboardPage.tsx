@@ -2,6 +2,7 @@ import { useId, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { css } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
+import { Disclosure } from '../../editorial/primitives/Disclosure';
 import { Stack, listResetClassName } from '../../editorial/primitives/Flow';
 import { Grid } from '../../editorial/primitives/Grid';
 import { PageHero } from '../../editorial/primitives/PageHero';
@@ -495,8 +496,10 @@ function KeyboardPageReady({
 		<div>
 			{/* Issue #1166 — the sync status is a supporting band (the
 			    page's freshness record), and the source list at the end is
-			    the last statement. The diagram between them stays on the
-			    ground: it is the page's subject. */}
+			    the last statement. Issue #1298 promoted the diagram
+			    section directly under this band: the keyboard drawing is
+			    the page's best visual asset and was buried under the
+			    spec tables, so it now leads the reading order. */}
 			<PageSection separator label="同期状態" tone="sunken">
 				<div className={statusStripStyle}>
 					<StateMark kind={data.freshness === 'fresh' ? 'ok' : 'degraded'} size="sm" />
@@ -511,26 +514,10 @@ function KeyboardPageReady({
 				</div>
 			</PageSection>
 
-			<PageSection separator labelledBy={`${baseId}-how`}>
-				<SectionHeading
-					id={`${baseId}-how`}
-					eyebrow="01 — mechanism"
-					title="二段階で決まる"
-					description="macOS は OS 側のキー差し替えと Kanata のレイヤーが直列に重なります。Windows は Kanata の入力順そのものを表示します。"
-				/>
-				<div className={bodyStyle}>
-					<Grid columns={2} gap="4">
-						{data.catalog.platforms.map((entry) => (
-							<PlatformFlow key={entry.id} platform={entry} />
-						))}
-					</Grid>
-				</div>
-			</PageSection>
-
 			<PageSection separator labelledBy={`${baseId}-layers`} id="keyboard-layers">
 				<SectionHeading
 					id={`${baseId}-layers`}
-					eyebrow="02 — layers"
+					eyebrow="01 — layers"
 					title="配列とレイヤー"
 					description="プラットフォームを選び、次にレイヤーを選びます。キーを選ぶと、tap / hold の分岐と元の構文を表示します。"
 				/>
@@ -664,6 +651,22 @@ function KeyboardPageReady({
 				</div>
 			</PageSection>
 
+			<PageSection separator labelledBy={`${baseId}-how`}>
+				<SectionHeading
+					id={`${baseId}-how`}
+					eyebrow="02 — mechanism"
+					title="二段階で決まる"
+					description="macOS は OS 側のキー差し替えと Kanata のレイヤーが直列に重なります。Windows は Kanata の入力順そのものを表示します。"
+				/>
+				<div className={bodyStyle}>
+					<Grid columns={2} gap="4">
+						{data.catalog.platforms.map((entry) => (
+							<PlatformFlow key={entry.id} platform={entry} />
+						))}
+					</Grid>
+				</div>
+			</PageSection>
+
 			{platform.status === 'ready' && platform.hidutil ? (
 				<PageSection separator labelledBy={`${baseId}-hidutil`}>
 					<SectionHeading
@@ -674,38 +677,46 @@ function KeyboardPageReady({
 					/>
 					<div className={bodyStyle}>
 						<p className={captionStyle}>{platform.hidutil.note}</p>
-						<ScrollRegion
-							label="hidutil UserKeyMapping の対応表。横にスクロールできます。"
-							className={tableWrapStyle}
+						{/* Issue #1298 — the raw mapping table is reference
+						    detail, not the page's story: it folds behind a
+						    disclosure so the diagram-led reading order is
+						    not interrupted by 100+ spec rows. */}
+						<Disclosure
+							summary={`hidutil UserKeyMapping の全対応（${platform.hidutil.mappings.length} 件）`}
 						>
-							<table className={tableStyle}>
-								<caption>
-									hidutil UserKeyMapping（{platform.hidutil.mappings.length} 件、元の JSON の順）
-								</caption>
-								<thead>
-									<tr>
-										<th scope="col">物理キー</th>
-										<th scope="col">置き換え後</th>
-										<th scope="col">src usage</th>
-										<th scope="col">dst usage</th>
-									</tr>
-								</thead>
-								<tbody>
-									{platform.hidutil.mappings.map((mapping) => (
-										<tr key={`${mapping.fromUsage}-${mapping.toUsage}`}>
-											<td>{mapping.fromKey}</td>
-											<td>{mapping.toKey}</td>
-											<td>
-												<code>0x{mapping.fromUsage.toString(16)}</code>
-											</td>
-											<td>
-												<code>0x{mapping.toUsage.toString(16)}</code>
-											</td>
+							<ScrollRegion
+								label="hidutil UserKeyMapping の対応表。横にスクロールできます。"
+								className={tableWrapStyle}
+							>
+								<table className={tableStyle}>
+									<caption>
+										hidutil UserKeyMapping（{platform.hidutil.mappings.length} 件、元の JSON の順）
+									</caption>
+									<thead>
+										<tr>
+											<th scope="col">物理キー</th>
+											<th scope="col">置き換え後</th>
+											<th scope="col">src usage</th>
+											<th scope="col">dst usage</th>
 										</tr>
-									))}
-								</tbody>
-							</table>
-						</ScrollRegion>
+									</thead>
+									<tbody>
+										{platform.hidutil.mappings.map((mapping) => (
+											<tr key={`${mapping.fromUsage}-${mapping.toUsage}`}>
+												<td>{mapping.fromKey}</td>
+												<td>{mapping.toKey}</td>
+												<td>
+													<code>0x{mapping.fromUsage.toString(16)}</code>
+												</td>
+												<td>
+													<code>0x{mapping.toUsage.toString(16)}</code>
+												</td>
+											</tr>
+										))}
+									</tbody>
+								</table>
+							</ScrollRegion>
+						</Disclosure>
 					</div>
 				</PageSection>
 			) : null}
@@ -719,63 +730,69 @@ function KeyboardPageReady({
 				/>
 				<div className={bodyStyle}>
 					<AdoptionCallout manifest={data.manifest} />
-					<ScrollRegion
-						label="出典と最終同期の一覧。横にスクロールできます。"
-						className={tableWrapStyle}
-					>
-						<table className={tableStyle}>
-							<caption>
-								{syncedLine(data.syncedAt)} / stale 判定 {data.staleAfterDays} 日
-							</caption>
-							<thead>
-								<tr>
-									<th scope="col">用途</th>
-									<th scope="col">repository</th>
-									<th scope="col">ref</th>
-									<th scope="col">path</th>
-									<th scope="col">取得日</th>
-								</tr>
-							</thead>
-							<tbody>
-								{data.manifest.sources.map((source) => (
-									<tr key={source.id}>
-										<td>
-											{source.platform === 'macos'
-												? 'macOS'
-												: source.platform === 'windows'
-													? 'Windows'
-													: '採用 ref'}
-											<br />
-											<span className={metaTextStyle}>
-												{source.role === 'repository-latest'
-													? 'repository latest'
-													: 'pc-setup adopted'}
-											</span>
-										</td>
-										<td>
-											{/* Issue #887: this anchor used to be recognised by
+					{/* Issue #1298 — the per-source table is provenance
+					    detail: it folds behind a disclosure. The adoption
+					    callout above already states the decision a reader
+					    needs (which ref is adopted, by whom). */}
+					<Disclosure summary={`出典と最終同期の一覧（${data.manifest.sources.length} sources）`}>
+						<ScrollRegion
+							label="出典と最終同期の一覧。横にスクロールできます。"
+							className={tableWrapStyle}
+						>
+							<table className={tableStyle}>
+								<caption>
+									{syncedLine(data.syncedAt)} / stale 判定 {data.staleAfterDays} 日
+								</caption>
+								<thead>
+									<tr>
+										<th scope="col">用途</th>
+										<th scope="col">repository</th>
+										<th scope="col">ref</th>
+										<th scope="col">path</th>
+										<th scope="col">取得日</th>
+									</tr>
+								</thead>
+								<tbody>
+									{data.manifest.sources.map((source) => (
+										<tr key={source.id}>
+											<td>
+												{source.platform === 'macos'
+													? 'macOS'
+													: source.platform === 'windows'
+														? 'Windows'
+														: '採用 ref'}
+												<br />
+												<span className={metaTextStyle}>
+													{source.role === 'repository-latest'
+														? 'repository latest'
+														: 'pc-setup adopted'}
+												</span>
+											</td>
+											<td>
+												{/* Issue #887: this anchor used to be recognised by
 												    the browser's link colour. The platform ink is
 												    achromatic now, so the underline is what says
 												    "this cell links to the source file". */}
-											<TextLink
-												href={`https://github.com/${source.repository}/blob/${source.ref}/${source.path}`}
-												rel="noreferrer"
-											>
-												{source.repository}
-											</TextLink>
-										</td>
-										<td>
-											<code title={source.ref}>{shortRef(source.ref)}</code>
-										</td>
-										<td>
-											<code>{source.path}</code>
-										</td>
-										<td>{formatDate(source.fetchedAt)}</td>
-									</tr>
-								))}
-							</tbody>
-						</table>
-					</ScrollRegion>
+												<TextLink
+													href={`https://github.com/${source.repository}/blob/${source.ref}/${source.path}`}
+													rel="noreferrer"
+												>
+													{source.repository}
+												</TextLink>
+											</td>
+											<td>
+												<code title={source.ref}>{shortRef(source.ref)}</code>
+											</td>
+											<td>
+												<code>{source.path}</code>
+											</td>
+											<td>{formatDate(source.fetchedAt)}</td>
+										</tr>
+									))}
+								</tbody>
+							</table>
+						</ScrollRegion>
+					</Disclosure>
 					<p className={calloutStyle}>
 						同期はローカルのスケジューラまたは release 手順で実行します。ページの表示時に GitHub
 						へ問い合わせることはありません。壊れた

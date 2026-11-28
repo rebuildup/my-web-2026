@@ -1,10 +1,12 @@
 import { css, cx } from '../../styled-system/css';
-import { Stack, listResetClassName } from '../editorial/primitives/Flow';
+import { Badge } from '../editorial/primitives/Badge';
+import { Cluster, Stack, listResetClassName } from '../editorial/primitives/Flow';
 import { Grid } from '../editorial/primitives/Grid';
 import { PageSection } from '../editorial/primitives/PageSection';
 import { Panel } from '../editorial/primitives/Panel';
 import { SectionHeading } from '../editorial/primitives/SectionHeading';
 import { SkipLink } from '../editorial/primitives/SkipLink';
+import { StateMark } from '../editorial/primitives/StateMark';
 import { TextLink } from '../editorial/primitives/TextLink';
 import {
 	bodySansMdPlain,
@@ -57,6 +59,15 @@ export function CommissionPage() {
 				<p lang="ja" className={css(ledeSansLg)}>
 					Web 開発・アプリケーション開発・映像制作の依頼についての案内です。
 				</p>
+				{/* Issue #1298 — the entry names the three service
+				    domains up front so the suspended-intake notice below
+				    reads as "this scope, currently paused" rather than a
+				    dead end for a hiring visitor. */}
+				<Cluster gap="2" className={css({ marginBlockStart: '6' })}>
+					<Badge>Web 開発</Badge>
+					<Badge>アプリケーション開発</Badge>
+					<Badge>映像制作</Badge>
+				</Cluster>
 			</PageSection>
 			<main id="main">
 				<StatusSection />
@@ -91,9 +102,17 @@ function StatusSection() {
 				data-testid="commission-status"
 				className={css({ marginBlockStart: '6' })}
 			>
+				{/* Issue #1298 — the paused state is a status, not a
+				    wall: the StateMark + the portfolio pointer keep the
+				    job-hunting funnel open (a visitor evaluating this
+				    person can still see shipped work) while the intake
+				    itself stays honestly suspended. */}
 				<p
 					lang="ja"
 					className={css({
+						display: 'flex',
+						alignItems: 'center',
+						gap: '3',
 						margin: '0',
 						fontFamily: 'sans',
 						fontSize: 'lg',
@@ -101,6 +120,7 @@ function StatusSection() {
 						color: 'text.default',
 					})}
 				>
+					<StateMark kind="degraded" size="sm" />
 					現在、制作依頼の受付は休止しています。
 				</p>
 				<p
@@ -118,6 +138,9 @@ function StatusSection() {
 					以下は依頼内容の案内です。受付を再開した場合は、このページと
 					<TextLink href="/contact">/contact</TextLink>
 					の掲載 channel でお知らせします。休止中のため、依頼フォームや料金表は公開していません。
+					依頼を検討する際の実績は
+					<TextLink href="/portfolio">/portfolio</TextLink>
+					で確認できます。
 				</p>
 			</Panel>
 		</PageSection>
@@ -125,8 +148,11 @@ function StatusSection() {
 }
 
 function ServicesSection() {
+	// Issue #1298 — the services grid is the page's substance, so it
+	// takes the deliberate `feature` beat; the uniform body/body/body
+	// rhythm was the audit's 「text-only, no 緩急」 finding.
 	return (
-		<PageSection labelledBy="commission-services-heading" separator>
+		<PageSection labelledBy="commission-services-heading" separator rhythm="feature">
 			<SectionHeading
 				id="commission-services-heading"
 				eyebrow="01 — Services"
@@ -322,7 +348,7 @@ function RequirementsSection() {
 
 function SoftwareSection() {
 	return (
-		<PageSection labelledBy="commission-software-heading" separator>
+		<PageSection labelledBy="commission-software-heading" separator tone="sunken">
 			<SectionHeading
 				id="commission-software-heading"
 				eyebrow="04 — Software"

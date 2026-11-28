@@ -95,7 +95,7 @@ description: >
 
 ## Research references
 
-- [Visual Design Capability — Concept and Research Direction](../../docs/research/visual-design-capability.md) — 意味と空間構造の分離、上限能力と品質下限の分離
+- [Visual Design Capability — Concept and Research Direction](https://github.com/rebuildup/design-skills/blob/v0.7.1/docs/research/visual-design-capability.md)（upstream research doc・未 vendor）— 意味と空間構造の分離、上限能力と品質下限の分離
 - [Design Council — Double Diamond](https://www.designcouncil.org.uk/resources/the-double-diamond/) — 問題の捉え直しと探索（固定工程化しない）
 - [Dow et al., Parallel Prototyping (2010)](https://doi.org/10.1145/1879831.1879836) — 初期案固定を避ける並行試作
 - [Jansson & Smith, Design Fixation (1991)](https://doi.org/10.1016/0142-694X%2891%2990003-F) — 既定例への無自覚な固着の回避

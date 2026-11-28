@@ -44,9 +44,39 @@ import type { BilingualText } from '../privacy/data-lifecycle';
 export interface PrivacyNoticeCompactProps {
 	readonly statement: BilingualText;
 	readonly linkLabel: BilingualText;
+	/**
+	 * `bare` renders only the notice line — no band padding, no
+	 * `Container` — for callers that already provide the page
+	 * container (e.g. a footer fine-print slot, Issue #1296/#1298).
+	 * Default `false` keeps the standalone band every existing
+	 * caller relies on.
+	 */
+	readonly bare?: boolean;
 }
 
-export function PrivacyNoticeCompact({ statement, linkLabel }: PrivacyNoticeCompactProps) {
+export function PrivacyNoticeCompact({
+	statement,
+	linkLabel,
+	bare = false,
+}: PrivacyNoticeCompactProps) {
+	const line = (
+		<p className={css(noteSansSmBody)}>
+			{statement.ja}
+			<span lang="en"> {statement.en}</span>
+			{' — '}
+			<a href="/#data-notice" className={css(linkAccent)}>
+				{linkLabel.ja}
+				<span lang="en"> {linkLabel.en}</span>
+			</a>
+		</p>
+	);
+	if (bare) {
+		return (
+			<div data-privacy-notice="compact" data-privacy-notice-bare="true">
+				{line}
+			</div>
+		);
+	}
 	return (
 		<div
 			data-privacy-notice="compact"
@@ -54,17 +84,7 @@ export function PrivacyNoticeCompact({ statement, linkLabel }: PrivacyNoticeComp
 				paddingBlock: '10',
 			})}
 		>
-			<Container>
-				<p className={css(noteSansSmBody)}>
-					{statement.ja}
-					<span lang="en"> {statement.en}</span>
-					{' — '}
-					<a href="/#data-notice" className={css(linkAccent)}>
-						{linkLabel.ja}
-						<span lang="en"> {linkLabel.en}</span>
-					</a>
-				</p>
-			</Container>
+			<Container>{line}</Container>
 		</div>
 	);
 }

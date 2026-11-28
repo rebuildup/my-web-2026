@@ -130,6 +130,51 @@ test.describe('stack — /stack reference', () => {
 		);
 	});
 
+	test('sticky section index links every section and tracks position (Issue #1320)', async ({
+		page,
+	}) => {
+		await page.goto('/stack');
+
+		// `visibility: hidden` keeps the strip out of the a11y tree
+		// until hydration measures scroll position, so select by
+		// attribute rather than role.
+		const spy = page.locator('nav[aria-label="Section index"]');
+		await expect(spy).toBeAttached();
+
+		// The strip is a wayfinding device: one anchor per committed
+		// section, targeting the same ids the hero index uses.
+		for (const section of [
+			'runtime',
+			'data',
+			'styling',
+			'quality',
+			'biome',
+			'delivery',
+			'component-integration',
+			'exploration',
+		]) {
+			await expect(spy.locator(`a[href="#stack-section-${section}"]`)).toHaveCount(1);
+		}
+
+		// At the top of the page the hero owns the reading band, so
+		// the strip stays hidden; once a section heading crosses the
+		// band it appears and marks that section current. The band is
+		// the middle ~45%→30% slice of the viewport, so centre the
+		// `biome` heading inside it deterministically.
+		await expect(spy).toHaveAttribute('data-section-spy', 'hidden');
+		await page.evaluate(() => {
+			const el = document.getElementById('stack-section-biome');
+			if (!el) return;
+			const top = el.getBoundingClientRect().top + window.scrollY - window.innerHeight * 0.375;
+			window.scrollTo(0, top);
+		});
+		await expect(spy).toHaveAttribute('data-section-spy', 'visible', { timeout: 10_000 });
+		await expect(spy.locator('a[aria-current="location"]')).toHaveAttribute(
+			'href',
+			'#stack-section-biome',
+		);
+	});
+
 	test('emits the contracted canonical and Open Graph metadata', async ({ page }) => {
 		await page.goto('/stack');
 		await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(

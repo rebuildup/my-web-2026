@@ -253,6 +253,13 @@ export const STACK_SECTIONS: readonly StackSection[] = [
 				reason:
 					'個人プラットフォームを 1 つの deployment 単位で運用するため。サーバー管理を持たず、バインディング宣言だけでデータ層を構成できる点が採用理由です。',
 				version: { kind: 'profile', key: 'runtime' },
+				// Issue #1320 — the my-web-2026 case study names this
+				// technology in its 技術構成, so the stack entry links
+				// into the narrative that documents the choice.
+				caseStudy: {
+					href: '/portfolio/my-web-2026',
+					label: 'my-web-2026 の case study',
+				},
 				evidence: [
 					evidence('wrangler.jsonc', 'wrangler.jsonc'),
 					evidence('cloudflare.config.ts', 'cloudflare.config.ts'),
@@ -267,6 +274,10 @@ export const STACK_SECTIONS: readonly StackSection[] = [
 				reason:
 					'React 上で routing と server function を型付きに扱うため。外部 HTTP boundary との分担は `server.ts` の path dispatch が所有します。',
 				version: { kind: 'profile', key: 'framework' },
+				caseStudy: {
+					href: '/portfolio/my-web-2026',
+					label: 'my-web-2026 の case study',
+				},
 				evidence: [
 					evidence('package.json', 'package.json'),
 					evidence('architecture.md', 'docs', 'architecture.md'),
@@ -281,6 +292,10 @@ export const STACK_SECTIONS: readonly StackSection[] = [
 				reason:
 					'TanStack Start の前提となる UI ランタイムであり、editorial primitive も React component として構成されています。',
 				version: { kind: 'npm', name: 'react' },
+				caseStudy: {
+					href: '/portfolio/my-web-2026',
+					label: 'my-web-2026 の case study',
+				},
 				evidence: [evidence('package.json', 'package.json')],
 			},
 			{
@@ -290,6 +305,10 @@ export const STACK_SECTIONS: readonly StackSection[] = [
 				reason:
 					'Worker・route・script の境界を型で固定するため。`tsc --noEmit` が validate:fast の必須工程です。',
 				version: { kind: 'npm', name: 'typescript' },
+				caseStudy: {
+					href: '/portfolio/my-web-2026',
+					label: 'my-web-2026 の case study',
+				},
 				evidence: [
 					evidence('package.json', 'package.json'),
 					evidence('tsconfig.json', 'tsconfig.json'),
@@ -303,6 +322,10 @@ export const STACK_SECTIONS: readonly StackSection[] = [
 				reason:
 					'TanStack Start の document pipeline と機械向け endpoint を分けるため。`server.ts` が path prefix で dispatch し、境界ポリシーは ADR-0002 が所有します。',
 				version: { kind: 'profile', key: 'external_boundary' },
+				caseStudy: {
+					href: '/portfolio/my-web-2026',
+					label: 'my-web-2026 の case study',
+				},
 				evidence: [
 					evidence('hono.ts', 'src', 'http', 'hono.ts'),
 					evidence('server.ts', 'src', 'server.ts'),
@@ -387,6 +410,10 @@ export const STACK_SECTIONS: readonly StackSection[] = [
 				reason:
 					'build 時に CSS を生成するため runtime cost を持たず、design token を型で参照できる点が採用理由です。',
 				version: { kind: 'profile', key: 'styling' },
+				caseStudy: {
+					href: '/portfolio/my-web-2026',
+					label: 'my-web-2026 の case study',
+				},
 				evidence: [
 					evidence('package.json', 'package.json'),
 					evidence('panda.config.ts', 'panda.config.ts'),

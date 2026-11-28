@@ -5333,6 +5333,88 @@
 					}
 				]
 			}
+		},
+		{
+			"id": "issue-1320-stack-scannability",
+			"pr": null,
+			"base": "release-0-17-0",
+			"reviewer": null,
+			"reviewedAt": "2026-11-28",
+			"decision": "pending",
+			"fingerprint": "sha256:d8870395a48c33253a1dd12ecfa7074b77468ac9e18a115a5471109316f04793",
+			"proposal": {
+				"tool": "agent editorial pass (Devin)",
+				"ran": true,
+				"summary": "Issue #1320 の /stack スキャンナビリティ改善に伴う公開日本語 copy 9 セグメントをレビュー。内訳: (a) StackPage.tsx の JSX コメント断片 1 件 (訪問者非表示の実装注記)、(b) 「採用理由 — 」インラインラベルの削除と mono eyebrow ラベル「採用理由」の追加 (見出し語は同一、reason 本文は default-ink 化のみで文言不変)、(c) stack.ts の caseStudy ラベル「my-web-2026 の case study」6 件 (component-integration 節の既存項目と同一文字列の再利用で、case study の技術構成が名指す 6 技術の項目に限定)。いずれも新規の主張・時制・数値・許可表現を含まず、否定や permission の含意も無い。",
+				"disposition": "各セグメントを実装と突合: (a) はコメントで描画対象外、(b) は旧 span 削除→新 eyebrow span 追加の再配置で「採用理由」の語は保存され reason 本文 ({item.reason}) は無変更、(c) は stack.ts の caseStudy フィールドが既に同一ラベルで 4 項目に使用中であり、付与先は snapshot.json の my-web-2026 case study sections.implementation「技術構成」行が列挙する TypeScript / React / TanStack Start / Hono / Panda CSS / Cloudflare Workers と 1 対 1 で対応する項目のみ (D1/R2/Static Assets・Vite・Biome 等は case study が名指さないため付与せず)。owner 判断の artefact は未取得のため decision は pending (Issue #754 の語彙)。PR 番号は未採番のため pr は null、id は issue 番号で記録する。"
+			},
+			"comparisons": [
+				{
+					"path": "src/routes/stack/StackPage.tsx",
+					"before": null,
+					"after": "{/* Issue #1320 — the 採用理由 is the page's decision",
+					"text": "{/* Issue #1320 — the 採用理由 is the page's decision",
+					"verdict": "intentional",
+					"note": "JSX コメント内の日本語断片。実装注記であり訪問者には表示されない (copy surface の走査がコメント内の仮名・漢字を拾ったもの)。"
+				},
+				{
+					"path": "src/routes/stack/StackPage.tsx",
+					"before": "<span className={css(emphasisDefault)}>採用理由 — </span>",
+					"after": null,
+					"text": "<span className={css(emphasisDefault)}>採用理由 — </span>",
+					"verdict": "intentional",
+					"note": "旧「採用理由 — 」インラインラベルの削除側。見出し語「採用理由」は次のセグメントの mono eyebrow ラベルとして再出現し、理由本文 ({item.reason}) は不変。"
+				},
+				{
+					"path": "src/routes/stack/StackPage.tsx",
+					"before": null,
+					"after": "<span className={css(eyebrowMonoXs)}>採用理由</span>",
+					"text": "<span className={css(eyebrowMonoXs)}>採用理由</span>",
+					"verdict": "intentional",
+					"note": "採用理由ブロックの mono eyebrow ラベル。旧インライン「採用理由 — 」と同じ見出し語で、reason 本文は muted note から default-ink body へ格上げ。文言の主張は変わらない。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "my-web-2026 の case study",
+					"text": "my-web-2026 の case study",
+					"verdict": "equivalent",
+					"note": "case study 導線ラベル。同一文字列が 6 項目 (cloudflare-workers / tanstack-start / react / typescript / hono / panda-css) に追加された — component-integration 節の既存項目と同一の確立済みラベルで、my-web-2026 case study の技術構成が名指す技術の項目に限定して付与。owner 承認未取得のため decision は pending。"
+				}
+			],
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/1320",
+						"note": "本変更の実装対象。/stack のスキャンナビリティ改善。"
+					},
+					{
+						"type": "commit",
+						"reference": "a1c358a7",
+						"note": "the commit that introduced this record"
+					},
+					{
+						"type": "document",
+						"reference": "src/routes/stack/StackPage.tsx",
+						"note": "採用理由ブロックの mono eyebrow ラベル化と spy/tonel の実装典拠。"
+					},
+					{
+						"type": "document",
+						"reference": "src/routes/stack/stack.ts",
+						"note": "caseStudy 付与の実装典拠 (既存フィールド、component-integration 節で使用中)。"
+					},
+					{
+						"type": "document",
+						"reference": "src/portfolio/notion/generated/snapshot.json",
+						"note": "my-web-2026 case study の技術構成が名指す技術一覧 (付与範囲の根拠)。"
+					}
+				]
+			}
 		}
 	]
 }

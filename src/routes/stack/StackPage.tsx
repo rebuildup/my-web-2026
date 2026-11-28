@@ -1,4 +1,5 @@
 import { css, cx } from '../../../styled-system/css';
+import { SectionSpy } from '../../editorial/nav';
 import { Badge } from '../../editorial/primitives/Badge';
 import { Button } from '../../editorial/primitives/Button';
 import { Disclosure } from '../../editorial/primitives/Disclosure';
@@ -13,8 +14,8 @@ import { SkipLink } from '../../editorial/primitives/SkipLink';
 import { TextLink } from '../../editorial/primitives/TextLink';
 import { ARROW_FORWARD_PATH } from '../../editorial/primitives/material-symbol-paths';
 import {
-	emphasisDefault,
-	noteSansSmLoose,
+	bodySansSmLoose,
+	eyebrowMonoXs,
 	noteSansXsBody,
 	vStackGap1,
 } from '../../editorial/primitives/shared-styles';
@@ -65,6 +66,18 @@ export function StackPage({ data }: { data: StackPageData }) {
 	return (
 		<>
 			<SkipLink />
+			{/* Issue #1320 — the sticky section index: once the hero has
+			    scrolled away, a quiet mono strip pinned to the top names
+			    the current section and links every one. Same mechanism
+			    as `/about` (Issue #1296), shared through
+			    `editorial/nav/SectionSpy`. */}
+			<SectionSpy
+				items={data.sections}
+				idKey="id"
+				labelKey="titleEn"
+				idPrefix="stack-section-"
+				ariaLabel="Section index"
+			/>
 			{/* Issue #1163 — the right column carries the stack's own
 			    sections with their item counts, so the entry tells the
 			    reader how the list is organised before they read it. */}
@@ -141,6 +154,12 @@ function StackSectionBlock({
 			labelledBy={`stack-section-${section.id}`}
 			separator
 			testId={`stack-section-${section.id}`}
+			// Issue #1320 — the page's sections get the same monochrome
+			// ladder `/about` uses (Issue #1166): alternating `sunken`
+			// bands break the uniform two-column wall into positional
+			// groups without adding hue. The closing band stays
+			// `inverse`, outside this rhythm.
+			tone={index % 2 === 0 ? 'sunken' : 'ground'}
 		>
 			<SectionHeading
 				id={`stack-section-${section.id}`}
@@ -200,10 +219,15 @@ function StackItemRow({ item }: { item: StackItemView }) {
 				>
 					{item.responsibility}
 				</p>
-				<p className={css(noteSansSmLoose)}>
-					<span className={css(emphasisDefault)}>採用理由 — </span>
-					{item.reason}
-				</p>
+				{/* Issue #1320 — the 採用理由 is the page's decision
+				    content, not a footnote: it gets a mono eyebrow label
+				    and default-ink body copy instead of the muted note
+				    style, so the reason reads before the evidence
+				    links rather than after them. */}
+				<div className={css(vStackGap1)} data-testid={`stack-reason-${item.id}`}>
+					<span className={css(eyebrowMonoXs)}>採用理由</span>
+					<p className={css(bodySansSmLoose)}>{item.reason}</p>
+				</div>
 				{item.settings !== undefined && item.settings.length > 0 ? (
 					// Issue #1297 — the biome.json dump is reference data,
 					// not narrative: it collapses behind a Disclosure so

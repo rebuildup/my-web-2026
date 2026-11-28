@@ -1444,7 +1444,7 @@
 		{
 			"id": "activity-closing-description-1297",
 			"path": "src/routes/activity/ActivityPage.tsx",
-			"expression": "タイムラインの元データは portfolio の case study と現在地の記録にも展開しています。仕事の相談・掲載の訂正は contact の verified channel からどうぞ。",
+			"expression": "記録の元データは portfolio の case study と現在地の記録にも展開しています。仕事の相談・掲載の訂正は contact の verified channel からどうぞ。",
 			"locale": "ja",
 			"dimension": "prose",
 			"reviewedAt": "2026-11-28",
@@ -1459,10 +1459,38 @@
 						"type": "issue",
 						"reference": "https://github.com/rebuildup/my-web-2026/issues/1297",
 						"note": "Issue #1297 — /activity closing band. The sentence routes corrections through /contact, whose channels are the freshness-gated verified set (src/contact/channels.json + the 30-day gate of src/contact/schema.ts); it claims no channel name and no freshness number of its own."
+					},
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/1319",
+						"note": "Issue #1319 — reworded タイムラインの元データは → 記録の元データは because the page is now an edited activity record, not a raw timeline; the claim class is unchanged."
 					}
 				]
 			},
 			"note": "Closing-band description of /activity. True against the contact freshness contract: only re-verified channels render on /contact, so 'verified channel' names the gate, not a specific row. (src/routes/activity/ActivityPage.tsx)"
+		},
+		{
+			"id": "activity-highlights-latest-releases-1319",
+			"path": "src/routes/activity/Highlights.tsx",
+			"expression": "最新のリリース",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-28",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/1319",
+						"note": "Issue #1319 — heading of the highlight band's release block. It names the block's content (the newest release events inside the observation window, assembled in src/routes/activity/assemble.ts); it claims no count and no date of its own."
+					}
+				]
+			},
+			"note": "Section heading inside the /activity highlights band. Labels a bounded list (ACTIVITY_HIGHLIGHT_RELEASE_COUNT) whose rows carry their own source-recorded dates. (src/routes/activity/Highlights.tsx)"
 		},
 		{
 			"id": "now-closing-description-1297",

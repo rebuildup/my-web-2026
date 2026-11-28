@@ -1,4 +1,4 @@
-import { css } from '../../../styled-system/css';
+import { css, cx } from '../../../styled-system/css';
 import {
 	ACTIVITY_KIND_LABELS_JA,
 	ACTIVITY_SOURCE_LABELS_JA,
@@ -7,8 +7,9 @@ import {
 	type ActivityTimeline,
 	type ActivityTimelineItem,
 } from '../../activity/contract';
+import { Disclosure } from '../../editorial/primitives/Disclosure';
 import { Grid, GridItem } from '../../editorial/primitives/Grid';
-import { noteSansMdPlain } from '../../editorial/primitives/shared-styles';
+import { noteSansMdPlain, tabularDateSm } from '../../editorial/primitives/shared-styles';
 
 /**
  * ActivityTimeline — the unified read-only chronology of published
@@ -91,12 +92,33 @@ const titleClassName = css({
 	color: 'text.default',
 });
 
-const dateClassName = css({
+/**
+ * Issue #1319 — a release item's subject IS a repository id
+ * (`owner/name`), so it prints in the mono face the platform uses
+ * for identifiers. Works keep the sans title: their subject is a
+ * work, not a repo path. This is the archive's kind differentiation
+ * — shape (cover vs. none) plus typeface, never colour alone.
+ */
+const repoIdClassName = css({
 	fontFamily: 'mono',
-	fontSize: 'sm',
-	fontVariantNumeric: 'tabular-nums',
-	color: 'text.muted',
 });
+
+const relatedWorkLinkClassName = css({
+	display: 'inline-flex',
+	alignItems: 'baseline',
+	gap: '1',
+	fontFamily: 'sans',
+	fontSize: 'xs',
+	color: 'text.muted',
+	textDecoration: 'none',
+	_focusVisible: {
+		outline: '2px solid {colors.border.focus}',
+		outlineOffset: '2px',
+	},
+	_hover: { color: 'text.default', textDecoration: 'underline' },
+});
+
+const dateClassName = css(tabularDateSm);
 
 /**
  * Issue #1297 — the YEAR is the chronology's rhythm unit, so it
@@ -333,7 +355,7 @@ function TimelineItemRow({ item }: { readonly item: ActivityTimelineItem }) {
 					{item.href ? (
 						<a
 							href={item.href}
-							className={linkClassName}
+							className={cx(linkClassName, item.kind === 'release' ? repoIdClassName : undefined)}
 							{...(isInternalHref(item.href)
 								? {}
 								: { rel: 'noopener noreferrer', target: '_blank' })}
@@ -341,7 +363,11 @@ function TimelineItemRow({ item }: { readonly item: ActivityTimelineItem }) {
 							{item.title}
 						</a>
 					) : (
-						<span className={titleClassName}>{item.title}</span>
+						<span
+							className={cx(titleClassName, item.kind === 'release' ? repoIdClassName : undefined)}
+						>
+							{item.title}
+						</span>
 					)}
 				</GridItem>
 				<GridItem span={{ base: 12, md: 2 }} className={metaCellClassName}>
@@ -349,6 +375,14 @@ function TimelineItemRow({ item }: { readonly item: ActivityTimelineItem }) {
 					<span className={sourceRowClassName}>
 						<span>{ACTIVITY_SOURCE_LABELS_JA[item.source] ?? item.source}</span>
 					</span>
+					{/* Issue #1319 — the derived work join: present only
+					    when the assembly proved the repository ↔ work
+					    pairing; absent means "no provable link". */}
+					{item.relatedWork ? (
+						<a href={item.relatedWork.href} className={relatedWorkLinkClassName}>
+							関連作品: {item.relatedWork.title}
+						</a>
+					) : null}
 				</GridItem>
 			</Grid>
 		</li>
@@ -446,29 +480,47 @@ export function ActivityTimelineView({ timeline }: ActivityTimelineProps) {
 			) : (
 				<>
 					<KindCounts items={timeline.items} />
-					{groupByYearMonth(timeline.items).map((year) => (
-						<div key={year.year}>
-							<h3 className={yearHeadingClassName}>
-								<span>{year.year}</span>
-								<span className={yearCountClassName}>
-									{`${year.months.reduce((total, m) => total + m.items.length, 0)} 件`}
+					{/* Issue #1319 — the chronology is the ARCHIVE now, not
+					    the page's protagonist: the edited highlight band
+					    leads and the full record stays one disclosure
+					    away. Every item remains in the DOM and in the
+					    record — nothing is filtered out, only folded. */}
+					<Disclosure
+						data-testid="activity-archive"
+						summary={
+							<span>
+								時系列アーカイブ（全 {timeline.items.length} 件）
+								<span className={mutedClassName}>
+									{' '}
+									— 展開すると全記録を日付の新しい順に読めます
 								</span>
-							</h3>
-							{year.months.map((month) => (
-								<div key={month.month}>
-									<h4 className={monthLabelClassName}>
-										<span>{monthLabel(month.month)}</span>
-										<span className={yearCountClassName}>{`${month.items.length} 件`}</span>
-									</h4>
-									<ul className={css({ margin: '0', padding: '0', listStyle: 'none' })}>
-										{month.items.map((item) => (
-											<TimelineItemRow key={item.id} item={item} />
-										))}
-									</ul>
-								</div>
-							))}
-						</div>
-					))}
+							</span>
+						}
+					>
+						{groupByYearMonth(timeline.items).map((year) => (
+							<div key={year.year}>
+								<h3 className={yearHeadingClassName}>
+									<span>{year.year}</span>
+									<span className={yearCountClassName}>
+										{`${year.months.reduce((total, m) => total + m.items.length, 0)} 件`}
+									</span>
+								</h3>
+								{year.months.map((month) => (
+									<div key={month.month}>
+										<h4 className={monthLabelClassName}>
+											<span>{monthLabel(month.month)}</span>
+											<span className={yearCountClassName}>{`${month.items.length} 件`}</span>
+										</h4>
+										<ul className={css({ margin: '0', padding: '0', listStyle: 'none' })}>
+											{month.items.map((item) => (
+												<TimelineItemRow key={item.id} item={item} />
+											))}
+										</ul>
+									</div>
+								))}
+							</div>
+						))}
+					</Disclosure>
 				</>
 			)}
 		</div>

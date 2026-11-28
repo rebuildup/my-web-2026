@@ -1297,17 +1297,25 @@
 		{
 			"path": "src/routes/activity/Timeline.tsx",
 			"clauses": ["C-8"],
-			"reason": "justified: the /activity page IS the enumeration surface for the activity timeline — every published item is listed here, so there is no index route beyond it (Issue #1297 added the year/month group maps and the kind-count strip; same enumeration contract)",
+			"reason": "justified: /activity is the enumeration surface for the activity record (ADR-0022 C-8 indexOwners) — the item maps render the complete archive inside the Issue #1319 disclosure; the remaining unbounded maps are the bounded-by-contract source-status and kind-count strips",
 			"signatures": {
-				"unbounded .map(": 4
+				"unbounded .map(": 2
+			}
+		},
+		{
+			"path": "src/routes/activity/Highlights.tsx",
+			"clauses": ["C-8"],
+			"reason": "justified: /activity is the enumeration surface for the activity record (ADR-0022 C-8 indexOwners) and every rendered highlight collection is contract-bounded in assemble.ts (ACTIVITY_HIGHLIGHT_MEASURE_COUNT / _WORK_COUNT / _RELEASE_COUNT slices); the works map additionally re-slices at render",
+			"signatures": {
+				"unbounded .map(": 1
 			}
 		},
 		{
 			"path": "src/routes/activity/load.ts",
 			"clauses": ["C-8"],
-			"reason": "justified: toWorkLike is a projection transform onto the activity adapter's narrow input, not a rendered collection (same class as stack/resolve.ts)",
+			"reason": "justified: toWorkLike and the selected-works projection are adapter-input transforms, not rendered collections (same class as stack/resolve.ts)",
 			"signatures": {
-				"unbounded .map(": 1
+				"unbounded .map(": 2
 			}
 		}
 	],

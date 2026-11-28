@@ -32,9 +32,9 @@ import { getActivityPageData } from './activity/load';
 export const Route = createFileRoute('/activity')({
 	loader: () => getActivityPageData(),
 	head: () => {
-		const title = '活動タイムライン / Activity — rebuildup.dev';
+		const title = '活動の記録 / Activity — rebuildup.dev';
 		const description =
-			'GitHub のリリース、公開記事、Portfolio の公開作品を一つの時系列で読むページ。各項目はソースが記録した日付と出典を併記し、ソースごとの観測状態を表示します。';
+			'GitHub のリリースと Portfolio の公開作品を編集した活動記録。観測窓の計測値・選定作品・直近のリリースをハイライトし、全記録の時系列アーカイブを畳んで保管します。';
 		const url = 'https://rebuildup.dev/activity';
 		return {
 			meta: [
@@ -54,13 +54,13 @@ export const Route = createFileRoute('/activity')({
 });
 
 function ActivityRoute() {
-	const timeline = Route.useLoaderData();
+	const model = Route.useLoaderData();
 	return (
 		<>
 			<PublicNav />
 			<Breadcrumbs className={breadcrumbsChrome} />
 			<BreadcrumbJsonLd />
-			<ActivityPage timeline={timeline} />
+			<ActivityPage model={model} />
 		</>
 	);
 }

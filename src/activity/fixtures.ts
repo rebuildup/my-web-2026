@@ -1,4 +1,4 @@
-import type { ActivityTimeline, ActivityTimelineSourceState } from './contract';
+import type { ActivityHighlights, ActivityTimeline, ActivityTimelineSourceState } from './contract';
 
 /**
  * Committed fixtures for the activity timeline (Issue #352).
@@ -101,4 +101,55 @@ export const failedActivityTimelineFixture: ActivityTimeline = {
 		{ id: 'articles', status: 'unconfigured' },
 	],
 	items: [],
+};
+
+/**
+ * The edited highlight band fixture (Issue #1319) — synthetic review
+ * data exercising every block: the summary panel, measured
+ * contributions, selected works and releases with a work join.
+ */
+export const activityHighlightsFixture: ActivityHighlights = {
+	windowDays: 30,
+	repoCount: { public: 12, private: 5 },
+	totals: { releases: 2, works: 6 },
+	measures: [
+		{
+			name: 'my-web-2026',
+			href: 'https://github.com/rebuildup/my-web-2026',
+			commits: 18,
+			pullRequests: 5,
+			windowDays: 30,
+		},
+	],
+	releases: [
+		{
+			...activityTimelineFixture.items[0],
+			relatedWork: { title: 'my-web-2026', href: '/portfolio/my-web-2026' },
+		},
+	],
+	works: [
+		{
+			slug: 'my-web-2026',
+			title: 'my-web-2026 — Personal Web Platform on Cloudflare Workers',
+			summary: 'Cloudflare Workers 上の個人 Web プラットフォーム。',
+			periodLabel: '2025-09 - present',
+			cover: {
+				url: '/media/portfolio/my-web-2026/cover.webp',
+				alt: 'my-web-2026 のカバー画像',
+				width: 1600,
+				height: 900,
+			},
+			href: '/portfolio/my-web-2026',
+		},
+	],
+};
+
+/** Nothing to highlight — the band must not pad itself. */
+export const emptyActivityHighlightsFixture: ActivityHighlights = {
+	windowDays: null,
+	repoCount: null,
+	totals: { releases: 0, works: 0 },
+	measures: [],
+	releases: [],
+	works: [],
 };

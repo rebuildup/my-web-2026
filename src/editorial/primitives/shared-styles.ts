@@ -15,6 +15,18 @@ export const noteMonoSm = {
 	color: 'text.muted',
 } as const;
 
+/**
+ * The tabular date/figure face — mono, small, muted, with
+ * `tabular-nums` so a column of dates never jitters (Issue #1319:
+ * extracted when the activity archive and highlights both needed it).
+ */
+export const tabularDateSm = {
+	fontFamily: 'mono',
+	fontSize: 'sm',
+	fontVariantNumeric: 'tabular-nums',
+	color: 'text.muted',
+} as const;
+
 export const pageTitle = {
 	margin: '0',
 	marginBlockStart: '2',

@@ -119,7 +119,7 @@ test.describe('home page composition', () => {
 		// and the closing contact CTA — so the page carries six
 		// top-level sections.
 		//
-		// Issue #1294 (v0.17.0 redesign) added `selected-works-heading`
+		// Issue #1294 (the site redesign) added `selected-works-heading`
 		// — the proof band leads the page — and moved the Now records
 		// ahead of the site guide, so the page carries seven
 		// top-level sections in a new order.

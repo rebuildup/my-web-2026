@@ -247,9 +247,12 @@
 	 * `--analytics-consent-offset` from the rendered height in
 	 * `src/editorial/analytics/AnalyticsConsent.tsx`,
 	 * `--pet-overlay-offset` from the resting inset plus the full frame in
-	 * `src/editorial/pet/PetSprite.tsx`, and `--pet-summon-offset` from
-	 * the mobile summon control in `src/editorial/pet/PetCompanion.tsx`
-	 * — so the compensation follows the surfaces instead of guessing a
+	 * `src/editorial/pet/PetSprite.tsx`, `--pet-summon-offset` from
+	 * the mobile summon control in `src/editorial/pet/PetCompanion.tsx`,
+	 * and `--about-section-spy-offset` from the shown strip in
+	 * `src/about/components/AboutSectionSpy.tsx` (top-anchored, so it
+	 * feeds the TOP slot of `scroll-padding`) — so the compensation
+	 * follows the surfaces instead of guessing a
 	 * number. Without a surface on the page its variable is absent and
 	 * the fallback reserves nothing.
 	 *
@@ -274,7 +277,7 @@
 	 * declaration and fails the gate.
 	 */
 	:root {
-		scroll-padding: 0 0
+		scroll-padding: var(--about-section-spy-offset, 0px) 0
 			max(
 				var(--analytics-consent-offset, 0px),
 				var(--pet-overlay-offset, 0px),

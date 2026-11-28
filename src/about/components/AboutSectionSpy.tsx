@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { css, cx } from '../../../styled-system/css';
 import { Container } from '../../editorial/primitives/Container';
 import { Cluster, listResetClassName } from '../../editorial/primitives/Flow';
@@ -59,8 +59,19 @@ const SPY_ITEMS: readonly SpyItem[] = [
 
 const SECTION_ID_PREFIX = 'about-section-';
 
+/**
+ * The custom property this overlay publishes for the document's scroll
+ * compensation (`src/styles.css` `scroll-padding`). Declared HERE, not
+ * imported, because `scripts/check-a11y-focus-visible.mjs` closes the
+ * chain only when the overlay's OWN file publishes the offset it
+ * occupies (SC 2.4.11 — a focused element scrolled to the top edge
+ * would sit under this strip).
+ */
+const FOCUS_OFFSET_PROPERTY = '--about-section-spy-offset';
+
 export function AboutSectionSpy() {
 	const [activeId, setActiveId] = useState<string | null>(null);
+	const navRef = useRef<HTMLElement>(null);
 
 	useEffect(() => {
 		const elements = SPY_ITEMS.map((item) =>
@@ -88,8 +99,37 @@ export function AboutSectionSpy() {
 
 	const visible = activeId !== null;
 
+	// Publish the strip's height while it is shown so the document can
+	// keep a focused element clear of the top edge (SC 2.4.11). While
+	// hidden the property is absent and the compensation reserves
+	// nothing — the strip occupies no visible band at the top of the
+	// page.
+	useEffect(() => {
+		const nav = navRef.current;
+		const root = document.documentElement;
+		if (!nav || !visible) {
+			root.style.removeProperty(FOCUS_OFFSET_PROPERTY);
+			return;
+		}
+		const publish = () => {
+			const { height } = nav.getBoundingClientRect();
+			root.style.setProperty(FOCUS_OFFSET_PROPERTY, `${Math.ceil(height)}px`);
+		};
+		publish();
+		if (typeof ResizeObserver === 'undefined') {
+			return () => root.style.removeProperty(FOCUS_OFFSET_PROPERTY);
+		}
+		const observer = new ResizeObserver(publish);
+		observer.observe(nav);
+		return () => {
+			observer.disconnect();
+			root.style.removeProperty(FOCUS_OFFSET_PROPERTY);
+		};
+	}, [visible]);
+
 	return (
 		<nav
+			ref={navRef}
 			aria-label="Section index"
 			data-section-spy={visible ? 'visible' : 'hidden'}
 			className={css({

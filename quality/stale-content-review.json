@@ -1472,7 +1472,7 @@
 		{
 			"id": "activity-highlights-latest-releases-1319",
 			"path": "src/routes/activity/Highlights.tsx",
-			"expression": "最新のリリース",
+			"expression": "<h3 className={blockTitleClassName}>最新のリリース</h3>",
 			"locale": "ja",
 			"dimension": "prose",
 			"reviewedAt": "2026-11-28",

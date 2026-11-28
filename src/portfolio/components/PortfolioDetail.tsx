@@ -163,6 +163,19 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 			) : null}
 		</dl>
 	);
+	// Issue #1278 — one `<h1>` literal for both hero branches: the
+	// a11y heading/landmark gate counts source occurrences, and two
+	// literals would read as a duplicated page heading even though
+	// only one branch ever renders. `textWrap: balance` now applies
+	// to the no-media fallback too, matching the media branch.
+	const detailHeading = (
+		<h1
+			id="portfolio-detail-heading"
+			className={css({ ...pageTitleFlush, textWrap: 'balance' })}
+		>
+			{project.title}
+		</h1>
+	);
 	return (
 		<>
 			<SkipLink href="#portfolio-detail" />
@@ -215,12 +228,7 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 									    that void above and below the identity cluster
 									    instead of parking it under the copy. */}
 									<div className={css({ ...vStackGap6, alignSelf: 'center' })}>
-										<h1
-											id="portfolio-detail-heading"
-											className={css({ ...pageTitleFlush, textWrap: 'balance' })}
-										>
-											{project.title}
-										</h1>
+										{detailHeading}
 										<p
 											className={css({
 												margin: '0',
@@ -267,9 +275,7 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 								</Split>
 							) : (
 								<>
-									<h1 id="portfolio-detail-heading" className={css(pageTitleFlush)}>
-										{project.title}
-									</h1>
+									{detailHeading}
 									<p
 										className={css({
 											margin: '0',

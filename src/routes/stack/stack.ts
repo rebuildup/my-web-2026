@@ -102,6 +102,13 @@ export interface StackItem {
 	readonly facts?: StackFactRef;
 	/** Optional committed code samples (before/after, proposals). */
 	readonly samples?: readonly StackCodeSample[];
+	/**
+	 * Optional link to the portfolio case study that documents this
+	 * item (Issue #1297). Only set when a REAL published project
+	 * covers the entry — the link is a way into the narrative, never
+	 * a decoration.
+	 */
+	readonly caseStudy?: { readonly href: string; readonly label: string };
 	readonly evidence: readonly StackEvidence[];
 	/**
 	 * Optional verification verdicts (Issue #510). Only the
@@ -496,7 +503,7 @@ export const STACK_SECTIONS: readonly StackSection[] = [
 		title: 'コード品質・Biome',
 		titleEn: 'Code quality · Biome',
 		description:
-			'format と lint を担う Biome の実設定と、formatter の実出力による before / after、そして 1 行圧縮案との比較記録です。設定値はリクエスト時に `biome.json` から読み取ります。',
+			'format と lint を担う Biome の実設定と、formatter の実出力による before / after です。設定値はリクエスト時に `biome.json` から読み取り、検討したが採用しなかった案は末尾の Exploration 節に分けています。',
 		items: [
 			{
 				id: 'biome-config',
@@ -528,32 +535,6 @@ export const STACK_SECTIONS: readonly StackSection[] = [
 						language: 'ts',
 						code: BIOME_SAMPLE_AFTER,
 						note: 'pnpm exec biome format --stdin-file-path=sample.ts < 入力.ts の stdout。末尾の改行を除き byte 一致。',
-					},
-				],
-				evidence: [
-					evidence('biome.json', 'biome.json'),
-					evidence('biome-formatting.md', 'docs', 'verification', 'stack', 'biome-formatting.md'),
-				],
-			},
-			{
-				id: 'biome-compression-decision',
-				name: '1行圧縮案との比較（保留）',
-				responsibility:
-					'「改行とインデントを潰して 1 行に圧縮する」案と、現行の `lineWidth: 100` による整形を、同じコードで比較します。',
-				reason:
-					'圧縮は formatter が維持する可読性 — 折り返し位置・trailing comma・字下げの一貫性 — と競合し、`lineWidth: 100` では Biome 自体がその形を再展開します。本番の format policy は変更せず、採否は保留として記録します。採用する場合は別 Issue で扱います。',
-				version: { kind: 'none' },
-				samples: [
-					{
-						label: '1行圧縮案（未採用）',
-						language: 'ts',
-						code: BIOME_SAMPLE_COMPRESSED,
-						note: 'この入力を `biome format --write` に掛けると、幅超過のため下の「現行の整形結果」と同じ整形に再展開されます（引数名の差のみ）。',
-					},
-					{
-						label: '現行の整形結果（lineWidth: 100）',
-						language: 'ts',
-						code: BIOME_SAMPLE_AFTER,
 					},
 				],
 				evidence: [
@@ -683,6 +664,10 @@ export const STACK_SECTIONS: readonly StackSection[] = [
 				reason:
 					'出典の異なる値を 1 つの列に混ぜると、手書きの記憶が commit と同じ確かさに見えてしまうため。preview と route が同じ型を読むことで、表示側は出典を偽れません。',
 				version: { kind: 'none' },
+				caseStudy: {
+					href: '/portfolio/my-web-2026',
+					label: 'my-web-2026 の case study',
+				},
 				evidence: [
 					evidence('types.ts', 'src', 'home', 'current', 'types.ts'),
 					evidence('source.ts', 'src', 'home', 'current', 'source.ts'),
@@ -704,6 +689,10 @@ export const STACK_SECTIONS: readonly StackSection[] = [
 				reason:
 					'Storybook と route の両方がこの 1 つの component を mount するため、preview で見える組版は route が出す組版と同じ実装です。',
 				version: { kind: 'none' },
+				caseStudy: {
+					href: '/portfolio/my-web-2026',
+					label: 'my-web-2026 の case study',
+				},
 				evidence: [
 					evidence('CurrentProjects.tsx', 'src', 'home', 'current', 'CurrentProjects.tsx'),
 					evidenceDir('current/', 'src', 'home', 'current'),
@@ -725,6 +714,10 @@ export const STACK_SECTIONS: readonly StackSection[] = [
 				reason:
 					'preview が独自 fixture を持たないため、Storybook で見えるものは route が読むのと同じ合成経路の結果です。検証画像は `capture-home-current-projects.mjs` が story の `render()` 出力から生成します。',
 				version: { kind: 'none' },
+				caseStudy: {
+					href: '/portfolio/my-web-2026',
+					label: 'my-web-2026 の case study',
+				},
 				evidence: [
 					evidence(
 						'CurrentProjects.stories.tsx',
@@ -766,6 +759,10 @@ export const STACK_SECTIONS: readonly StackSection[] = [
 				reason:
 					'合成に必要な committed artefact（roster・git snapshot）を client bundle に載せないため、server function の境界の内側で解決します。',
 				version: { kind: 'none' },
+				caseStudy: {
+					href: '/portfolio/my-web-2026',
+					label: 'my-web-2026 の case study',
+				},
 				evidence: [
 					evidence('index.tsx', 'src', 'routes', 'index.tsx'),
 					evidence('load.ts', 'src', 'home', 'current', 'load.ts'),
@@ -784,6 +781,45 @@ export const STACK_SECTIONS: readonly StackSection[] = [
 						status: 'not-applicable',
 						note: 'サイトに locale 別 route は存在せず（route tree は flat で `/fr` 等を持たない）、`statusJa` は契約上の日本語の文です。i18n の fr / de / pt / ru は見出し glyph の fixture で locale routing ではなく、Home の locale 集合（en / ja / ko）は Intl 整形専用で CurrentProjects はこれを使いません（derive の整形は locale 非依存）。他言語 locale での描画という検査対象が存在しません。',
 					},
+				],
+			},
+		],
+	},
+	{
+		// Issue #1297 — 採用しなかった案・保留にした判断は採用済みの
+		// stack 一覧と分けて置く。decision-first のページでは「何を
+		// 選んだか」と同じ重さで「何を選ばなかったか」が読める必要が
+		// あるが、本文の流れを止める位置には置かない。
+		id: 'exploration',
+		title: '検討したが採用しなかった案',
+		titleEn: 'Exploration',
+		description:
+			'採用済みの stack とは別に、評価して見送った・保留にした案を記録します。却下の理由は formatter や policy の実出力で確かめたもので、採用する場合は別 Issue で扱います。',
+		items: [
+			{
+				id: 'biome-compression-decision',
+				name: '1行圧縮案との比較（保留）',
+				responsibility:
+					'「改行とインデントを潰して 1 行に圧縮する」案と、現行の `lineWidth: 100` による整形を、同じコードで比較します。',
+				reason:
+					'圧縮は formatter が維持する可読性 — 折り返し位置・trailing comma・字下げの一貫性 — と競合し、`lineWidth: 100` では Biome 自体がその形を再展開します。本番の format policy は変更せず、採否は保留として記録します。採用する場合は別 Issue で扱います。',
+				version: { kind: 'none' },
+				samples: [
+					{
+						label: '1行圧縮案（未採用）',
+						language: 'ts',
+						code: BIOME_SAMPLE_COMPRESSED,
+						note: 'この入力を `biome format --write` に掛けると、幅超過のため下の「現行の整形結果」と同じ整形に再展開されます（引数名の差のみ）。',
+					},
+					{
+						label: '現行の整形結果（lineWidth: 100）',
+						language: 'ts',
+						code: BIOME_SAMPLE_AFTER,
+					},
+				],
+				evidence: [
+					evidence('biome.json', 'biome.json'),
+					evidence('biome-formatting.md', 'docs', 'verification', 'stack', 'biome-formatting.md'),
 				],
 			},
 		],

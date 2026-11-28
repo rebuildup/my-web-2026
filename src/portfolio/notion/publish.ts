@@ -127,6 +127,24 @@ function recordedRole(record: NotionRecord): string | null {
  * looser one. `toProject` therefore returns `null` for every state the
  * public list cannot carry, and `isPublicRecord` is the only gate.
  */
+/**
+ * The CMS records a period as a YEAR (`periodStart` is schema-bounded
+ * to 1900–2200, `contract.ts`), while `PortfolioProject.periodStart`
+ * is the D1 column's UNIX-ms convention (`migrations/0007_portfolio.sql`).
+ * Projecting the year through unchanged made every epoch-ms consumer
+ * read `new Date(2024)` — 1970-01-01 — which is how the `/activity`
+ * timeline came to print a 1970 placeholder (Issue #1297).
+ *
+ * The conversion keeps the recorded precision: `Date.UTC(year, 0, 1)`
+ * is the same storage convention the D1 rows use — the day component
+ * is not a claim (`structured-data.ts` documents that the label, not
+ * the epoch value, carries the precision). `periodEnd` converts the
+ * same way so the pair stays in one unit.
+ */
+function periodYearToEpochMs(year: number): number {
+	return Date.UTC(year, 0, 1);
+}
+
 export function toProject(record: NotionRecord): PortfolioProject | null {
 	if (!isPublicRecord(record)) return null;
 	return {
@@ -135,8 +153,8 @@ export function toProject(record: NotionRecord): PortfolioProject | null {
 		title: record.title,
 		summary: record.summary,
 		role: recordedRole(record),
-		periodStart: record.periodStart,
-		periodEnd: record.periodEnd,
+		periodStart: periodYearToEpochMs(record.periodStart),
+		periodEnd: record.periodEnd === null ? null : periodYearToEpochMs(record.periodEnd),
 		periodLabel: record.periodLabel,
 		motivationMd: record.sections.motivation,
 		architectureMd: record.sections.architecture,

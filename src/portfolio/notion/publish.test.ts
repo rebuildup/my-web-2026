@@ -149,6 +149,18 @@ describe('publicProjects', () => {
 		expect(project?.media).toEqual([]);
 	});
 
+	// Issue #1297 — the CMS records the period as a YEAR while
+	// `PortfolioProject.periodStart` is the D1 UNIX-ms convention.
+	// Projecting the year through unchanged made epoch-ms consumers
+	// (`/activity`, the profile card ordering) read 1970-01-01.
+	it('converts the authored year into the epoch-ms period convention', () => {
+		const [project] = publicProjects(snapshot([record({ periodStart: 2024, periodEnd: 2025 })]));
+		expect(project?.periodStart).toBe(Date.UTC(2024, 0, 1));
+		expect(project?.periodEnd).toBe(Date.UTC(2025, 0, 1));
+		// The converted value must never land in 1970.
+		expect(new Date(project?.periodStart ?? 0).getUTCFullYear()).toBe(2024);
+	});
+
 	it('omits a draft rather than relabelling it', () => {
 		expect(publicProjects(snapshot([record({ status: 'draft' })]))).toEqual([]);
 	});

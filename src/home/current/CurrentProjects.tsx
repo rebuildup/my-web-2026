@@ -98,6 +98,22 @@ export interface CurrentProjectsProps {
 	 * The data is the same in both — only its placement differs.
 	 */
 	variant?: 'section' | 'page';
+	/**
+	 * Issue #1297 — the weight-group heading level for the `page`
+	 * variant. `/now` now nests each enumeration under its own
+	 * `PageSection` + `SectionHeading` (h2), so the groups step down
+	 * to h3. The default stays `h2` for a caller that renders the
+	 * enumeration directly under the hero's h1. The flat-list row
+	 * level is unchanged (h3 under a section h2, h4 under a group).
+	 */
+	groupHeadingLevel?: 'h2' | 'h3';
+	/**
+	 * Issue #1297 — the enumeration's `data-testid`, overridable so a
+	 * page that renders TWO enumerations (the `/now` named/observed
+	 * split) gives each list a distinct hook instead of colliding on
+	 * `home-current-projects-list`.
+	 */
+	listTestId?: string;
 }
 
 // Every style in this module is built at module scope, and every `css()` call
@@ -499,6 +515,8 @@ export function CurrentProjects({
 	limit,
 	seeAllHref,
 	variant = 'section',
+	groupHeadingLevel = 'h2',
+	listTestId = 'home-current-projects-list',
 }: CurrentProjectsProps) {
 	const published = selectPublishedProjects(projects, today);
 	const visible = limit === undefined ? published : published.slice(0, limit);
@@ -530,12 +548,7 @@ export function CurrentProjects({
 		}
 		const GroupHeading = headingLevel;
 		return groups ? (
-			<Stack
-				as="ul"
-				gap="10"
-				data-testid="home-current-projects-list"
-				className={listResetClassName}
-			>
+			<Stack as="ul" gap="10" data-testid={listTestId} className={listResetClassName}>
 				{groups.map((group) => (
 					<li key={group.level} data-testid="home-current-project-group" data-level={group.level}>
 						<GroupHeading className={groupHeadingClassName}>
@@ -559,12 +572,7 @@ export function CurrentProjects({
 				))}
 			</Stack>
 		) : (
-			<Stack
-				as="ul"
-				gap="0"
-				data-testid="home-current-projects-list"
-				className={listResetClassName}
-			>
+			<Stack as="ul" gap="0" data-testid={listTestId} className={listResetClassName}>
 				{visible.map((project) => (
 					<ProjectRow
 						key={project.id}
@@ -586,7 +594,7 @@ export function CurrentProjects({
 	// section wrapper and its heading belong to the HOME's section,
 	// which keeps its h2.
 	if (variant === 'page') {
-		return renderEnumeration('h2');
+		return renderEnumeration(groupHeadingLevel);
 	}
 
 	return (

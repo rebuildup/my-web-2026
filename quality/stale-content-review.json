@@ -1440,6 +1440,29 @@
 				]
 			},
 			"note": "Page title of /now. Not a time-sensitive claim: it names the surface, it does not assert a date."
+		},
+		{
+			"id": "about-skills-context-past-1296",
+			"path": "src/about/skills.ts",
+			"expression": "現在の toolchain には含まれない、完了した制作での使用。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-28",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/1296",
+						"note": "Issue #1296 — about skills context grouping. The sentence describes the 'past' context bucket (skills used in completed work, not in the current toolchain); it is a grouping label, not a dated claim."
+					}
+				]
+			},
+			"note": "Context-group description for the 'past' skills bucket in SkillsList (src/about/skills.ts SKILL_CONTEXTS). Defines the bucket's membership rule; carries no date or freshness claim."
 		}
 	]
 }

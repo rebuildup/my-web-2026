@@ -38,8 +38,6 @@ export const SELECTED_WORK_SLUGS = [
 	'ube-kosen-map',
 ] as const;
 
-export type SelectedWorkSlug = (typeof SELECTED_WORK_SLUGS)[number];
-
 /**
  * Resolve the selection against a project collection, preserving the
  * authored order and skipping slugs that are absent or not public.

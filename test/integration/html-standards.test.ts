@@ -288,16 +288,17 @@ describe('SSR HTML conformance (Issue #412)', () => {
 
 	it('reports every non-waived finding a reader has to look at', async () => {
 		// Severity is policy, not folklore: `quality/html-standards.json`
-		// decides which rules block. The current policy leaves exactly one
-		// non-blocking finding on the live documents (the `<h3>` project
-		// card under the `<h1>` page heading on /portfolio), and this
-		// assertion pins that list so a NEW warning cannot appear silently.
+		// decides which rules block. The Selected Works band gave
+		// /portfolio a proper `h2` section before the `h3` project cards,
+		// so the live documents currently carry NO non-blocking finding —
+		// and this assertion pins that list so a NEW warning cannot
+		// appear silently.
 		const { html } = await observe('/portfolio');
 		const parsed = validateHtml(html, { severities });
 		const nonBlocking = parsed.messages
 			.filter((message) => message.severity !== 'error')
 			.map((message) => `${message.rule}: ${message.message}`);
-		expect(nonBlocking).toEqual(['heading-level-skip: Heading level should be h2 before h3.']);
+		expect(nonBlocking).toEqual([]);
 	}, 60_000);
 
 	it('a rendered document is a real document, not an error fallback', async () => {

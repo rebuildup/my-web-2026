@@ -1,8 +1,17 @@
-# release step 9（operator ゲート）実行記録 — v0.17.0 候補 bf803427
+# release step 9（operator ゲート）実行記録 — v0.17.0 候補 2ef09c67
 
 - 対象: release ブランチ `release-0-17-0` の freeze 対象 commit
-  `bf803427`（#1313 merge 後の head = 最終候補。#1299 / #1300 /
-  #1305 / #1312 / #1306 / #1313 を全て含む）
+  `2ef09c67`（PR #1327 merge 後の head = 最終候補。#1299 / #1300 /
+  #1305 / #1312 / #1306 / #1313 / #1323 を全て含む）
+- 注記: 3 つの live 検査は `bf803427` 時点（2026-11-28）に実行した。
+  その後の差分 `ce6eb56b`（bundle budget 再導出 + 本記録）と
+  `2ef09c67`（E2E spec 鮮度切れ修正 + /stack の presentational
+  component 置換）は runtime secret / binding / R2 / migration /
+  wrangler 設定 / Infisical 契約のいずれにも触れないため、
+  実測結果は最終候補へそのまま有効。凍結 run は最終候補で
+  [46142074171](https://github.com/rebuildup/my-web-2026/actions/runs/46142074171)
+  として success（Phase A 記録:
+  [`attestation-byte-comparison-2026-11-28-2ef09c67.md`](../supply-chain/attestation-byte-comparison-2026-11-28-2ef09c67.md)）。
 - 状態: **実施済み**。agent が operator 権限のある環境
   （本機の Infisical CLI 認証済みセッション）で実行した。
 - 手順の正本: [`docs/release.md`](../../release.md) step 9、
@@ -20,7 +29,7 @@
 | A | R2 key-set audit（production read-only） | `OK` | **PASS** |
 | B-1 | Infisical prod 契約観測 + live Worker（`check-cf-secrets --execute`） | `all checks OK`（Tier 3 live Worker 含む） | **PASS** |
 | B-2 | secret 名 parity 分類（`secrets:status:check --observation`） | `OK`（drift_failures=0 / overdue=0 / advisory=5） | **PASS** |
-| freeze | CI run [46134367972](https://github.com/rebuildup/my-web-2026/actions/runs/46134367972) `workflow_dispatch` @ `bf803427` | （実行中 — 結果は Phase A 記録に追記） | pending |
+| freeze | CI run [46142074171](https://github.com/rebuildup/my-web-2026/actions/runs/46142074171) `workflow_dispatch` @ `2ef09c67` | success（validate + storybook axe、Phase A PASS） | **PASS** |
 
 ## A. R2 key-set audit
 
@@ -77,7 +86,7 @@ v0.16.0 と同一の advisory=5（`UNEXPECTED` の運用 secret 5 件は契約�
 - exec 経由の環境変数はコマンドを跨いで保持されないため、
   token 取得と gate 実行は同一コマンド内で完結させた。
 
-## v0.17.0 固有の補足（bf803427 時点）
+## v0.17.0 固有の補足（最終候補 2ef09c67 時点）
 
 - runtime secret / binding / migration / wrangler 設定に差分なし
 - リリース内容は全てアプリケーション層（about 再設計・data-heavy

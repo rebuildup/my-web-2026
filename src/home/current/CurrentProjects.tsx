@@ -5,7 +5,7 @@ import { MaterialSymbol } from '../../editorial/primitives/MaterialSymbol';
 import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import { ARROW_FORWARD_PATH } from '../../editorial/primitives/material-symbol-paths';
-import { noteSansMd } from '../../editorial/primitives/shared-styles';
+import { noteSansMd, tabularDateSm } from '../../editorial/primitives/shared-styles';
 import {
 	CURRENT_LOCATION_CHANGE_MOTION,
 	usePrefersReducedMotion,
@@ -195,12 +195,7 @@ const rowClassName = /* @__PURE__ */ css({
  * gives the column a rhythm and lets a reader count the entries
  * without reading them.
  */
-const rowIndexClassName = /* @__PURE__ */ css({
-	fontFamily: 'mono',
-	fontSize: 'sm',
-	fontVariantNumeric: 'tabular-nums',
-	color: 'text.muted',
-});
+const rowIndexClassName = /* @__PURE__ */ css(tabularDateSm);
 
 /**
  * Issue #1135 — the facts column.

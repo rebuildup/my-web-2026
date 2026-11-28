@@ -79,6 +79,19 @@ export interface PortfolioWorkLike {
 	readonly periodStart: number;
 	readonly periodLabel?: string | null;
 	/**
+	 * The project's one-line summary (Issue #1319) — carried through
+	 * to the highlight card verbatim; the adapter itself never reads
+	 * it, so an absent value simply prints nothing.
+	 */
+	readonly summary?: string | null;
+	/**
+	 * `owner/name` of the repository the project's `repo` link points
+	 * at (Issue #1319), already parsed and validated by the caller.
+	 * The route assembly uses it to join a GitHub release event to
+	 * the work that repository produced; the adapter never reads it.
+	 */
+	readonly repoFullName?: string | null;
+	/**
 	 * The project's published cover (Issue #1297), already resolved
 	 * to a displayable URL by the caller. Absent or `null` means the
 	 * work carries no usable cover — the item then renders text-only,

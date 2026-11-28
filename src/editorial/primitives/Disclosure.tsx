@@ -16,6 +16,8 @@ export interface DisclosureProps extends DetailsHTMLAttributes<HTMLDetailsElemen
 	/** Summary line — always visible. */
 	summary: ReactNode;
 	children?: ReactNode;
+	/** Pass-through `data-*` attributes for E2E/integration selectors. */
+	[key: `data-${string}`]: string | number | boolean | undefined;
 }
 
 export function Disclosure({ summary, className, children, ...rest }: DisclosureProps) {

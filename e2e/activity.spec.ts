@@ -1,11 +1,11 @@
 import { expect, test } from '@playwright/test';
 
 /**
- * `/activity` route E2E (Issue #352).
+ * `/activity` route E2E (Issue #352; edited record Issue #1319).
  *
  * What this spec pins:
- *   1. the page renders 200 with its canonical heading and the
- *      per-source health line the timeline contract publishes;
+ *   1. the page renders 200 with its canonical heading, the edited
+ *      highlight band and the folded archive;
  *   2. items carry kind badge, source label, date and a real
  *      permalink — never an interpolated date;
  *   3. canonical + Open Graph metadata are the ones the route head
@@ -19,12 +19,17 @@ import { expect, test } from '@playwright/test';
  * for the wrong reason.
  */
 
-test.describe('activity — /activity timeline', () => {
-	test('renders the canonical heading and the timeline surface', async ({ page }) => {
+test.describe('activity — /activity edited record', () => {
+	test('renders the canonical heading, highlights and the archive surface', async ({ page }) => {
 		const res = await page.goto('/activity');
 		expect(res?.status()).toBe(200);
 
-		await expect(page.locator('h1')).toHaveText('活動タイムライン / Activity');
+		await expect(page.locator('h1')).toHaveText('活動の記録 / Activity');
+
+		// Issue #1319 — the edited layer leads: the highlight band is
+		// the page's protagonist, the chronology is the archive.
+		const highlights = page.locator('[data-testid="activity-highlights"]');
+		await expect(highlights).toBeVisible();
 
 		const timeline = page.locator('[data-testid="activity-timeline"]');
 		await expect(timeline).toBeVisible();
@@ -38,6 +43,12 @@ test.describe('activity — /activity timeline', () => {
 		await expect(status).toContainText('Portfolio');
 		await expect(status).toContainText('Content');
 		await expect(status).toContainText('観測日');
+
+		// The archive is folded by default — the full record stays one
+		// disclosure away, never filtered out of the DOM.
+		const archive = page.locator('[data-testid="activity-archive"]');
+		await expect(archive).toBeVisible();
+		await expect(archive).not.toHaveAttribute('open', '');
 	});
 
 	test('renders honest empty or populated states, never a fabricated date', async ({ page }) => {

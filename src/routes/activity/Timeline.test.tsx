@@ -26,6 +26,38 @@ describe('ActivityTimelineView', () => {
 		expect(html).toContain('href="https://github.com/rebuildup/my-web-2026"');
 	});
 
+	it('folds the full record into the archive disclosure (Issue #1319)', () => {
+		const timeline = {
+			...activityTimelineFixture,
+			items: sortActivityTimelineItems(activityTimelineFixture.items),
+		};
+		const html = renderToStaticMarkup(<ActivityTimelineView timeline={timeline} />);
+		// The archive is a native <details> — collapsed by default, but
+		// every item stays in the DOM and in the record.
+		expect(html).toContain('data-testid="activity-archive"');
+		expect(html).toMatch(/<details[^>]*>/);
+		// Collapsed by default: the details tag carries no `open`.
+		expect(html).not.toMatch(/<details[^>]*\sopen[\s>=]/);
+		expect(html).toContain('時系列アーカイブ（全 6 件）');
+		expect(html).toContain('data-timeline-item=');
+	});
+
+	it('renders the related-work join only when the item carries one', () => {
+		const timeline = {
+			...activityTimelineFixture,
+			items: sortActivityTimelineItems([
+				{
+					...activityTimelineFixture.items[0],
+					relatedWork: { title: 'my-web-2026', href: '/portfolio/my-web-2026' },
+				},
+				...activityTimelineFixture.items.slice(1),
+			]),
+		};
+		const html = renderToStaticMarkup(<ActivityTimelineView timeline={timeline} />);
+		expect(html).toContain('関連作品: my-web-2026');
+		expect(html).toContain('href="/portfolio/my-web-2026"');
+	});
+
 	it('renders the empty state without fabricating items', () => {
 		const html = renderToStaticMarkup(
 			<ActivityTimelineView timeline={emptyActivityTimelineFixture} />,

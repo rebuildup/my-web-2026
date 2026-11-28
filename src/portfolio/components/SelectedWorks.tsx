@@ -1,5 +1,5 @@
 import { css, cx } from '../../../styled-system/css';
-import { Stack, listResetClassName } from '../../editorial/primitives/Flow';
+import { Cluster, Stack, listResetClassName } from '../../editorial/primitives/Flow';
 import { Grid, GridItem } from '../../editorial/primitives/Grid';
 import { MaterialSymbol } from '../../editorial/primitives/MaterialSymbol';
 import { StateMark } from '../../editorial/primitives/StateMark';
@@ -16,16 +16,15 @@ import { PortfolioMediaFigure } from './PortfolioMedia';
  * for (Issue #1295, Epic #1266, `docs/visual/site-concept-2026.md`).
  *
  * The portfolio index and the home page share the committed
- * SELECTION (`src/portfolio/selected.ts`) AND this one presentation:
- * the first work takes the feature slot — a media-dominant 8/4
- * split — and the remaining works hang as a subordinate wall on the
- * 12-track grid with permuted spans, varied media ratios and a
- * brick stagger. Hierarchy comes from scale and placement, so the
- * band's claim ("these are the works this site stands behind") is
- * legible at a glance instead of arriving as row 37 of a uniform
- * stack. Home renders the same component over a shorter slice —
- * one hierarchy, two placements (see the note at the foot of this
- * file for why the earlier two-presentation split was rejected).
+ * SELECTION (`src/portfolio/selected.ts`) AND this one presentation.
+ * The exhibition is MATERIAL-driven (Epic #1266 pass): the first
+ * work takes the feature slot as a contact sheet — cover at
+ * exhibition scale plus a strip of its own additional media — and
+ * the wall assigns each work a display mode from its media count:
+ * "series" works (a real gallery) hang as diptychs in the wide
+ * spans, single-image "plates" keep one framed cover. Every work
+ * carries a quiet provenance line (year — role) so the band reads
+ * as a curated showing, not a directory of links.
  *
  * A work without a published cover keeps its slot as a labelled
  * frame: the selection is editorial, so a missing cover is a data
@@ -70,12 +69,16 @@ const workTitleLinkClassName = /*#__PURE__*/ css({
 });
 
 /**
- * Wall placement — the subordinate works hang on the 12-track grid
- * with PERMUTED column spans, so no two rows share the same
- * silhouette. Each row of three sums to 12 tracks; the pattern
- * cycles so the ragged right edge reads as composition, not
- * breakage. Bare `span`/`start` values land on md/lg while base
- * falls back to full width (the mobile recomposition contract).
+ * Wall placement — spans are assigned by MATERIAL, not by position
+ * (Issue #1296 exhibition pass): a "series" work (a real gallery,
+ * ≥3 media rows) takes the wide slots so its diptych has room, and
+ * single-image "plates" fill what remains. Within a full row the
+ * span pool still permutes ([5,4,3] with series-first priority), so
+ * the ragged right edge keeps its composed irregularity; rows with
+ * no series work fall back to the cyclic span patterns for
+ * silhouette variety. Partial closing rows redistribute the 12
+ * tracks evenly — two works take 6+6, one takes the full width —
+ * so the wall never ends in an orphan void.
  */
 const WALL_ROW_SPANS: readonly (readonly [number, number, number])[] = [
 	[5, 4, 3],
@@ -83,27 +86,66 @@ const WALL_ROW_SPANS: readonly (readonly [number, number, number])[] = [
 	[5, 3, 4],
 ];
 
-function wallPlacement(index: number, rowLength: number): { span: number; start: number } {
-	const row = Math.floor(index / 3);
-	const col = index % 3;
-	const itemsInRow = Math.min(3, rowLength - row * 3);
-	// A partial closing row redistributes the 12 tracks evenly —
-	// two works take 6+6, one takes the full width — so the wall
-	// never ends in an orphan void (agy review of PR #1299).
-	if (itemsInRow < 3) {
-		const base = Math.floor(12 / itemsInRow);
-		const extra = 12 % itemsInRow;
-		const spans = Array.from({ length: itemsInRow }, (_, k) => base + (k < extra ? 1 : 0));
-		const start = 1 + spans.slice(0, col).reduce((sum, n) => sum + n, 0);
-		return { span: spans[col], start };
+/** Descending span pool for a full row — series work claims the head. */
+const SERIES_SPAN_POOL = [5, 4, 3] as const;
+
+function wallSpans(items: readonly { series: boolean }[]): readonly number[] {
+	const spans = new Array<number>(items.length).fill(0);
+	for (let rowStart = 0; rowStart < items.length; rowStart += 3) {
+		const row = items.slice(rowStart, rowStart + 3);
+		const n = row.length;
+		if (n === 3) {
+			const hasSeries = row.some((item) => item.series);
+			if (!hasSeries) {
+				const pattern = WALL_ROW_SPANS[Math.floor(rowStart / 3) % WALL_ROW_SPANS.length];
+				pattern.forEach((span, i) => {
+					spans[rowStart + i] = span;
+				});
+				continue;
+			}
+			// Positions ordered series-first (stable): the widest span
+			// goes to the first series cell, the next to the second,
+			// and plates take what is left.
+			const order = row
+				.map((item, i) => ({ item, i }))
+				.sort((a, b) => Number(b.item.series) - Number(a.item.series))
+				.map((entry) => entry.i);
+			order.forEach((pos, k) => {
+				spans[rowStart + pos] = SERIES_SPAN_POOL[k];
+			});
+			continue;
+		}
+		const base = Math.floor(12 / n);
+		const extra = 12 % n;
+		row.forEach((_, i) => {
+			spans[rowStart + i] = base + (i < extra ? 1 : 0);
+		});
 	}
-	const spans = WALL_ROW_SPANS[row % WALL_ROW_SPANS.length];
-	const start = 1 + spans.slice(0, col).reduce((sum, n) => sum + n, 0);
-	return { span: spans[col], start };
+	return spans;
 }
 
 function coverOf(project: PortfolioProject) {
 	return project.media.find((m) => m.isCover) ?? project.media[0] ?? null;
+}
+
+/**
+ * The work's additional media, in display order — the material an
+ * exhibition hangs BESIDE the cover. `isSeries` reads this count:
+ * a work with a real gallery gets the diptych cell, a work with
+ * only a cover stays a single plate (Issue #1296 exhibition pass).
+ */
+function extrasOf(project: PortfolioProject, limit = 3) {
+	return project.media.filter((m) => !m.isCover).slice(0, limit);
+}
+
+function isSeriesWork(project: PortfolioProject): boolean {
+	return project.media.length >= 3;
+}
+
+/** `2025` / `2025 — Video production` — absent parts drop out. */
+function workMeta(project: PortfolioProject): string | null {
+	const year = project.periodLabel ?? (project.periodStart ? String(project.periodStart) : null);
+	return [year, project.role].filter(Boolean).join(' — ') || null;
 }
 
 function facetLine(project: PortfolioProject): string {
@@ -134,6 +176,67 @@ function WorkMedia({
 	);
 }
 
+/**
+ * Feature media — the lead work is shown as a CONTACT SHEET, not a
+ * single frame (Issue #1296): the cover at exhibition scale with a
+ * strip of the work's own additional media beneath it. kosen-fes-2025
+ * carries 29 media rows; hanging one of them would waste the very
+ * material that makes it the selection's anchor.
+ */
+function FeatureMedia({ project }: { project: PortfolioProject }) {
+	const cover = coverOf(project);
+	const extras = extrasOf(project, 3);
+	if (!cover) return <MediaPlaceholder ratio={FEATURE_RATIO} label="media 未整備" />;
+	return (
+		<Stack gap="3">
+			<PortfolioMediaFigure media={cover} loading="eager" frameAspectRatio={FEATURE_RATIO} />
+			{extras.length > 0 ? (
+				<Cluster gap="3">
+					{extras.map((media) => (
+						<PortfolioMediaFigure
+							key={media.id}
+							media={media}
+							loading="lazy"
+							frameAspectRatio="1 / 1"
+							className={css({ flex: '1 1 0', minWidth: '0' })}
+						/>
+					))}
+				</Cluster>
+			) : null}
+		</Stack>
+	);
+}
+
+/**
+ * Series cell media — a work with a real gallery (≥3 media rows)
+ * hangs as a DIPTYCH: cover + its first additional frame side by
+ * side. The pair reads "this work has range" where a single cover
+ * can only claim it. Single-media works keep `WorkMedia` — the
+ * plate stays honest about having one image.
+ */
+function SeriesMedia({ project }: { project: PortfolioProject }) {
+	const cover = coverOf(project);
+	const extra = extrasOf(project, 1)[0];
+	if (!cover) return <MediaPlaceholder ratio="4 / 3" label="media 未整備" />;
+	if (!extra) return <WorkMedia project={project} ratio="4 / 3" eager={false} />;
+	return (
+		<Cluster gap="3">
+			<PortfolioMediaFigure
+				media={cover}
+				loading="lazy"
+				frameAspectRatio="4 / 3"
+				className={css({ flex: '1 1 0', minWidth: '0' })}
+			/>
+			<PortfolioMediaFigure
+				media={extra}
+				loading="lazy"
+				frameAspectRatio="4 / 3"
+				className={css({ flex: '1 1 0', minWidth: '0' })}
+			/>
+		</Cluster>
+	);
+}
+
 function WorkEyebrow({
 	index,
 	project,
@@ -159,6 +262,30 @@ function WorkEyebrow({
 			{category ? <StateMark kind={category} size="sm" /> : null}
 			<span>{facetLine(project)}</span>
 		</div>
+	);
+}
+
+/**
+ * The quiet provenance line — `2025 — Video production`. The
+ * exhibition answers "when, and in what capacity" for every work,
+ * not only the feature (Issue #1304's metadata signal, scoped to
+ * what the committed rows actually carry: `periodStart`/`role`).
+ */
+function WorkMeta({ project }: { project: PortfolioProject }) {
+	const meta = workMeta(project);
+	if (!meta) return null;
+	return (
+		<p
+			className={css({
+				margin: '0',
+				fontFamily: 'mono',
+				fontSize: 'xs',
+				letterSpacing: '0.04em',
+				color: 'text.muted',
+			})}
+		>
+			{meta}
+		</p>
 	);
 }
 
@@ -224,7 +351,7 @@ export function SelectedWorks({ works, headingLevel = 'h3' }: SelectedWorksProps
 			>
 				<Grid template="12" gap="6" columnGap={{ base: '4', lg: '10' }}>
 					<GridItem span={{ base: 12, lg: 8 }} className={css({ minWidth: '0' })}>
-						<WorkMedia project={feature} ratio={FEATURE_RATIO} eager />
+						<FeatureMedia project={feature} />
 					</GridItem>
 					<GridItem
 						span={{ base: 12, lg: 4 }}
@@ -259,6 +386,7 @@ export function SelectedWorks({ works, headingLevel = 'h3' }: SelectedWorksProps
 								{feature.title}
 							</a>
 						</Heading>
+						<WorkMeta project={feature} />
 						<Summary text={feature.summary} />
 						<CaseStudyLink slug={feature.slug} />
 					</GridItem>
@@ -274,35 +402,54 @@ export function SelectedWorks({ works, headingLevel = 'h3' }: SelectedWorksProps
 						rowGap="10"
 						className={listResetClassName}
 					>
-						{rest.map((project, i) => {
-							const { span, start } = wallPlacement(i, rest.length);
-							return (
-								<GridItem
-									as="li"
-									key={project.slug}
-									span={{ base: 12, lg: span }}
-									start={{ base: 1, lg: start }}
-									data-testid="selected-work"
-									data-slug={project.slug}
-									data-variant="wall"
-									className={cx(css({ minWidth: '0' }), css(vStackGap3Plain))}
-								>
-									<WorkMedia
-										project={project}
-										ratio={WALL_RATIOS[i % WALL_RATIOS.length]}
-										eager={false}
-									/>
-									<WorkEyebrow index={i + 1} project={project} />
-									<Heading className={cx(cardTitleClassName, css({ textWrap: 'balance' }))}>
-										<a href={`/portfolio/${project.slug}`} className={workTitleLinkClassName}>
-											{project.title}
-										</a>
-									</Heading>
-									<Summary text={project.summary} clamp="2" />
-									<CaseStudyLink slug={project.slug} />
-								</GridItem>
-							);
-						})}
+						{(() => {
+							const wallItems = rest.map((project) => ({
+								project,
+								series: isSeriesWork(project),
+							}));
+							const spans = wallSpans(wallItems);
+							return wallItems.map(({ project, series }, i) => {
+								const span = spans[i];
+								const rowStart = Math.floor(i / 3) * 3;
+								const col = i - rowStart;
+								const rowSpans = spans.slice(
+									rowStart,
+									rowStart + Math.min(3, rest.length - rowStart),
+								);
+								const start = 1 + rowSpans.slice(0, col).reduce((sum, n) => sum + n, 0);
+								return (
+									<GridItem
+										as="li"
+										key={project.slug}
+										span={{ base: 12, lg: span }}
+										start={{ base: 1, lg: start }}
+										data-testid="selected-work"
+										data-slug={project.slug}
+										data-variant={series ? 'series' : 'plate'}
+										className={cx(css({ minWidth: '0' }), css(vStackGap3Plain))}
+									>
+										{series ? (
+											<SeriesMedia project={project} />
+										) : (
+											<WorkMedia
+												project={project}
+												ratio={WALL_RATIOS[i % WALL_RATIOS.length]}
+												eager={false}
+											/>
+										)}
+										<WorkEyebrow index={i + 1} project={project} />
+										<Heading className={cx(cardTitleClassName, css({ textWrap: 'balance' }))}>
+											<a href={`/portfolio/${project.slug}`} className={workTitleLinkClassName}>
+												{project.title}
+											</a>
+										</Heading>
+										<WorkMeta project={project} />
+										<Summary text={project.summary} clamp="2" />
+										<CaseStudyLink slug={project.slug} />
+									</GridItem>
+								);
+							});
+						})()}
 					</Grid>
 				</li>
 			) : null}
